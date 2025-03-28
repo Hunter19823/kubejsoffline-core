@@ -33,6 +33,15 @@ test {
     useJUnitPlatform()
 }
 
+compileJava {
+    options.compilerArgs << '-parameters'
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
 publishing {
     publications {
         publishToMavenLocal(MavenPublication) {
