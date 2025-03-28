@@ -3,11 +3,12 @@ package pie.ilikepiefoo.kubejsoffline;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
-import pie.ilikepiefoo.kubejsoffline.api.DocumentationBridge;
-import pie.ilikepiefoo.kubejsoffline.api.ReflectionHelper;
-import pie.ilikepiefoo.kubejsoffline.html.tag.Tag;
-import pie.ilikepiefoo.kubejsoffline.impl.DefaultReflectionHelper;
-import pie.ilikepiefoo.kubejsoffline.impl.ResourceDocumentationBridge;
+import pie.ilikepiefoo.kubejsoffline.core.DocumentationGenerator;
+import pie.ilikepiefoo.kubejsoffline.core.api.DocumentationBridge;
+import pie.ilikepiefoo.kubejsoffline.core.api.ReflectionHelper;
+import pie.ilikepiefoo.kubejsoffline.core.html.tag.Tag;
+import pie.ilikepiefoo.kubejsoffline.core.impl.DefaultReflectionHelper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.ResourceDocumentationBridge;
 
 import java.io.File;
 
