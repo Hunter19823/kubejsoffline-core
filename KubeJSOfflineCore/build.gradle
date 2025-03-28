@@ -1,19 +1,43 @@
 plugins {
     id 'java'
+    id 'java-library'
+    id 'maven-publish'
 }
 
-group = 'pie.ilikepiefoo'
-version = '1.0-SNAPSHOT'
+group = project.group
+version = project.version
 
 repositories {
     mavenCentral()
+    mavenLocal()
+    google()
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Log4j
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j2-impl', version: project.log4j_version
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: project.log4j_version
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: project.log4j_version
+
+    // GSON
+    implementation group: 'com.google.code.gson', name: 'gson', version: project.gson_version
+
+    // Reflections
+    implementation group: 'org.reflections', name: 'reflections', version: project.reflections_version
+
+    // JUnit
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: project.junit_version
 }
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        publishToMavenLocal(MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
 }
