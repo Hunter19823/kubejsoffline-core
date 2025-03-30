@@ -1,8 +1,11 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl;
 
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.ExecutableData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
+import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.ConstructorWrapper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.MethodWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.ParameterizedTypeWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.RawClassWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.TypeVariableWrapper;
@@ -10,6 +13,8 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.WildcardTypeWrapper
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.ArrayIdentifier;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -76,6 +81,19 @@ public class TypeManager {
             return cache(typeVariable, new TypeVariableWrapper(collectionGroup, typeVariable));
         }
         throw new IllegalArgumentException("Type " + type + " is not supported");
+    }
+
+    public synchronized ExecutableData getData(final Executable executable) {
+        if (executable == null) {
+            throw new NullPointerException("Executable cannot be null");
+        }
+        if (executable instanceof Constructor<?>) {
+            return new ConstructorWrapper(collectionGroup, (Constructor<?>) executable);
+        }
+        if (executable instanceof java.lang.reflect.Method method) {
+            return new MethodWrapper(collectionGroup, method);
+        }
+        throw new IllegalArgumentException("Executable " + executable + " is not supported");
     }
 
     private TypeOrTypeVariableID cache(Type type, TypeData data) {

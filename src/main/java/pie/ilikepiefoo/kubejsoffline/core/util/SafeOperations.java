@@ -18,7 +18,6 @@ import java.util.function.Supplier;
 
 public class SafeOperations {
     private static final Logger LOG = LogManager.getLogger();
-    private static boolean loadedRemap;
     private static TypeNameMapper mapper;
 
     public static void setTypeMapper(TypeNameMapper mapper) {

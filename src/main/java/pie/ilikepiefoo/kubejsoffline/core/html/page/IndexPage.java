@@ -1,25 +1,23 @@
 package pie.ilikepiefoo.kubejsoffline.core.html.page;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import pie.ilikepiefoo.kubejsoffline.core.api.DocumentationBridge;
-import pie.ilikepiefoo.kubejsoffline.core.api.ReflectionHelper;
 import pie.ilikepiefoo.kubejsoffline.core.html.tag.CustomAssetTag;
 import pie.ilikepiefoo.kubejsoffline.core.html.tag.collection.JSONDataTag;
-import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
-import pie.ilikepiefoo.kubejsoffline.core.util.RelationType;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.BindingsJSON;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
+import pie.ilikepiefoo.kubejsoffline.core.util.json.GlobalConstants;
+
+import java.util.Map;
+import java.util.function.Supplier;
 
 public class IndexPage extends HTMLFile {
 
-    public IndexPage(final Gson gson, final DocumentationBridge documentationBridge, final ReflectionHelper helper) {
+    public IndexPage(final Gson gson, final DocumentationBridge documentationBridge) {
         this.HEADER_TAG.add(new CustomAssetTag("title", "html/title.txt", documentationBridge));
         this.HEADER_TAG.add(new CustomAssetTag("style", "html/css/styling.css", documentationBridge));
-        this.HEADER_TAG.add(new JSONDataTag("DATA", CollectionGroup.INSTANCE.toJSON(), gson).id("data"));
-        this.HEADER_TAG.add(new JSONDataTag("BINDINGS", BindingsJSON.get(), gson).id("bindings"));
-        this.HEADER_TAG.add(new JSONDataTag("RELATIONS", RelationType.getRelationTypeData(), gson).id("relationships"));
-        this.HEADER_TAG.add(new JSONDataTag("PROPERTY", JSONProperty.createTranslation(), gson).id("properties"));
-        this.HEADER_TAG.add(new JSONDataTag("EVENTS", helper.getEventClassesAsJson(), gson).id("events"));
+        for (Map.Entry<String, Supplier<JsonElement>> entry : GlobalConstants.INSTANCE.getConstants().entrySet()) {
+            this.HEADER_TAG.add(new JSONDataTag(entry.getKey(), entry.getValue().get(), gson).id(entry.getKey().toLowerCase()));
+        }
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/indexingworker.js", documentationBridge).id("worker-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/constants.js", documentationBridge).id("constants"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/class_data_documentation.js", documentationBridge).id("class-documentation-tools"));

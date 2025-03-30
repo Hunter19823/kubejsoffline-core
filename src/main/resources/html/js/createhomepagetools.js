@@ -44,4 +44,14 @@ function createHomePage() {
             continue;
         createClassTable(title, key, DATA._events[key].filter(exists).map(getClass))
     }
+
+    const scopes = Object.keys(BINDINGS);
+    for (let i = 0; i < scopes.length; i++) {
+        const scope = scopes[i];
+        const bindings = BINDINGS[scope];
+        if (bindings.length === 0)
+            continue;
+
+        createBindingsTable(`Bindings (${scope})`, scope, `${scope}-bindings`, bindings.filter(exists).map(getBinding))
+    }
 }

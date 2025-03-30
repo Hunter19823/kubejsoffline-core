@@ -1,3 +1,13 @@
+/**
+ * Creates a new paged table.
+ * @template {any} T The data type of the table
+ * @param title {string} The title of the table
+ * @param table_id {string} The id of the table
+ * @param data {Array<T>} The data to be displayed in the table
+ * @param addRowAction {function(table: HTMLTableElement, data: T): void} The function to add a row to the table
+ * @param headers {...string} The headers of the table
+ * @returns {PageableSortableTable<T>|undefined} The created table
+ */
 function createPagedTable(title, table_id, data, addRowAction, ...headers) {
     if (data.length === 0) {
         return;
@@ -165,6 +175,13 @@ function matchAllHeadersToSameWidth(table) {
     }
 }
 
+/**
+ * A pageable and sortable table.
+ * @template {any} T The data type of the table
+ * @template {any} R The mapped type of the table used for sorting
+ * @class
+ * @public
+ */
 PageableSortableTable = class {
     static SORTABLE_DEFAULT = ['default', defaultSort];
     static SORTABLE_BY_NAME = ['name', attributeComparator('getName', sortByName)];
@@ -254,11 +271,21 @@ PageableSortableTable = class {
         return this;
     }
 
+    /**
+     * Set the data for the table.
+     * @param data {Array<T>} The data to be displayed in the table
+     * @returns {PageableSortableTable<T>} The table object
+     */
     setData(data) {
         this.data = data;
         return this;
     }
 
+    /**
+     * Set the page number for the table.
+     * @param page {number} The page number to be displayed
+     * @returns {PageableSortableTable<T>} The table object
+     */
     setPage(page) {
         this.page = page;
         return this;
@@ -274,6 +301,11 @@ PageableSortableTable = class {
         return this;
     }
 
+    /**
+     * Set the sort function for the table.
+     * @param sort {function(a: T, b: T): number} The sort function to be used
+     * @returns {PageableSortableTable<T>} The table object
+     */
     setSort(sort) {
         this.sort = sort;
         return this;
@@ -363,6 +395,12 @@ PageableSortableTable = class {
         return data;
     }
 
+    /**
+     * Add a sort option to the table.
+     * @param option {string} The name of the sort option
+     * @param sort {function(a: T, b: T): number} The sort function to be used
+     * @returns {PageableSortableTable<T>} The table object
+     */
     addSortOption(option, sort) {
         this.sort_options[option] = sort;
         if (!this.sort_option_names.includes(option)) {
@@ -371,6 +409,13 @@ PageableSortableTable = class {
         return this;
     }
 
+    /**
+     * Add a sort option to the table with a wrapper function.
+     * @param option {string} The name to look for the sort-able option
+     * @param sort {function(a: R, b: R): number} The sort function to be used
+     * @param wrapper {(function(a: T): R)|undefined} The wrapper function to be used
+     * @returns {PageableSortableTable<T>}
+     */
     addSortOptionPair([option, sort], wrapper = undefined) {
         if (exists(wrapper)) {
             sort = wrapComparator(sort, wrapper);
@@ -723,6 +768,11 @@ PageableSortableTable = class {
         return this;
     }
 
+    /**
+     * Adds the class related sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
     sortableByClass(mutator = getClass) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
@@ -735,6 +785,21 @@ PageableSortableTable = class {
             ;
     }
 
+    /**
+     * Adds the named related sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
+    sortableByName(mutator = getName) {
+        return this
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, mutator)
+    }
+
+    /**
+     * Adds the method related sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
     sortableByMethod(mutator = getMethod) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
@@ -747,6 +812,11 @@ PageableSortableTable = class {
             ;
     }
 
+    /**
+     * Adds the constructor related sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
     sortableByConstructor(mutator = getConstructor) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
@@ -757,6 +827,11 @@ PageableSortableTable = class {
             ;
     }
 
+    /**
+     * Adds the field related sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
     sortableByField(mutator = getField) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
@@ -766,6 +841,11 @@ PageableSortableTable = class {
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_DECLARING_CLASS, mutator);
     }
 
+    /**
+     * Adds the relation sort options to the table.
+     * @param mutator {function(a: T): R} The function to map the data to the sort option
+     * @returns {PageableSortableTable<T>}
+     */
     sortableByRelation(mutator = getRelationship) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)

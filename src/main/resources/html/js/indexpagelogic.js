@@ -454,7 +454,7 @@ function createOptimizationWorkerThread() {
 
     parts.push(document.getElementById('data').innerText);
     parts.push(document.getElementById('bindings').innerText);
-    parts.push(document.getElementById('properties').innerText);
+    parts.push(document.getElementById('property').innerText);
     parts.push(document.getElementById('constants').innerText);
     parts.push(document.getElementById('events').innerText);
     parts.push(document.getElementById('class-documentation-tools').innerText);

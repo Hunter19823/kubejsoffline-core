@@ -192,7 +192,7 @@ function createRelationshipTable(id, typeVariableMap = {}) {
             console.error("Failed to create relationship entry for ", data.id(), " To: ", to, " Relations: ", relations, " Error: ", e);
         }
     };
-    createPagedTable('Relationships', 'relations', [...relationships.entries()], addToTable,
+    createPagedTable('Relationships', 'relationships', [...relationships.entries()], addToTable,
         'Links',
         'RelatedClass',
         'Relationships'
@@ -233,4 +233,43 @@ function createClassTable(title, table_id, classes) {
     )
         .sortableByClass((a) => a)
         .create();
+}
+
+/**
+ * Creates a table of bindings
+ * @param title {String} The title of the table
+ * @param scope {String} The scope of the bindings
+ * @param table_id {String} The id of the table
+ * @param bindings {Array<Binding>} The bindings to display
+ */
+function createBindingsTable(title, scope, table_id, bindings) {
+    /**
+     * Adds a binding to a table
+     * @param table {HTMLTableElement} The table to add the binding to.
+     * @param binding {Binding} The binding to add
+     */
+    const addToTable = (table, binding) => {
+        try {
+            let row = addRow(
+                table,
+                span(binding.getName()),
+                createFullSignature(binding.getType()),
+                span(exists(binding.getData()) ? JSON.stringify(binding.getData(), null, 2) : "")
+            );
+            appendAttributesToBindingTableRow(row, binding, scope)
+        } catch (e) {
+            console.error(`Failed to create entry for `, table_id, " Binding: ", binding, " Error: ", e);
+        }
+    };
+
+    createPagedTable(title, table_id, bindings, addToTable,
+        'Link',
+        'Name',
+        'Type',
+        'Values'
+    )
+        .sortableByClass((a) => getClass(a.getType()))
+        .sortableByName((a) => a.getName())
+        .create();
+
 }

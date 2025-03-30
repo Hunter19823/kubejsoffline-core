@@ -457,6 +457,17 @@
  * @public
  */
 
+/**
+ *
+ * This type is a raw data holer type.
+ * It is a way to store arbitrary data that needs to be represented to the frontend.
+ * It is a wrapper for any json object.
+ * @typedef DataHolder
+ * @method getData - Retrieves the data represented by the object.
+ * @property {function(): any} getData - Retrieves the data off the object.
+ * @public
+ */
+
 
 /**
  * @typedef {
@@ -589,6 +600,18 @@
  * RelationshipHolder
  * } Relationship
  *
+ * @public
+ */
+
+/**
+ * This type is a bindings type wrapper.
+ * It is a compressed array that contains a name, a type id, and optionally a data object.
+ * @typedef {
+ *     NameHolder &
+ *     TypeHolder &
+ *     DataHolder &
+ *     IdHolder
+ * } Binding
  * @public
  */
 

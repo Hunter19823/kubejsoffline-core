@@ -115,3 +115,20 @@ const EVENTS = {
     "dev.latvian.mods.kubejs.recipe.RecipeJS": [],
     "net.minecraftforge.eventbus.api.Event": []
 }
+
+BINDINGS = {
+    "global": [
+        [
+            "GlobalMap",
+            1828,
+            {
+                "key1": "value1",
+                "key2": "value2"
+            }
+        ],
+        [
+            "GlobalClass",
+            229
+        ]
+    ]
+}
