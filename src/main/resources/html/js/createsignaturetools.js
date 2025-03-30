@@ -208,7 +208,7 @@ function appendAttributesToClassTableRow(row, class_id) {
 function appendAttributesToBindingTableRow(row, binding, scope) {
     let clazz = getClass(binding.getType());
     row.setAttribute('mod', clazz.modifiers());
-    row.setAttribute('name', clazz.referenceName());
+    row.setAttribute('name', binding.getName());
     row.setAttribute('type', binding.getType());
     row.setAttribute('scope', scope);
     row.setAttribute('row-type', 'binding');

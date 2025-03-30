@@ -2,11 +2,12 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.context;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
 import pie.ilikepiefoo.kubejsoffline.core.api.context.Binding;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
-import pie.ilikepiefoo.kubejsoffline.core.util.RecursionProofExclusionStrategy;
+import pie.ilikepiefoo.kubejsoffline.core.util.SimpleTypesExclusionStrategy;
 
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,15 +36,6 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
             return new Builder(name, type);
         }
 
-        public static Builder from(String name, Executable executable) {
-            if (executable == null) {
-                throw new NullPointerException("Executable cannot be null");
-            }
-            var data = TypeManager.INSTANCE.getData(executable);
-            return new Builder(name, data.getClass())
-                    .setData(data::toJSON);
-        }
-
         public Builder setData(Supplier<JsonElement> data) {
             this.data = data;
             return this;
@@ -63,7 +55,12 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
             }
             return setData(() -> {
                 try {
-                    return new GsonBuilder().setLenient().addSerializationExclusionStrategy(new RecursionProofExclusionStrategy()).create().toJsonTree(data);
+                    return new GsonBuilder()
+                            .setLenient()
+                            .addSerializationExclusionStrategy(new SimpleTypesExclusionStrategy())
+                            .registerTypeAdapter(Class.class, (JsonSerializer<Class<?>>) (Class<?> src, Type typeOfSrc, JsonSerializationContext context) -> TypeManager.INSTANCE.getID(src).toJSON())
+                            .create()
+                            .toJsonTree(data);
                 } catch (Exception e) {
                     LOG.info("Failed to convert data to JSON: {}", e.getMessage());
                 }
