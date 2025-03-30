@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import pie.ilikepiefoo.kubejsoffline.core.api.DocumentationProvider;
 import pie.ilikepiefoo.kubejsoffline.core.api.context.Binding;
 import pie.ilikepiefoo.kubejsoffline.core.api.context.BindingsProvider;
-import pie.ilikepiefoo.kubejsoffline.core.html.tag.Tag;
 import pie.ilikepiefoo.kubejsoffline.core.impl.DefaultReflectionHelper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.SimpleDocumentationProvider;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
@@ -27,7 +26,7 @@ public class DocumentationGeneratorTest {
     public void generateHtmlPage() {
         File file = new File("build/output.html");
         SimpleDocumentationProvider.Builder builder = new SimpleDocumentationProvider.Builder();
-        builder.setReflectionHelper(new DefaultReflectionHelper(Tag.class));
+        builder.setReflectionHelper(new DefaultReflectionHelper());
         // Create some sample bindings.
         // This is just a placeholder for the actual bindings.
         List<Binding> bindings = new ArrayList<>();

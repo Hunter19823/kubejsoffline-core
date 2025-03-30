@@ -1,12 +1,14 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.context;
 
-import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import pie.ilikepiefoo.kubejsoffline.core.api.context.Binding;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
+import pie.ilikepiefoo.kubejsoffline.core.util.RecursionProofExclusionStrategy;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -52,7 +54,21 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
                 throw new NullPointerException("Object cannot be null");
             }
             return new Builder(name, object.getClass())
-                    .setData(() -> new Gson().toJsonTree(object));
+                    .setData(object);
+        }
+
+        public Builder setData(Object data) {
+            if (data == null) {
+                throw new NullPointerException("Data cannot be null");
+            }
+            return setData(() -> {
+                try {
+                    return new GsonBuilder().setLenient().addSerializationExclusionStrategy(new RecursionProofExclusionStrategy()).create().toJsonTree(data);
+                } catch (Exception e) {
+                    LOG.info("Failed to convert data to JSON: {}", e.getMessage());
+                }
+                return null;
+            });
         }
 
         public static Builder from(String name, Class<? extends Enum<?>> enumClass) {
@@ -60,7 +76,7 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
                 throw new NullPointerException("Enum class cannot be null");
             }
             return new Builder(name, enumClass)
-                    .setData(() -> new Gson().toJsonTree(enumClass.getEnumConstants()));
+                    .setData(Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).toArray());
         }
 
         public static Builder from(Binding binding) {
