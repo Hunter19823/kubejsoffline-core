@@ -10,7 +10,11 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.DefaultReflectionHelper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.SimpleDocumentationProvider;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.context.SimpleBinding;
+import pie.ilikepiefoo.kubejsoffline.testclasses.BaseGenericType;
+import pie.ilikepiefoo.kubejsoffline.testclasses.RootClass;
+import pie.ilikepiefoo.kubejsoffline.testclasses.ThirdClass;
 
+import java.awt.Desktop;
 import java.awt.MultipleGradientPaint;
 import java.io.File;
 import java.util.ArrayList;
@@ -27,7 +31,13 @@ public class DocumentationGeneratorTest {
     public void generateHtmlPage() {
         File file = new File("build/output.html");
         SimpleDocumentationProvider.Builder builder = new SimpleDocumentationProvider.Builder();
-        builder.setReflectionHelper(new DefaultReflectionHelper());
+        builder.setReflectionHelper(
+                new DefaultReflectionHelper(
+                        ThirdClass.class,
+                        RootClass.class,
+                        BaseGenericType.class
+                )
+        );
         // Create some sample bindings.
         // This is just a placeholder for the actual bindings.
         List<Binding> bindings = new ArrayList<>();
@@ -66,5 +76,13 @@ public class DocumentationGeneratorTest {
 
         // Check if the output file is not null.
         assertNotNull(output);
+
+        LOG.info("Opening file in browser: {}", output.getAbsolutePath());
+
+        try {
+            Desktop.getDesktop().browse(output.toURI());
+        } catch (Exception e) {
+            LOG.error("Error opening file in browser", e);
+        }
     }
 }
