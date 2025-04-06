@@ -206,6 +206,7 @@ PageableSortableTable = class {
     static SORTABLE_BY_RELATIONSHIP = ['relationships', attributeComparator('_relations', sortByName, (a) => {
         return a.join(",");
     })]
+    static SORTABLE_BY_RELATED_CLASS = ['relatedclass', attributeComparator('getName', sortByName)]
 
     /**
      * Creates a pageable and sortable table.
@@ -423,6 +424,10 @@ PageableSortableTable = class {
         return this.addSortOption(option, sort);
     }
 
+    addDefaultOptionPair([option, sort], wrapper = undefined) {
+        return this.addSortOptionPair([PageableSortableTable.SORTABLE_DEFAULT[0], sort], wrapper);
+    }
+
     getTableHeader() {
         return this.table_header_element;
     }
@@ -502,7 +507,6 @@ PageableSortableTable = class {
             (right_window_index + 1 < max_page_count ? 1 : 0);
         let extra_space = 11 - total_seen_count - ellipsis_count;
         const PADDING_WIDTH = Math.max((max_page_count < 10) ? 1 : 2, max_page_count.toString().length)
-        // TODO: implement spans being identical widths.
 
         // Add the number of results and how many total results there are
         function addPageNumber(i, self) {
@@ -778,7 +782,7 @@ PageableSortableTable = class {
      */
     sortableByClass(mutator = getClass) {
         return this
-            .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
+            .addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_NAME, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_MOD, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_PACKAGE, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, mutator)
@@ -805,7 +809,7 @@ PageableSortableTable = class {
      */
     sortableByMethod(mutator = getMethod) {
         return this
-            .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
+            .addDefaultOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_MOD, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_TYPE, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, mutator)
@@ -851,7 +855,8 @@ PageableSortableTable = class {
      */
     sortableByRelation(mutator = getRelationship) {
         return this
-            .addSortOptionPair(PageableSortableTable.SORTABLE_DEFAULT, mutator)
-            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_RELATIONSHIP, mutator);
+            .addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_RELATED_CLASS, mutator)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_RELATED_CLASS, mutator)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_RELATIONSHIP, mutator)
     }
 }

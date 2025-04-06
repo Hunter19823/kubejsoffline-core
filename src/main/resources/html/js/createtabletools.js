@@ -174,8 +174,8 @@ function createMethodTable(id, typeVariableMap = {}) {
         'Type Variables',
         'Declared In'
     )
-        .sortableByMethod((a) => a)
-        .create();
+        ?.sortableByMethod((a) => a)
+        ?.create();
 }
 
 function createFieldTable(id, typeVariableMap = {}) {
@@ -200,8 +200,8 @@ function createFieldTable(id, typeVariableMap = {}) {
         return;
     }
     createPagedTable('Fields', 'fields', fields, addFieldToTableFunction(id, typeVariableMap), 'Link', 'Signature', 'Access Modifiers', 'Type', 'Field Name', 'Declaring Class')
-        .sortableByField((a) => a)
-        .create();
+        ?.sortableByField((a) => a)
+        ?.create();
 }
 
 function createConstructorTable(id, typeVariableMap = {}) {
@@ -233,7 +233,8 @@ function createConstructorTable(id, typeVariableMap = {}) {
         'Type Variables',
         'Declared In'
     )
-        .create();
+        ?.sortableByConstructor()
+        ?.create();
 }
 
 function createRelationshipTable(id, typeVariableMap = {}) {
@@ -262,8 +263,8 @@ function createRelationshipTable(id, typeVariableMap = {}) {
         'RelatedClass',
         'Relationships'
     )
-        .sortableByRelation()
-        .create();
+        ?.sortableByRelation()
+        ?.create();
 }
 
 function createClassTable(title, table_id, classes) {
@@ -295,8 +296,8 @@ function createBindingsTable(title, scope, table_id, bindings) {
         'Type',
         'Values'
     )
-        .sortableByClass((a) => getClass(a.getType()))
-        .sortableByName((a) => a.getName())
-        .create();
+        ?.sortableByClass((a) => getClass(a.getType()))
+        ?.sortableByName((a) => a.getName())
+        ?.create();
 
 }

@@ -279,7 +279,7 @@ function getGenericDefinitionLogic(type, config) {
     }
     if (type.isRawClass()) {
         if (exists(type.getDeclaringClass()) && !config.getDefiningParameterizedType()) {
-            return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config);
+            return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
         }
         return getRawClassName(type, config);
     }
@@ -417,9 +417,16 @@ function tagJoiner(values, separator, transformer = (a) => span(a), prefix, suff
 
 }
 
+/**
+ * A helper function to create a class signature in html.
+ * @param type {JavaType} the type to create the signature for
+ * @param outputSpan {HTMLElement} the span to append the signature to
+ * @param config {signature_parameters} the config to use
+ * @returns {*}
+ */
 function getRawClassSignature(type, outputSpan, config) {
     const name = decompressString(type.data[PROPERTY.CLASS_NAME])
-    if (exists(type.getDeclaringClass())) {
+    if (exists(type.getDeclaringClass()) && config.getIncludeDeclaringClass()) {
         outputSpan.append(createLinkableSignature(type.getDeclaringClass(), config));
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
@@ -519,8 +526,9 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
         outputSpan.append(ownerPrefix);
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
+    } else {
+        outputSpan.append(rawTypeName);
     }
-    outputSpan.append(rawTypeName);
     const actualTypes = type.getTypeVariables();
     if (actualTypes.length === 0) {
         return outputSpan;
@@ -540,8 +548,12 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
     return outputSpan;
 }
 
-// TODO: Fix nested signatures
-// Example: #net.minecraftforge.event.RegistryEvent$MissingMappings<net.minecraft.world.level.block.Block>?focus=net.minecraftforge.event.RegistryEvent%24net.minecraftforge.event.MissingMappings%3CT+extends+net.minecraftforge.registries.IForgeRegistryEntry%3CT%3E%3E.getMappings%28%29
+/**
+ * Creates a linkable signature for a given type.
+ * @param type {JavaType | TypeIdentifier} the type to create the signature for
+ * @param config {signature_parameters} the config to use
+ * @returns {HTMLElement} the span element containing the signature
+ */
 function createLinkableSignature(type, config) {
     type = getClass(type);
     const outputSpan = document.createElement('span');
@@ -576,6 +588,7 @@ signature_parameters = class {
         this.appendPackageName = true;
         this.overrideID = null;
         this.isDefiningParameterizedType = false;
+        this.includeDeclaringClass = true;
     }
 
     clone() {
@@ -612,6 +625,12 @@ signature_parameters = class {
         return clone;
     }
 
+    disableDeclaringClass() {
+        const clone = this.clone();
+        clone.includeDeclaringClass = false;
+        return clone;
+    }
+
     getTypeVariableMap() {
         return this.typeVariableMap;
     }
@@ -630,6 +649,10 @@ signature_parameters = class {
 
     getDefiningParameterizedType() {
         return this.isDefiningParameterizedType;
+    }
+
+    getIncludeDeclaringClass() {
+        return this.includeDeclaringClass;
     }
 
     remapType(type) {

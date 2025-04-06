@@ -578,7 +578,8 @@
  * WildcardTypeHolder &
  * TypeVariableHolder &
  * RawClassTypeHolder &
- * TypeWrapper
+ * TypeWrapper &
+ * DeclaringClassHolder
  * } JavaType
  *
  * @public
