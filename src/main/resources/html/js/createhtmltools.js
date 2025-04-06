@@ -118,9 +118,11 @@ function appendAnnotationToolTip(tag, annotations, typeVariableMap = {}) {
     tag.classList.add('tooltip');
     let tooltip = document.createElement('div');
     tooltip.classList.add('tooltiptext');
-    for (let annotation of annotations) {
-        tooltip.appendChild(createAnnotationSignature(annotation, typeVariableMap));
-    }
+    tooltip.appendChild(tagJoiner(
+        annotations,
+        '<br>',
+        (annotation) => createAnnotationSignature(annotation, typeVariableMap)
+    ));
     tag.appendChild(tooltip);
     return tag;
 }

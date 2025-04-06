@@ -189,7 +189,6 @@ function createAnnotationSignature(annotation, typeVariableMap = {}) {
     let out = document.createElement('span');
     let type = getClass(annotation.type());
     let annotation_string = `@${type.fullyQualifiedName(typeVariableMap)}(${annotation.string()})`;
-    out.append(br());
     out.append(annotation_string);
     return out;
 }
