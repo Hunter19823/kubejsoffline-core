@@ -1,9 +1,11 @@
 function changeURL(url) {
     console.log("Changing URL to: " + url);
     const oldScrollY = window.scrollY;
+    const oldScrollX = window.scrollX;
     history.pushState("", document.title, window.location.pathname + url);
 
     onHashChange();
+    window.scrollTo(oldScrollX, window.scrollY);
 }
 
 function changeURLFromElement(element) {
