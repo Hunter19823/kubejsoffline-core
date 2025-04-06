@@ -14,7 +14,6 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 public class SafeOperations {
     private static final Logger LOG = LogManager.getLogger();
@@ -205,17 +204,18 @@ public class SafeOperations {
         return remap;
     }
 
-    // tryGet(Object::toString) -> Optional<String>
-    // tryGet(Method::getFields) -> Optional<Field[]>
-    public static <T> Optional<T> tryGet(final Supplier<T> supplier) {
-        if (null == supplier) {
+    @SafeVarargs
+    public static <D> Optional<D> tryGetFirst(final ExceptionalSupplier<D>... suppliers) {
+        if (null == suppliers) {
             return Optional.empty();
         }
-        try {
-            return Optional.of(supplier.get());
-        } catch (final Throwable e) {
-            return Optional.empty();
+        for (final ExceptionalSupplier<D> supplier : suppliers) {
+            final var out = tryGet(supplier);
+            if (out.isPresent()) {
+                return out;
+            }
         }
+        return Optional.empty();
     }
 
     private static Optional<TypeNameMapper> getRemap() {
@@ -275,18 +275,17 @@ public class SafeOperations {
         return name;
     }
 
-    @SafeVarargs
-    public static <D> Optional<D> tryGetFirst(final Supplier<D>... suppliers) {
-        if (null == suppliers) {
+    // tryGet(Object::toString) -> Optional<String>
+    // tryGet(Method::getFields) -> Optional<Field[]>
+    public static <T> Optional<T> tryGet(final ExceptionalSupplier<T> supplier) {
+        if (null == supplier) {
             return Optional.empty();
         }
-        for (final Supplier<D> supplier : suppliers) {
-            final var out = tryGet(supplier);
-            if (out.isPresent()) {
-                return out;
-            }
+        try {
+            return Optional.of(supplier.get());
+        } catch (final Throwable e) {
+            return Optional.empty();
         }
-        return Optional.empty();
     }
 
     public static Type[] getAllNonObjects(Type[] bounds) {
@@ -294,6 +293,11 @@ public class SafeOperations {
             return new Type[]{};
         }
         return Arrays.stream(bounds).filter((bound) -> bound != Object.class).toArray(Type[]::new);
+    }
+
+    @FunctionalInterface
+    public interface ExceptionalSupplier<T> {
+        T get() throws Exception;
     }
 
 }
