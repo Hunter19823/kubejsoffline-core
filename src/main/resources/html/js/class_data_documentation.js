@@ -591,6 +591,15 @@
  * @public
  */
 
+/**
+ * A function that adds data to a table.
+ * @template T the data type being added to the table.
+ * @param {HTMLTableElement} table - The table to add the data to.
+ * @param {T} data - The data to add to the table.
+ * @returns {HTMLTableRowElement} The row that was added to the table.
+ * @public
+ * @typedef {function(HTMLTableElement, T): void} TableDataAdder
+ */
 
 /**
  * This type is a wrapper for class's relationship to another class.

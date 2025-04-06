@@ -738,9 +738,12 @@ PageableSortableTable = class {
         let data = this.getCurrentData();
 
         // Add the rows
+        let before = this.table_body.id;
+        this.table_body.id = this.table_id;
         for (let i = 0; i < data.length; i++) {
             this.rowAction(this.table_body, data[i]);
         }
+        this.table_body.id = before;
 
         return this;
     }

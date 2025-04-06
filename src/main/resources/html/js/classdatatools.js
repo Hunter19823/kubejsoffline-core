@@ -712,7 +712,7 @@ function getParameter(parameterID, typeVariableMap = {}) {
     output = setTypeVariableMap(output);
 
     output.id = function () {
-        return getClass(this.getType()).fullyQualifiedName(this.getTypeVariableMap()) + " " + this.name();
+        return getClass(this.getType()).getReferenceName(this.getTypeVariableMap());
     }
 
     output.getId = output.id;
@@ -750,13 +750,8 @@ function getMethod(methodData, typeVariableMap = {}) {
     output.toKubeJSStaticCall = function () {
         let parent = getClass(this.getDeclaringClass());
         let out = `// KJSODocs: ${this.hrefLink()}\n$${parent.simplename(this.getTypeVariableMap()).toUpperCase()}.${this.name()}(`;
-        const params = this.parameters();
-        for (let i = 0; i < params.length; i++) {
-            out += params[i].name();
-            if (i < params.length - 1) {
-                out += ", ";
-            }
-        }
+        out += this.parameters().map((param) => param.name()).join(", ");
+
         out += `);`;
         return out;
     }
@@ -764,10 +759,12 @@ function getMethod(methodData, typeVariableMap = {}) {
     output.toKubeJSCode = output.toKubeJSStaticCall;
 
     output.id = function () {
-        // Generate a unique HTML ID for this method
-        return getClass(this.getDeclaringClass()).fullyQualifiedName(this.getTypeVariableMap()) + "." + this.name() + "(" + this.parameters().map((param) => {
+        let params = this.parameters().map((param) => {
             return param.id();
-        }).join(",") + ")";
+        }).join(",");
+        // Generate a unique HTML ID for this method
+        return `${getClass(this.getType()).getReferenceName(this.getTypeVariableMap())} ${this.getName()}(${params})`;
+
     }
 
     output.getId = output.id;
@@ -816,7 +813,7 @@ function getField(fieldData, typeVariableMap = {}) {
 
     output.id = function () {
         // Generate a unique HTML ID for this field
-        return getClass(this.getDeclaringClass()).fullyQualifiedName(this.getTypeVariableMap()) + "." + this.name();
+        return getClass(this.getType()).getReferenceName(this.getTypeVariableMap()) + "." + this.getName();
     }
 
     output.getId = output.id;
@@ -858,13 +855,7 @@ function getConstructor(constructorData, typeVariableMap = {}) {
     output.toKubeJSStaticCall = function () {
         let parent = getClass(this.getDeclaringClass());
         let out = `// KJSODocs: ${this.hrefLink()}\nlet ${parent.simplename(this.getTypeVariableMap())} = new $${parent.simplename(this.getTypeVariableMap()).toUpperCase()}(`;
-        const params = this.parameters();
-        for (let i = 0; i < params.length; i++) {
-            out += params.name();
-            if (i < params.length - 1) {
-                out += ", ";
-            }
-        }
+        out += this.parameters().map((param) => param.name()).join(", ");
         out += ");";
         return out;
     }

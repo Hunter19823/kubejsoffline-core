@@ -263,6 +263,9 @@ function getTypeVariableName(type, config) {
 function getRawClassName(type, config) {
     const name = decompressString(type.data[PROPERTY.CLASS_NAME])
     if (config.getAppendPackageName()) {
+        if (type.package() === '') {
+            return name;
+        }
         return type.package() + "." + name;
     } else {
         return name;

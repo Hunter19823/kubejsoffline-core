@@ -192,34 +192,31 @@ function createAnnotationSignature(annotation, typeVariableMap = {}) {
     return out;
 }
 
-function appendAttributesToClassTableRow(row, class_id) {
-    let clazz = getClass(class_id);
+function appendAttributesToClassTableRow(row, table_id, clazz) {
     row.setAttribute('mod', clazz.modifiers());
     row.setAttribute('name', clazz.referenceName());
-    row.setAttribute('type', class_id);
+    row.setAttribute('type', clazz.id());
     row.setAttribute('row-type', 'class');
-    row.id = clazz.id();
+    row.id = `${table_id}-${clazz.getReferenceName()}`;
     // Add a link td to the row
-    addLinkToTableRow(row, class_id);
+    addLinkToTableRow(row, row.id);
     // row.setAttribute('declared-in', clazz);
 }
 
 
-function appendAttributesToBindingTableRow(row, binding, scope) {
+function appendAttributesToBindingTableRow(row, table_id, binding) {
     let clazz = getClass(binding.getType());
     row.setAttribute('mod', clazz.modifiers());
     row.setAttribute('name', binding.getName());
     row.setAttribute('type', binding.getType());
-    row.setAttribute('scope', scope);
     row.setAttribute('row-type', 'binding');
-    let id = `${binding.id()}-${scope}`;
-    row.id = id;
+    row.id = `${table_id}-${binding.getName()}`;
     // Add a link td to the row
-    addLinkToTableRow(row, id);
+    addLinkToTableRow(row, row.id);
     // row.setAttribute('declared-in', clazz);
 }
 
-function appendAttributesToMethodTableRow(row, class_id, method, current_class_id = null) {
+function appendAttributesToMethodTableRow(row, table_id, class_id, method, current_class_id = null) {
     row.setAttribute('mod', method.modifiers());
     row.setAttribute('name', method.name());
     row.setAttribute('type', method.type());
@@ -231,40 +228,40 @@ function appendAttributesToMethodTableRow(row, class_id, method, current_class_i
         row.setAttribute('current-class', current_class_id);
     }
 
-    row.id = method.id();
-    addLinkToTableRow(row, method.id());
+    row.id = `${table_id}-${getClass(class_id).getReferenceName()}-${method.id()}`;
+    addLinkToTableRow(row, row.id);
 }
 
-function appendAttributesToFieldTableRow(row, class_id, field, current_class_id = null) {
+function appendAttributesToFieldTableRow(row, table_id, field, current_class_id = null) {
     row.setAttribute('mod', field.modifiers());
     row.setAttribute('name', field.name());
     row.setAttribute('type', field.type());
-    row.setAttribute('declared-in', class_id);
+    row.setAttribute('declared-in', field.getDeclaringClass());
     row.setAttribute('row-type', 'field');
     row.setAttribute('dataIndex', field.dataIndex());
     if (current_class_id) {
         row.setAttribute('current-class', current_class_id);
     }
-    row.id = field.id();
-    addLinkToTableRow(row, field.id());
+    row.id = `${table_id}-${field.id()}`;
+    addLinkToTableRow(row, row.id);
 }
 
-function appendAttributesToConstructorTableRow(row, class_id, constructor, current_class_id = null) {
+function appendAttributesToConstructorTableRow(row, table_id, constructor, current_class_id = null) {
     row.setAttribute('mod', constructor.modifiers());
     row.setAttribute('parameters', constructor.parameters().length);
-    row.setAttribute('declared-in', class_id);
+    row.setAttribute('declared-in', constructor.getDeclaringClass());
     row.setAttribute('row-type', 'constructor');
     row.setAttribute('dataIndex', constructor.dataIndex());
     if (current_class_id) {
         row.setAttribute('current-class', current_class_id);
     }
-    row.id = constructor.id();
-    addLinkToTableRow(row, constructor.id());
+    row.id = `${table_id}-${constructor.id()}`;
+    addLinkToTableRow(row, row.id);
 }
 
 function appendAttributesToRelationshipToTableRow(row, class_id, relationshipName, current_class_id = null) {
     const clazz = getClass(class_id);
-    row.setAttribute('type', class_id);
+    row.setAttribute('type', clazz.id());
     row.setAttribute('mod', clazz.modifiers());
     row.setAttribute('name', clazz.referenceName());
     row.setAttribute('row-type', 'relationship');
@@ -316,10 +313,10 @@ function copyLinkToClipboard(link, currentElementID = null) {
 
 function addMethodToTable(table, classID, method, current_class_id = null) {
     let row = addRow(table, href(span(classID), `#${getClass(classID).fullyQualifiedName()}`), createMethodSignature(method), createFullSignature(classID));
-    appendAttributesToMethodTableRow(row, classID, method, current_class_id);
+    appendAttributesToMethodTableRow(row, table.id, classID, method, current_class_id);
 }
 
-function addFieldToTable(table, class_id, field, current_class_id = null) {
-    let row = addRow(table, href(span(class_id), `#${getClass(class_id).fullyQualifiedName()}`), createFieldSignature(field), createFullSignature(class_id));
-    appendAttributesToFieldTableRow(row, class_id, field, current_class_id);
+function addFieldToTable(table, field, current_class_id = null) {
+    let row = addRow(table, href(span(field.getDeclaringClass()), `#${getClass(field.getDeclaringClass()).fullyQualifiedName(field.getTypeVariableMap())}`), createFieldSignature(field), createFullSignature(field.getDeclaringClass()));
+    appendAttributesToFieldTableRow(row, table.id, field, current_class_id);
 }
