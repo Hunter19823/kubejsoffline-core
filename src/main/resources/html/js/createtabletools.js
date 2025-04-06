@@ -296,8 +296,9 @@ function createBindingsTable(title, scope, table_id, bindings) {
         'Type',
         'Values'
     )
-        ?.sortableByClass((a) => getClass(a.getType()))
-        ?.sortableByName((a) => a.getName())
+        ?.addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_NAME)
+        ?.addSortOptionPair(PageableSortableTable.SORTABLE_BY_TYPE)
+        ?.sortableByName()
         ?.create();
 
 }

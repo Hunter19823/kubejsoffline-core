@@ -10,9 +10,11 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.DefaultReflectionHelper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.SimpleDocumentationProvider;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.context.SimpleBinding;
+import pie.ilikepiefoo.kubejsoffline.testclasses.AClass;
 import pie.ilikepiefoo.kubejsoffline.testclasses.BaseGenericType;
 import pie.ilikepiefoo.kubejsoffline.testclasses.RootClass;
 import pie.ilikepiefoo.kubejsoffline.testclasses.ThirdClass;
+import pie.ilikepiefoo.kubejsoffline.testclasses.ZClass;
 
 import java.awt.Desktop;
 import java.awt.MultipleGradientPaint;
@@ -64,6 +66,11 @@ public class DocumentationGeneratorTest {
         bindings.add(SimpleBinding.Builder.from("ServerEnumValue", MultipleGradientPaint.ColorSpaceType.SRGB).addScope("server").build());
         var simpleBinding = new SimpleBinding("StartupData", String.class, Set.of("startup"), null);
         bindings.add(SimpleBinding.Builder.from(simpleBinding).setData(simpleBinding).build());
+
+        bindings.add(SimpleBinding.Builder.from("Z-AClass", AClass.class).build());
+        bindings.add(SimpleBinding.Builder.from("A-ZClass", ZClass.class).build());
+        bindings.add(SimpleBinding.Builder.from("AClass", AClass.class).build());
+        bindings.add(SimpleBinding.Builder.from("ZClass", ZClass.class).build());
 
         // Set the bindings' provider.
         builder.setBindingsProvider(BindingsProvider.of(bindings));

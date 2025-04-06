@@ -797,7 +797,7 @@ PageableSortableTable = class {
      * @param mutator {function(a: T): R} The function to map the data to the sort option
      * @returns {PageableSortableTable<T>}
      */
-    sortableByName(mutator = getName) {
+    sortableByName(mutator = undefined) {
         return this
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, mutator)
     }
