@@ -378,8 +378,8 @@
  * @method getPackageName - Retrieves the {@link PackageName} of the object. (Alias for package)
  * @method getPacakge - Retrieves the {@link PackageName} of the object. (Alias for package)
  *
- * @property {function(TypeVariableMap=, boolean): FullTypeName} referenceName - Retrieves the {@link FullTypeName} with generics enabled.
- * @property {function(TypeVariableMap=, boolean): FullTypeName} getReferenceName - Retrieves the {@link FullTypeName} with generics enabled. (Alias for referenceName)
+ * @property {function(TypeVariableMap=): FullTypeName} referenceName - Retrieves the {@link FullTypeName} with generics enabled.
+ * @property {function(TypeVariableMap=): FullTypeName} getReferenceName - Retrieves the {@link FullTypeName} with generics enabled. (Alias for referenceName)
  * @property {function(TypeVariableMap=, boolean): FullTypeName} fullyQualifiedName - Retrieves the {@link FullTypeName} with an option for generics which is enabled by default.
  * @property {function(TypeVariableMap=, boolean): FullTypeName} fullName - Retrieves the {@link FullTypeName} with an option for generics which is enabled by default. (Alias for fullyQualifiedName)
  * @property {function(TypeVariableMap=, boolean): FullTypeName} getFullyQualifiedName - Retrieves the {@link FullTypeName} with an option for generics which is enabled by default. (Alias for fullyQualifiedName)
