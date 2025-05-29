@@ -245,8 +245,21 @@ function onHashChange() {
         return;
     }
 
+    let NEXT_URL = DecodeURL();
+
+    // Check if the hash has changed.
+    if (exists(CURRENT_URL) && exists(NEXT_URL) && CURRENT_URL.hash !== NEXT_URL.hash) {
+        // Clear GLOBAL_DATA.
+        for (const key in GLOBAL_DATA) {
+            if (Object.hasOwnProperty.call(GLOBAL_DATA, key)) {
+                delete GLOBAL_DATA[key];
+            }
+        }
+        console.debug("Hash has changed. Clearing GLOBAL_DATA.");
+    }
+
     // Now that we have our re-routing logic out of the way, we can rely on the page decoder to do the rest.
-    CURRENT_URL = DecodeURL();
+    CURRENT_URL = NEXT_URL;
 
     if (!CURRENT_URL) {
         console.error("Failed to decode URL.");
