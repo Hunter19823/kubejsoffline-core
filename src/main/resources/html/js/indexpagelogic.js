@@ -44,7 +44,7 @@ function loadWildcard(wildcard) {
     text.append("For example, a wildcard type that is bounded by two types T and S is represented by ? extends T & S. ");
     text.append("Wildcard types are used to provide flexibility in the type system. ");
     text.append("They are used to represent unknown types in the context of generics. ");
-    createRelationshipTable(wildcard.id(), {});
+    createRelationshipTable(wildcard);
 }
 
 function loadTypeVariable(typeVariable) {
@@ -64,7 +64,7 @@ function loadTypeVariable(typeVariable) {
     text.append("A type variable can have multiple bounds. ");
     text.append("For example, a type variable that is bounded by two types T and S is represented by 'T extends S & T'. ");
     text.append("Type variables can also be cyclic, meaning that a type variable can be bounded by itself. This can be a headache for us to handle at times.");
-    createRelationshipTable(typeVariable.id(), {});
+    createRelationshipTable(typeVariable);
 }
 
 function loadParameterizedType(parameterizedType) {
@@ -84,6 +84,7 @@ function loadRawClass(data, typeVariableMap = {}) {
     if (!exists(data)) {
         throw new Error("No class data found for data: " + data);
     }
+    data.withTypeVariableMap(typeVariableMap);
     /**
      * @type {TypeIdentifier} id
      */
@@ -92,16 +93,16 @@ function loadRawClass(data, typeVariableMap = {}) {
     const interfaces = data.getInterfaces();
     let classNameTag = document.createElement('h3');
     document.body.append(classNameTag);
-    classNameTag.append(createFullSignature(id, typeVariableMap));
+    classNameTag.append(createFullSignature(data.id(), data.getTypeVariableMap()));
     if (superClass) {
         classNameTag.append(span(" extends "));
-        classNameTag.append(createFullSignature(superClass, typeVariableMap));
+        classNameTag.append(createFullSignature(superClass, data.getTypeVariableMap()));
     }
     if (interfaces.length > 0) {
         classNameTag.append(span(" implements "));
         let i = 0;
         for (let _interface of interfaces) {
-            classNameTag.append(createFullSignature(_interface, typeVariableMap));
+            classNameTag.append(createFullSignature(_interface, data.getTypeVariableMap()));
             if (i < interfaces.length - 1) {
                 classNameTag.append(', ');
             }
@@ -109,22 +110,22 @@ function loadRawClass(data, typeVariableMap = {}) {
         }
     }
     try {
-        createConstructorTable(id, typeVariableMap);
+        createConstructorTable(data);
     } catch (e) {
         console.error("Failed to create constructor table.", e);
     }
     try {
-        createFieldTable(id, typeVariableMap);
+        createFieldTable(data);
     } catch (e) {
         console.error("Failed to create field table.", e);
     }
     try {
-        createMethodTable(id, typeVariableMap);
+        createMethodTable(data);
     } catch (e) {
         console.error("Failed to create method table.", e);
     }
     try {
-        createRelationshipTable(id, typeVariableMap);
+        createRelationshipTable(data);
     } catch (e) {
         console.error("Failed to create relationship table.", e);
     }

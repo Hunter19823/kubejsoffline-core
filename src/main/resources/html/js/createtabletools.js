@@ -122,12 +122,9 @@ function addBindingToTableFunction() {
 
 /**
  * Creates a table of methods for a class.
- * @param id {TypeIdentifier} The class id to create the method table for.
- * @param typeVariableMap {TypeVariableMap} The type variable map to use for method types.
+ * @param target {JavaType} The class id to create the method table for.
  */
-function createMethodTable(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
+function createMethodTable(target) {
     let methods = target.getMethods();
     if (!(methods && GLOBAL_SETTINGS.showMethods)) {
         return;
@@ -161,9 +158,7 @@ function createMethodTable(id, typeVariableMap = {}) {
         ?.create();
 }
 
-function createFieldTable(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
+function createFieldTable(target) {
     let fields = target.getFields();
     if (!(fields && GLOBAL_SETTINGS.showFields)) {
         return;
@@ -183,14 +178,12 @@ function createFieldTable(id, typeVariableMap = {}) {
     if (fields.length === 0) {
         return;
     }
-    createPagedTable('Fields', 'fields', fields, addFieldToTableFunction(id, typeVariableMap), 'Link', 'Signature', 'Access Modifiers', 'Type', 'Field Name', 'Declaring Class')
+    createPagedTable('Fields', 'fields', fields, addFieldToTableFunction(), 'Link', 'Signature', 'Access Modifiers', 'Type', 'Field Name', 'Declaring Class')
         ?.sortableByField((a) => a)
         ?.create();
 }
 
-function createConstructorTable(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
+function createConstructorTable(target) {
     let constructors = target.getConstructors();
     if (!(constructors && GLOBAL_SETTINGS.showConstructors)) {
         return;
@@ -222,13 +215,11 @@ function createConstructorTable(id, typeVariableMap = {}) {
         ?.create();
 }
 
-function createRelationshipTable(id, typeVariableMap = {}) {
-    let data = getClass(id);
-    data.withTypeVariableMap(typeVariableMap);
+function createRelationshipTable(target) {
     if (!GLOBAL_SETTINGS.showRelationships) {
         return;
     }
-    const relationships = getAllRelations(data.id());
+    const relationships = getAllRelations(target.id());
     if (relationships.size === 0) {
         return;
     }
@@ -236,12 +227,12 @@ function createRelationshipTable(id, typeVariableMap = {}) {
         try {
             let row = addRow(
                 table,
-                createFullSignature(to, typeVariableMap),
+                createFullSignature(to, {}),
                 span(relations.join(","))
             );
-            appendAttributesToRelationshipToTableRow(row, to, relations, data.id())
+            appendAttributesToRelationshipToTableRow(row, to, relations, target.id())
         } catch (e) {
-            console.error("Failed to create relationship entry for ", data.id(), " To: ", to, " Relations: ", relations, " Error: ", e);
+            console.error("Failed to create relationship entry for ", target.id(), " To: ", to, " Relations: ", relations, " Error: ", e);
         }
     };
     createPagedTable('Relationships', 'relationships', [...relationships.entries()], addToTable,
@@ -266,6 +257,10 @@ function createClassTable(title, table_id, classes) {
             ?.sortableByClass((a) => a)
             ?.create();
     }
+}
+
+function createInnerClassTable(subject) {
+
 }
 
 /**
