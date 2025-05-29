@@ -6,7 +6,7 @@ function addRow(table, ...data) {
         td = document.createElement('td');
         tr.appendChild(td);
         if (typeof data[i] === 'number') {
-            td.appendChild(createFullSignature(data[i]));
+            throw new Error('Id passed instead of element: '+data[i]);
         } else {
             td.appendChild(data[i]);
         }
