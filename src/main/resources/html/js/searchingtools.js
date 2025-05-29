@@ -589,13 +589,13 @@ function loadSearchResults() {
         ?.create();
 
     createPagedTable("Matching Methods", 'method-table', results.methods, (table, methodData) => {
-        addMethodToTable(table, methodData.getDeclaringClass(), methodData);
+        addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
     }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
         ?.sortableByMethod((a) => a)
         ?.create();
 
     createPagedTable("Matching Parameters", 'parameter-table', results.parameters, (table, methodData) => {
-        addMethodToTable(table, methodData.getDeclaringClass(), methodData);
+        addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
     }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
         ?.sortableByMethod((a) => a)
         ?.create();

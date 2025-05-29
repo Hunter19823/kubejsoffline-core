@@ -108,21 +108,20 @@ function createFullSignature(id, typeVariableMap = {}) {
 /**
  * This function creates a html element representing a method.
  * @param method{Method} The method being represented
- * @param typeVariableMap{TypeVariableMap} The type variable map
  * @returns {HTMLSpanElement} The html element representing the method
  */
-function createMethodSignature(method, typeVariableMap = {}) {
+function createMethodSignature(method) {
     let out = document.createElement('span');
     let parameters = method.parameters();
     let name = span(method.name());
-    appendAnnotationToolTip(name, method.annotations(), typeVariableMap);
+    appendAnnotationToolTip(name, method.annotations());
     out.append(span(MODIFIER.toString(method.modifiers()) + " "));
-    out.append(createShortLink(method.type(), typeVariableMap));
+    out.append(createShortLink(method.type(), method.getTypeVariableMap()));
     out.append(' ');
     out.append(name);
     out.append('(');
     for (let i = 0; i < parameters.length; i++) {
-        out.append(createParameterSignature(parameters[i], typeVariableMap));
+        out.append(createParameterSignature(parameters[i]));
         if (i < parameters.length - 1) {
             out.append(', ');
         }
@@ -131,45 +130,54 @@ function createMethodSignature(method, typeVariableMap = {}) {
     return out;
 }
 
-function createParameterSignature(parameter, typeVariableMap = {}) {
+/**
+ * Creates a parameter signature HTML element.
+ * @param parameter {Parameter} The parameter to create a signature for.
+ * @returns {HTMLSpanElement} the html element representing the parameter
+ */
+function createParameterSignature(parameter) {
     let output = span();
-    output.append(createShortLink(parameter.type(), typeVariableMap));
+    output.append(createShortLink(parameter.getType(), parameter.getTypeVariableMap()));
     output.append(' ');
-    output.append(appendAnnotationToolTip(span(parameter.name()), parameter.annotations(), typeVariableMap));
+    output.append(appendAnnotationToolTip(span(parameter.getName()), parameter.getAnnotations()));
     return output;
 }
 
 /**
  * This function creates a html element representing a field.
  * @param {Field} field Created from the Field class
- * @param {TypeVariableMap} typeVariableMap
  * @returns {HTMLSpanElement}
  */
-function createFieldSignature(field, typeVariableMap = {}) {
+function createFieldSignature(field) {
     let out = document.createElement('span');
-    let name = span(field.name());
-    appendAnnotationToolTip(name, field.annotations(), typeVariableMap);
-    out.append(span(MODIFIER.toString(field.modifiers()) + " "));
-    out.append(createShortLink(field.type(), typeVariableMap));
+    let name = span(field.getName());
+    appendAnnotationToolTip(name, field.getAnnotations());
+    out.append(span(MODIFIER.toString(field.getModifiers()) + " "));
+    out.append(createShortLink(field.getType(), field.getTypeVariableMap()));
     out.append(' ');
     out.append(name);
     return out;
 }
 
-function createConstructorSignature(constructor, classID, typeVariableMap = {}) {
-    let class_type = getClass(classID);
+/**
+ * Creates a constructor signature HTML element.
+ * @param constructor {Constructor} The constructor to create a signature for.
+ * @returns {HTMLSpanElement} the html element representing the constructor
+ */
+function createConstructorSignature(constructor) {
+    let type = constructor.getDeclaringClassWrapped();
     let out = document.createElement('span');
-    let parameters = constructor.parameters();
+    let parameters = constructor.getParameters();
     let param = null;
     let name = null;
-    out.append(span(MODIFIER.toString(constructor.modifiers()) + " "));
-    out.append(createShortLink(class_type.id(), typeVariableMap));
+    out.append(span(MODIFIER.toString(constructor.getModifiers()) + " "));
+    out.append(createShortLink(type.id(), type.getTypeVariableMap()));
     out.append('(');
     for (let i = 0; i < parameters.length; i++) {
         param = parameters[i];
-        out.appendChild(createShortLink(param.type(), typeVariableMap));
+        out.appendChild(createShortLink(param.type(), param.getTypeVariableMap()));
         name = span(param.name());
-        appendAnnotationToolTip(name, param.annotations(), typeVariableMap);
+        appendAnnotationToolTip(name, param.annotations());
         out.append(' ');
         out.append(name);
         if (i < parameters.length - 1) {
@@ -184,13 +192,12 @@ function createConstructorSignature(constructor, classID, typeVariableMap = {}) 
  * This function creates a html element representing an annotation.
  *
  * @param {Annotation} annotation
- * @param {TypeVariableMap} typeVariableMap
  * @returns {HTMLSpanElement}
  */
-function createAnnotationSignature(annotation, typeVariableMap = {}) {
+function createAnnotationSignature(annotation) {
     let out = document.createElement('span');
     let type = getClass(annotation.type());
-    let annotation_string = `@${type.fullyQualifiedName(typeVariableMap)}(${annotation.string()})`;
+    let annotation_string = `@${type.getFullyQualifiedName()}(${annotation.string()})`;
     out.append(annotation_string);
     return out;
 }
@@ -219,7 +226,7 @@ function appendAttributesToBindingTableRow(row, table_id, binding) {
     // row.setAttribute('declared-in', clazz);
 }
 
-function appendAttributesToMethodTableRow(row, table_id, class_id, method, current_class_id = null) {
+function appendAttributesToMethodTableRow(row, table_id, class_id, method) {
     row.setAttribute('mod', method.modifiers());
     row.setAttribute('name', method.name());
     row.setAttribute('type', method.type());
@@ -227,51 +234,39 @@ function appendAttributesToMethodTableRow(row, table_id, class_id, method, curre
     row.setAttribute('parameters', method.parameters().length);
     row.setAttribute('row-type', 'method');
     row.setAttribute('dataIndex', method.dataIndex());
-    if (current_class_id) {
-        row.setAttribute('current-class', current_class_id);
-    }
 
     row.id = `${table_id}-${getClass(class_id).getReferenceName()}-${method.id()}`;
     addLinkToTableRow(row, row.id);
 }
 
-function appendAttributesToFieldTableRow(row, table_id, field, current_class_id = null) {
+function appendAttributesToFieldTableRow(row, table_id, field) {
     row.setAttribute('mod', field.modifiers());
     row.setAttribute('name', field.name());
     row.setAttribute('type', field.type());
     row.setAttribute('declared-in', field.getDeclaringClass());
     row.setAttribute('row-type', 'field');
     row.setAttribute('dataIndex', field.dataIndex());
-    if (current_class_id) {
-        row.setAttribute('current-class', current_class_id);
-    }
     row.id = `${table_id}-${field.id()}`;
     addLinkToTableRow(row, row.id);
 }
 
-function appendAttributesToConstructorTableRow(row, table_id, constructor, current_class_id = null) {
+function appendAttributesToConstructorTableRow(row, table_id, constructor) {
     row.setAttribute('mod', constructor.modifiers());
     row.setAttribute('parameters', constructor.parameters().length);
     row.setAttribute('declared-in', constructor.getDeclaringClass());
     row.setAttribute('row-type', 'constructor');
     row.setAttribute('dataIndex', constructor.dataIndex());
-    if (current_class_id) {
-        row.setAttribute('current-class', current_class_id);
-    }
     row.id = `${table_id}-${constructor.id()}`;
     addLinkToTableRow(row, row.id);
 }
 
-function appendAttributesToRelationshipToTableRow(row, class_id, relationshipName, current_class_id = null) {
+function appendAttributesToRelationshipToTableRow(row, class_id, relationshipName) {
     const clazz = getClass(class_id);
     row.setAttribute('type', clazz.id());
     row.setAttribute('mod', clazz.modifiers());
     row.setAttribute('name', clazz.referenceName());
     row.setAttribute('row-type', 'relationship');
 
-    if (current_class_id) {
-        row.setAttribute('current-class', current_class_id);
-    }
     row.id = clazz.id();
     addLinkToTableRow(row, class_id);
 }
@@ -314,12 +309,12 @@ function copyLinkToClipboard(link, currentElementID = null) {
 }
 
 
-function addMethodToTable(table, classID, method, current_class_id = null) {
+function addMethodToTable(table, classID, method) {
     let row = addRow(table, href(span(classID), `#${getClass(classID).fullyQualifiedName()}`), createMethodSignature(method), createFullSignature(classID));
-    appendAttributesToMethodTableRow(row, table.id, classID, method, current_class_id);
+    appendAttributesToMethodTableRow(row, table.id, classID, method);
 }
 
-function addFieldToTable(table, field, current_class_id = null) {
+function addFieldToTable(table, field) {
     let row = addRow(table, href(span(field.getDeclaringClass()), `#${getClass(field.getDeclaringClass()).fullyQualifiedName(field.getTypeVariableMap())}`), createFieldSignature(field), createFullSignature(field.getDeclaringClass()));
-    appendAttributesToFieldTableRow(row, table.id, field, current_class_id);
+    appendAttributesToFieldTableRow(row, table.id, field);
 }

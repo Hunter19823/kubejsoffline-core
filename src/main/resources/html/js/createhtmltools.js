@@ -111,7 +111,7 @@ function href(element, url) {
 }
 
 
-function appendAnnotationToolTip(tag, annotations, typeVariableMap = {}) {
+function appendAnnotationToolTip(tag, annotations) {
     if (!annotations || annotations.length === 0)
         return tag;
 
@@ -121,7 +121,7 @@ function appendAnnotationToolTip(tag, annotations, typeVariableMap = {}) {
     tooltip.appendChild(tagJoiner(
         annotations,
         '<br>',
-        (annotation) => createAnnotationSignature(annotation, typeVariableMap)
+        (annotation) => createAnnotationSignature(annotation)
     ));
     tag.appendChild(tooltip);
     return tag;

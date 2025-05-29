@@ -5,8 +5,6 @@
  * @return {TableDataAdder<Field>} A function that adds fields to tables.
  */
 function addFieldToTableFunction(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
     return /** @type TableDataAdder<Field> */ ((table, field) => {
         try {
             field.withTypeVariableMap(typeVariableMap);
@@ -18,9 +16,9 @@ function addFieldToTableFunction(id, typeVariableMap = {}) {
                 span(field.getName()),
                 createFullSignature(field.getDeclaringClass())
             );
-            appendAttributesToFieldTableRow(row, table.id, field, target.id());
+            appendAttributesToFieldTableRow(row, table.id, field);
         } catch (e) {
-            console.error("Failed to create field entry for ", id, " field: ", field, " Error: ", e);
+            console.error("Failed to create field entry for ", field.getDeclaringClass(), " field: ", field, " Error: ", e);
         }
     });
 }
@@ -39,14 +37,14 @@ function addMethodToTableFunction(id, typeVariableMap = {}) {
             method.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
-                createMethodSignature(method, typeVariableMap),
+                createMethodSignature(method),
                 span(MODIFIER.toString(method.getModifiers())),
                 createFullSignature(method.type(), method.getTypeVariableMap()),
                 span(method.name()),
                 tagJoiner(
                     method.getParameters(),
                     ", ",
-                    (param) => createParameterSignature(param, param.getTypeVariableMap())
+                    (param) => createParameterSignature(param)
                 ),
                 tagJoiner(
                     method.getTypeVariables(),
@@ -57,7 +55,7 @@ function addMethodToTableFunction(id, typeVariableMap = {}) {
             );
             appendAttributesToMethodTableRow(row, table.id, method.getDeclaringClass(), method, target.id());
         } catch (e) {
-            console.error("Failed to create method entry for ", id, " method: ", method, " Error: ", e);
+            console.error("Failed to create method entry for Table: ", table.id, " Method: ", method, " Error: ", e);
         }
     });
 }
@@ -69,19 +67,17 @@ function addMethodToTableFunction(id, typeVariableMap = {}) {
  * @return {TableDataAdder<Constructor>} A function that adds constructors to tables.
  */
 function addConstructorToTableFunction(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
     return /** @type TableDataAdder<Constructor> */ ((table, constructor) => {
         try {
             constructor.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
-                createConstructorSignature(constructor, id, typeVariableMap),
+                createConstructorSignature(constructor),
                 span(MODIFIER.toString(constructor.modifiers())),
                 tagJoiner(
                     constructor.getParameters(),
                     ", ",
-                    (param) => createParameterSignature(param, param.getTypeVariableMap())
+                    (param) => createParameterSignature(param)
                 ),
                 tagJoiner(
                     constructor.getTypeVariables(),
@@ -90,9 +86,9 @@ function addConstructorToTableFunction(id, typeVariableMap = {}) {
                 ),
                 createFullSignature(constructor.getDeclaringClass())
             );
-            appendAttributesToConstructorTableRow(row, id, constructor, target.id());
+            appendAttributesToConstructorTableRow(row, id, constructor);
         } catch (e) {
-            console.error("Failed to create constructor table for ", id, " Constructor: ", constructor, " Error: ", e);
+            console.error("Failed to create constructor for Table: ", table.id, " Constructor: ", constructor, " Error: ", e);
         }
     });
 }
