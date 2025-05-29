@@ -85,7 +85,18 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
  * @param type {number} the id of the type
  */
 function createTypeVariableMap(type, existingMap = {}) {
-    if (!getClass(type).isRawClass()) {
+    let nonRawType = getClass(type);
+    if (!nonRawType.isRawClass()) {
+        if (nonRawType.isParameterizedType()) {
+            let rawType = getClass(nonRawType.getRawType());
+            if (rawType.isRawClass() && nonRawType.getTypeVariables().length === rawType.getTypeVariables().length) {
+                for (let i = 0; i < rawType.getTypeVariables().length; i++) {
+                    if (!exists(existingMap[rawType.getTypeVariables()[i]])) {
+                        existingMap[rawType.getTypeVariables()[i]] = nonRawType.getTypeVariables()[i];
+                    }
+                }
+            }
+        }
         return existingMap;
     }
     const typeVariableMap = existingMap;
