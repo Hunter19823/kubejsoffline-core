@@ -13,6 +13,7 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.context.SimpleBinding;
 import pie.ilikepiefoo.kubejsoffline.testclasses.AClass;
 import pie.ilikepiefoo.kubejsoffline.testclasses.BaseGenericType;
 import pie.ilikepiefoo.kubejsoffline.testclasses.RootClass;
+import pie.ilikepiefoo.kubejsoffline.testclasses.TestData;
 import pie.ilikepiefoo.kubejsoffline.testclasses.ThirdClass;
 import pie.ilikepiefoo.kubejsoffline.testclasses.ZClass;
 
@@ -35,6 +36,7 @@ public class DocumentationGeneratorTest {
         SimpleDocumentationProvider.Builder builder = new SimpleDocumentationProvider.Builder();
         builder.setReflectionHelper(
                 new DefaultReflectionHelper(
+                        TestData.class,
                         ThirdClass.class,
                         RootClass.class,
                         BaseGenericType.class
@@ -53,6 +55,7 @@ public class DocumentationGeneratorTest {
         bindings.add(SimpleBinding.Builder.from("GlobalByte", (byte) 100).build());
         bindings.add(SimpleBinding.Builder.from("GlobalShort", (short) 100).build());
         bindings.add(SimpleBinding.Builder.from("GlobalInt", 100).build());
+        bindings.add(SimpleBinding.Builder.from("GlobalTestData", TestData.class).build());
         bindings.add(SimpleBinding.Builder.from("GlobalLong", 100L).build());
         bindings.add(SimpleBinding.Builder.from("GlobalFloat", 1.5f).build());
         bindings.add(SimpleBinding.Builder.from("GlobalDouble", 1.5).build());
