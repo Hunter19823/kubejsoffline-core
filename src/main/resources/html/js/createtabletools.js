@@ -35,7 +35,7 @@ function addConstructorToTableFunction() {
                 createTypeVariableSignature(constructor),
                 createFullSignature(constructor.getDeclaringClass())
             );
-            appendAttributesToConstructorTableRow(row, id, constructor);
+            appendAttributesToConstructorTableRow(row, table.id, constructor);
         } catch (e) {
             console.error("Failed to create constructor for Table: ", table.id, " Constructor: ", constructor, " Error: ", e);
         }
