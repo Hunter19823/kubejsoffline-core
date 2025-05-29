@@ -378,7 +378,7 @@ function getClass(id) {
     output.fields = function (shallow = false) {
         const fields = [];
 
-        function addFields(data, declaringClass) {
+        function addFields(data) {
             if (exists(data.data[PROPERTY.FIELDS])) {
                 for (let i = 0; i < data.data[PROPERTY.FIELDS].length; i++) {
                     fields.push(getField(data.data[PROPERTY.FIELDS][i], output.getTypeVariableMap()));
@@ -387,10 +387,10 @@ function getClass(id) {
         }
 
         if (shallow) {
-            addFields(this, this.id());
+            addFields(this);
         } else {
             this._follow_inheritance((data, index) => {
-                addFields(data, index);
+                addFields(data);
             });
         }
         if (fields.length === 0) {
@@ -414,7 +414,7 @@ function getClass(id) {
     output.methods = function (shallow = false) {
         const methods = [];
 
-        function addMethods(data, index) {
+        function addMethods(data) {
             if (exists(data.data[PROPERTY.METHODS])) {
                 for (let i = 0; i < data.data[PROPERTY.METHODS].length; i++) {
                     methods.push(getMethod(data.data[PROPERTY.METHODS][i], output.getTypeVariableMap()));
@@ -423,10 +423,10 @@ function getClass(id) {
         }
 
         if (shallow) {
-            addMethods(this, this.id());
+            addMethods(this);
         } else {
             this._follow_inheritance((data, index) => {
-                addMethods(data, index);
+                addMethods(data);
             });
         }
         if (methods.length === 0) {
@@ -551,7 +551,17 @@ function getClass(id) {
     // Override the type variable map getter to create a new one if it doesn't exist
     output.getTypeVariableMap = function () {
         if (!exists(this._type_variable_map)) {
-            this._type_variable_map = createTypeVariableMap(this.id());
+            this._type_variable_map = createTypeVariableMap(output.id());
+            let parameterizedType = output;
+            let i = 0;
+            while (exists(parameterizedType.getOwnerType()) && i <= 100) {
+                parameterizedType = getClass(parameterizedType.getOwnerType());
+                output.withTypeVariableMap(parameterizedType.getTypeVariableMap());
+                i++;
+            }
+            if (i > 100) {
+                console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
+            }
         }
         return this._type_variable_map;
     }

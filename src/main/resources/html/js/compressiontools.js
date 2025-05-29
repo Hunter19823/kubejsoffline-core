@@ -87,13 +87,14 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
 function createTypeVariableMap(type, existingMap = {}) {
     let nonRawType = getClass(type);
     if (!nonRawType.isRawClass()) {
-        if (nonRawType.isParameterizedType()) {
-            let rawType = getClass(nonRawType.getRawType());
-            if (rawType.isRawClass() && nonRawType.getTypeVariables().length === rawType.getTypeVariables().length) {
-                for (let i = 0; i < rawType.getTypeVariables().length; i++) {
-                    if (!exists(existingMap[rawType.getTypeVariables()[i]])) {
-                        existingMap[rawType.getTypeVariables()[i]] = nonRawType.getTypeVariables()[i];
-                    }
+        if (!nonRawType.isParameterizedType()) {
+            return existingMap;
+        }
+        let rawType = getClass(nonRawType.getRawType());
+        if (rawType.isRawClass() && nonRawType.getTypeVariables().length === rawType.getTypeVariables().length) {
+            for (let i = 0; i < rawType.getTypeVariables().length; i++) {
+                if (!exists(existingMap[rawType.getTypeVariables()[i]])) {
+                    existingMap[rawType.getTypeVariables()[i]] = nonRawType.getTypeVariables()[i];
                 }
             }
         }
@@ -243,7 +244,7 @@ function getWildcardName(type, config) {
         return name + joiner(
             lowerBounds,
             " & ",
-            (bound) => cachedGenericDefinition(bound, config),
+            (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, bound)),
             " super "
         );
     }
@@ -252,7 +253,7 @@ function getWildcardName(type, config) {
         return name + joiner(
             upperBounds,
             " & ",
-            (bound) => cachedGenericDefinition(bound, config),
+            (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, bound)),
             " extends "
         );
     }
@@ -261,14 +262,14 @@ function getWildcardName(type, config) {
 
 function getTypeVariableName(type, config) {
     const typeVariableName = decompressString(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
-    if (config.getDefiningTypeVariable()) {
+    if (config.getDefiningTypeVariable(type.id())) {
         return typeVariableName;
     }
     const bounds = type.getTypeVariableBounds();
     if (bounds.length === 0) {
         return typeVariableName;
     }
-    return typeVariableName + joiner(bounds, " & ", (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true)), " extends ");
+    return typeVariableName + joiner(bounds, " & ", (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, type.id())), " extends ");
 }
 
 function getRawClassName(type, config) {
@@ -321,6 +322,7 @@ name_parameters = class {
         this.includeGenerics = false;
         this.isDefiningParameterizedType = false;
         this.overrideID = null;
+        this.typeVariablesBeingDefined = new Set();
     }
 
     clone() {
@@ -333,9 +335,13 @@ name_parameters = class {
         return clone;
     }
 
-    setDefiningTypeVariable(isDefiningTypeVariable) {
+    setDefiningTypeVariable(isDefiningTypeVariable, typeVariable) {
         const clone = this.clone();
         clone.isDefiningTypeVariable = isDefiningTypeVariable;
+        clone.typeVariablesBeingDefined = new Set(clone.typeVariablesBeingDefined);
+        if (exists(typeVariable)) {
+            clone.typeVariablesBeingDefined.add(typeVariable);
+        }
         return clone;
     }
 
@@ -367,8 +373,10 @@ name_parameters = class {
         return this.typeVariableMap;
     }
 
-    getDefiningTypeVariable() {
-        return this.isDefiningTypeVariable;
+    getDefiningTypeVariable(typeVariable) {
+        if (!exists(typeVariable))
+            return this.isDefiningTypeVariable;
+        return this.isDefiningTypeVariable && this.typeVariablesBeingDefined.has(typeVariable);
     }
 
     getAppendPackageName() {
@@ -456,20 +464,35 @@ function getRawClassSignature(type, outputSpan, config) {
     if (config.getAppendPackageName() && type.package() && typeof type.package() === 'string' && type.package().length > 0) {
         outputSpan.append(span(type.package()));
         outputSpan.append(span('.'));
-        if (exists(config.getOverrideID())) {
-            outputSpan.append(createLink(span(name), config.getOverrideID()));
-        } else {
-            outputSpan.append(createLink(span(name), type.id()));
-        }
-        return outputSpan;
+    }
+
+    if (exists(config.getOverrideID())) {
+        outputSpan.append(createLink(span(name), config.getOverrideID()));
     } else {
-        if (exists(config.getOverrideID())) {
-            outputSpan.append(createLink(span(name), config.getOverrideID()));
-        } else {
-            outputSpan.append(createLink(span(name), type.id()));
-        }
+        outputSpan.append(createLink(span(name), type.id()));
+    }
+
+    if (config.getDefiningParameterizedType()) {
         return outputSpan;
     }
+    const typeVariables = type.getTypeVariables();
+    if (typeVariables.length === 0) {
+        return outputSpan;
+    }
+    outputSpan.append(
+        tagJoiner(
+            typeVariables,
+            ", ",
+            (actualType) => createLinkableSignature(
+                actualType,
+                config
+                    .setDefiningTypeVariable(true, actualType),
+            ),
+            span("<"),
+            span(">")
+        )
+    )
+    return outputSpan;
 }
 /**
  * Generates the HTML signature for a type variable.
@@ -483,7 +506,7 @@ function getRawClassSignature(type, outputSpan, config) {
  */
 function getTypeVariableSignature(type, outputSpan, config) {
     const typeVariableName = decompressString(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
-    if (config.getDefiningTypeVariable()) {
+    if (config.getDefiningTypeVariable(type.id())) {
         outputSpan.append(createLink(span(typeVariableName), type.id()));
         return outputSpan;
     }
@@ -499,7 +522,7 @@ function getTypeVariableSignature(type, outputSpan, config) {
             " & ",
             (bound) => createLinkableSignature(
                 bound,
-                config.setDefiningTypeVariable(true)
+                config.setDefiningTypeVariable(true, type.id())
             ),
             span(" extends ")
         )
@@ -525,7 +548,7 @@ function getWildcardSignature(type, outputSpan, config) {
                 " & ",
                 (bound) => createLinkableSignature(
                     bound,
-                    config.setDefiningTypeVariable(true)
+                    config.setDefiningTypeVariable(true, bound)
                 ),
                 span(" super ")
             )
@@ -540,7 +563,7 @@ function getWildcardSignature(type, outputSpan, config) {
                 " & ",
                 (bound) => createLinkableSignature(
                     bound,
-                    config.setDefiningTypeVariable(true),
+                    config.setDefiningTypeVariable(true, bound),
                 ),
                 span(" extends ")
             )
@@ -562,13 +585,19 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
         type.getRawType(),
         config
             .setAppendPackageName(config.getAppendPackageName() && !(type.package().length > 0) && !exists(type.getOwnerType()))
-            .disableEnclosingName(true)
+            .setDefiningParameterizedType(true)
             .disableEnclosingClass()
             .setOverrideID(type.id())
+            .setTypeVariableMap(type.getTypeVariableMap())
     );
     const ownerType = type.getOwnerType();
     if (exists(ownerType) && !config.getDefiningParameterizedType()) {
-        const ownerPrefix = createLinkableSignature(ownerType, config);
+        const ownerPrefix = createLinkableSignature(
+            ownerType,
+            config
+                .setDefiningParameterizedType(false)
+                .setTypeVariableMap(type.getTypeVariableMap())
+        );
         outputSpan.append(ownerPrefix);
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
@@ -584,7 +613,7 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             ", ",
             (actualType) => createLinkableSignature(
                 actualType,
-                config
+                config.setDefiningTypeVariable(true, actualType)
             ),
             span("<"),
             span(">")
@@ -601,9 +630,10 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
  */
 function createLinkableSignature(type, config) {
     type = getClass(type);
+    type.withTypeVariableMap(config.getTypeVariableMap())
     const outputSpan = document.createElement('span');
     if (type.isTypeVariable()) {
-        if (config.getDefiningTypeVariable()) {
+        if (config.getDefiningTypeVariable(type.id())) {
             outputSpan.append(createLink(span(type.name()), type.id()));
             return outputSpan;
         }
@@ -634,6 +664,7 @@ signature_parameters = class {
         this.overrideID = null;
         this.isDefiningParameterizedType = false;
         this.includeEnclosingClass = true;
+        this.typeVariablesBeingDefined = new Set();
     }
 
     clone() {
@@ -646,9 +677,13 @@ signature_parameters = class {
         return clone;
     }
 
-    setDefiningTypeVariable(isDefiningTypeVariable) {
+    setDefiningTypeVariable(isDefiningTypeVariable, typeVariable) {
         const clone = this.clone();
         clone.isDefiningTypeVariable = isDefiningTypeVariable;
+        clone.typeVariablesBeingDefined = new Set(clone.typeVariablesBeingDefined);
+        if (exists(typeVariable)) {
+            clone.typeVariablesBeingDefined.add(Array.isArray(typeVariable) ? typeVariable[0] : typeVariable);
+        }
         return clone;
     }
 
@@ -664,7 +699,7 @@ signature_parameters = class {
         return clone;
     }
 
-    disableEnclosingName(isDefiningParameterizedType) {
+    setDefiningParameterizedType(isDefiningParameterizedType) {
         const clone = this.clone();
         clone.isDefiningParameterizedType = isDefiningParameterizedType;
         return clone;
@@ -686,8 +721,10 @@ signature_parameters = class {
         return this.typeVariableMap;
     }
 
-    getDefiningTypeVariable() {
-        return this.isDefiningTypeVariable;
+    getDefiningTypeVariable(typeVariable) {
+        if (!exists(typeVariable))
+            return this.isDefiningTypeVariable;
+        return this.isDefiningTypeVariable && this.typeVariablesBeingDefined.has(Array.isArray(typeVariable) ? typeVariable[0] : typeVariable);
     }
 
     getAppendPackageName() {

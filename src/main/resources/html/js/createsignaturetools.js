@@ -43,7 +43,7 @@ function createShortLink(id, typeVariableMap = {}) {
     const shortSignature = createLinkableSignature(
         id,
         new signature_parameters()
-            .setTypeVariableMap(typeVariableMap)
+            .setTypeVariableMap(target.getTypeVariableMap())
             .setAppendPackageName(false)
             .setDefiningTypeVariable(false),
     );
@@ -52,21 +52,6 @@ function createShortLink(id, typeVariableMap = {}) {
         if (typeVariables.length === 0) {
             return shortSignature;
         }
-        shortSignature.append(
-            tagJoiner(
-                typeVariables,
-                ", ",
-                (actualType) => createLinkableSignature(
-                    actualType,
-                    new signature_parameters()
-                        .setTypeVariableMap(typeVariableMap)
-                        .setAppendPackageName(false)
-                        .setDefiningTypeVariable(false),
-                ),
-                span("<"),
-                span(">")
-            )
-        )
     }
     return shortSignature;
 }
@@ -77,31 +62,10 @@ function createFullSignature(id, typeVariableMap = {}) {
     const fullSignature = createLinkableSignature(
         id,
         new signature_parameters()
-            .setTypeVariableMap(typeVariableMap)
+            .setTypeVariableMap(target.getTypeVariableMap())
             .setAppendPackageName(true)
             .setDefiningTypeVariable(false)
     );
-    if (target.isRawClass()) {
-        const typeVariables = target.getTypeVariables();
-        if (typeVariables.length === 0) {
-            return fullSignature;
-        }
-        fullSignature.append(
-            tagJoiner(
-                typeVariables,
-                ", ",
-                (actualType) => createLinkableSignature(
-                    actualType,
-                    new signature_parameters()
-                        .setTypeVariableMap(typeVariableMap)
-                        .setAppendPackageName(true)
-                        .setDefiningTypeVariable(false),
-                ),
-                span("<"),
-                span(">")
-            )
-        )
-    }
     return fullSignature;
 }
 

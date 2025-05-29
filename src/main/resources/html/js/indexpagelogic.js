@@ -20,7 +20,7 @@ function loadClass(id) {
         return;
     }
     if (data.isRawClass()) {
-        loadRawClass(data, createTypeVariableMap(id));
+        loadRawClass(data);
         return;
     }
     throw new Error("Unknown class type.");
@@ -71,20 +71,20 @@ function loadParameterizedType(parameterizedType) {
     // Because a parameterized Type is just a raw type with type variables replaced, we can just load the raw type
     // with a fake parameterized type.
     let rawType = getClass(parameterizedType.getRawType());
-    let typeVariableMap = {};
-    let actualTypeArguments = parameterizedType.getTypeVariables();
-    let typeVariables = rawType.getTypeVariables();
-    for (let i = 0; i < typeVariables.length; i++) {
-        typeVariableMap[typeVariables[i]] = actualTypeArguments[i];
-    }
-    loadRawClass(rawType, createTypeVariableMap(rawType.id(), typeVariableMap));
+    // let typeVariableMap = {};
+    // let actualTypeArguments = parameterizedType.getTypeVariables();
+    // let typeVariables = rawType.getTypeVariables();
+    // for (let i = 0; i < typeVariables.length; i++) {
+    //     typeVariableMap[typeVariables[i]] = actualTypeArguments[i];
+    // }
+    rawType.withTypeVariableMap(parameterizedType.getTypeVariableMap());
+    loadRawClass(rawType);
 }
 
-function loadRawClass(data, typeVariableMap = {}) {
+function loadRawClass(data) {
     if (!exists(data)) {
         throw new Error("No class data found for data: " + data);
     }
-    data.withTypeVariableMap(typeVariableMap);
     let classNameTag = document.createElement('h3');
     document.body.append(classNameTag);
     classNameTag.append(createFullSignature([data.id(), data.getArrayDepth()], data.getTypeVariableMap()));
