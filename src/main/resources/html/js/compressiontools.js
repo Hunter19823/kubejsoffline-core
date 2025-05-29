@@ -287,6 +287,12 @@ function getRawClassName(type, config) {
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
     if (type.isTypeVariable()) {
+        if (config.getDefiningTypeVariable(type.id())) {
+            if (!exists(type.data._name_cache)) {
+                type.data._name_cache = decompressString(type.data[PROPERTY.NAME]);
+            }
+            return type.data._name_cache;
+        }
         type = config.remapType(type);
     }
     if (type.isRawClass()) {
@@ -340,7 +346,7 @@ name_parameters = class {
         clone.isDefiningTypeVariable = isDefiningTypeVariable;
         clone.typeVariablesBeingDefined = new Set(clone.typeVariablesBeingDefined);
         if (exists(typeVariable)) {
-            clone.typeVariablesBeingDefined.add(typeVariable);
+            clone.typeVariablesBeingDefined.add(Array.isArray(typeVariable) ? typeVariable[0] : typeVariable);
         }
         return clone;
     }
@@ -376,7 +382,7 @@ name_parameters = class {
     getDefiningTypeVariable(typeVariable) {
         if (!exists(typeVariable))
             return this.isDefiningTypeVariable;
-        return this.isDefiningTypeVariable && this.typeVariablesBeingDefined.has(typeVariable);
+        return this.isDefiningTypeVariable && this.typeVariablesBeingDefined.has(Array.isArray(typeVariable) ? typeVariable[0] : typeVariable);
     }
 
     getAppendPackageName() {
