@@ -291,8 +291,10 @@
  * @typedef DeclaringClassHolder
  * @method declaringClass - Retrieves the index of the object that declares this object.
  * @method getDeclaringClass - Retrieves the index of the object that declares this object. (Alias for declaredIn)
+ * @method getDeclaringClassWrapped - Retrieves the wrapped form of a declaring class.
  * @property {function(): int} declaringClass - Retrieves the index of the object that declares this object.
  * @property {function(): int} getDeclaringClass - Retrieves the index of the object that declares this object. (Alias for declaredIn)
+ * @property {function(): JavaType} getDeclaringClassWrapped - Retrieves the wrapped form of a declaring class.
  * @public
  */
 /**
@@ -526,6 +528,7 @@
  * DataIndexHolder &
  * DeclaringClassHolder &
  * TypeVariablesHolder &
+ * TypeVariableMapHolder &
  * IdHolder<FieldDefinition> &
  * HyperLinkable &
  * KubeJSCodeFormattable
@@ -648,6 +651,11 @@ function setRemapType(target) {
         return target.getTypeVariableMap()[type] ?? type;
     }
 
+    /**
+     * Retrieves the type of the object.
+     *
+     * @returns {TypeIdentifier} The type of the object.
+     */
     target.getType = target.type;
 
     return target;
@@ -675,6 +683,11 @@ function setModifiers(target) {
         return target.data[PROPERTY.MODIFIERS];
     }
 
+    /**
+     * Retrieves the modifiers of the object.
+     *
+     * @type {(function(): int)}
+     */
     target.getModifiers = target.modifiers;
 
     return target;
@@ -706,6 +719,11 @@ function setParameters(target) {
         return getAsArray(target.data[PROPERTY.PARAMETERS]).map(mapParameter);
     }
 
+    /**
+     * Retrieves the parameters of the object.
+     *
+     * @returns {Parameter[]} The parameters of the object.
+     */
     target.getParameters = target.parameters;
 
     return target;
@@ -738,6 +756,11 @@ function setAnnotations(target) {
         return getAsArray(target.data[PROPERTY.ANNOTATIONS]).map(mapAnnotation);
     }
 
+    /**
+     * Retrieves the annotations of the object.
+     *
+     * @returns {Annotation[]} The annotations of the object.
+     */
     target.getAnnotations = target.annotations;
 
     return target;
@@ -824,6 +847,11 @@ function setBasicName(target) {
         return target.data._name_cache;
     }
 
+    /**
+     * Retrieves the name of the object.
+     *
+     * @returns {string} The name of the object.
+     */
     target.getName = target.name;
 
     return target;
@@ -846,6 +874,11 @@ function setDataIndex(target) {
         return target.data._dataIndex;
     }
 
+    /**
+     * Retrieves the index of the object in the data array.
+     *
+     * @returns {int} The index of the object in the data array.
+     */
     target.getDataIndex = target.dataIndex;
 
     return target;
@@ -868,7 +901,29 @@ function setDeclaringClass(target) {
         return target.data._declaringClass;
     }
 
+    /**
+     * Retrieves the index of the object that declares this object.
+     *
+     * @returns {int} The index of the object that declares this object.
+     */
     target.getDeclaringClass = target.declaringClass;
+
+    /**
+     * Retrieves the wrapped form of a declaring class.
+     * @returns {JavaType|null} The wrapped declaring class, or null if not found.
+     */
+    target.getDeclaringClassWrapped = function () {
+        const declaringClassIndex = target.declaringClass();
+        if (declaringClassIndex === -1) {
+            return null;
+        }
+        let result = getClass(declaringClassIndex);
+        if (result === null) {
+            return null;
+        }
+        result.withTypeVariableMap(target.getTypeVariableMap());
+        return result;
+    }
 
     return target;
 }
