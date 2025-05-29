@@ -109,6 +109,13 @@ function loadRawClass(data, typeVariableMap = {}) {
             i++;
         }
     }
+
+    try {
+        createRelatedClassTable(data);
+    } catch (e) {
+        console.error("Failed to create related class table.", e);
+    }
+
     try {
         createConstructorTable(data);
     } catch (e) {

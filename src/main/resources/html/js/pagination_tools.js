@@ -205,8 +205,9 @@ PageableSortableTable = class {
     })];
     static SORTABLE_BY_RELATIONSHIP = ['relationships', attributeComparator('_relations', sortByName, (a) => {
         return a.join(",");
-    })]
-    static SORTABLE_BY_RELATED_CLASS = ['relatedclass', attributeComparator('getName', sortByName)]
+    })];
+    static SORTABLE_BY_RELATED_CLASS = ['relatedclass', attributeComparator('getName', sortByName)];
+    static SORTABLE_BY_RELATED_CLASS_TYPE = ['relation', attributeComparator('relation', sortByName)];
 
     /**
      * Creates a pageable and sortable table.
@@ -858,5 +859,19 @@ PageableSortableTable = class {
             .addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_RELATED_CLASS, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_RELATED_CLASS, mutator)
             .addSortOptionPair(PageableSortableTable.SORTABLE_BY_RELATIONSHIP, mutator)
+    }
+
+    /**
+     * Adds the related class sort options to the table.
+     * @returns {PageableSortableTable<T>}
+     */
+    sortableByRelatedClass() {
+        return this
+            .addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_RELATED_CLASS_TYPE, ([t, r]) => r)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, ([t, r]) => t)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_MOD, ([t, r]) => t)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_PACKAGE, ([t, r]) => t)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_NAME, ([t, r]) => t)
+            .addSortOptionPair(PageableSortableTable.SORTABLE_BY_TYPE_VARIABLES, ([t, r]) => t)
     }
 }

@@ -319,6 +319,58 @@ function getClass(id) {
     }
 
     /**
+     * Returns a list of all related classes to this class.
+     * @param relations {[TypeIdentifier, String][]} relations
+     * @param {Set<TypeIdentifier>} alreadySeen
+     * @return {[JavaType, String][]} relatedClasses
+     */
+    output.getRelatedClasses = function (relations=[], alreadySeen=new Set()) {
+        if (alreadySeen.has(output.id())) {
+            function getClassWithVariableMap(id) {
+                const result = getClass(id);
+                if (exists(result)) {
+                    result.withTypeVariableMap(output.getTypeVariableMap());
+                }
+                return result;
+            }
+            return relations
+                .map(([id, relation]) => [getClassWithVariableMap(id), relation]);
+        }
+        alreadySeen.add(output.id());
+        const relatedClasses = [];
+        // Start by traversing the super class and interfaces
+        if (exists(output.getSuperClass())) {
+            relatedClasses.push([getClass(output.getSuperClass()), "Extends"]);
+        }
+        for (const iface of output.getInterfaces()) {
+            relatedClasses.push([getClass(iface), "Implements"]);
+        }
+        // Now recursively traverse the related classes
+        for (const [relatedClass, relation] of relatedClasses) {
+            let related = relatedClass.getRelatedClasses([], alreadySeen)
+                .filter(([relatedClass, relation]) => relation.startsWith('Extends') || relation.startsWith("Implements"))
+                .map(([relatedClass, relation]) => [relatedClass, relation.endsWith('(Indirect)') ? relation : `${relation} (Indirect)`])
+                .filter(([relatedClass, relation]) => !relatedClasses.some(([rc, r]) => getClass(rc).id() === relatedClass.id()));
+            while (related.length > 0) {
+                relatedClasses.push(...related);
+                related = related.map(([relatedClass, relation]) => relatedClass.getRelatedClasses([], alreadySeen))
+                    .flat()
+                    .filter(([relatedClass, relation]) => relation.equals('Extends') || relation.equals("Implements"))
+                    .map(([relatedClass, relation]) => [relatedClass, relation.endsWith('(Indirect)') ? relation : `${relation} (Indirect)`])
+                    .filter(([relatedClass, relation]) => !relatedClasses.some(([rc, r]) => getClass(rc).id() === relatedClass.id()));
+            }
+        }
+        if (exists(output.getEnclosingClass())) {
+            relatedClasses.push([getClass(output.getEnclosingClass()), "Enclosing Class"]);
+        }
+        for (const innerClass of output.getInnerClasses()) {
+            relatedClasses.push([getClass(innerClass), "Inner Class"]);
+        }
+        // Finally, return the related classes with their relations
+        return output.getRelatedClasses(relatedClasses, alreadySeen);
+    }
+
+    /**
      * Returns all fields of this class.
      * @param shallow {boolean} whether to only get the fields of this class and not its inherited classes.
      * @returns {Field[]} an array of fields

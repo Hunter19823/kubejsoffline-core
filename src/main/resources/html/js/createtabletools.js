@@ -88,6 +88,27 @@ function addClassToTableFunction() {
         }
     });
 }
+/**
+ * Creates a TableRowAdder for related classes.
+ * @return {TableDataAdder<[JavaType,string]>} A function that adds classes to tables.
+ */
+function addRelatedClassToTableFunction() {
+    return /** @type {TableDataAdder<[JavaType,string]>} */ ((table, [subject, relation]) => {
+        try {
+            let row = addRow(
+                table,
+                span(relation),
+                createFullSignature(subject, subject.getTypeVariableMap()),
+                span(subject.getPackageName()),
+                span(subject.getSimpleName()),
+            );
+            appendAttributesToClassTableRow(row, table.id, subject)
+            row.setAttribute('relation', relation);
+        } catch (e) {
+            console.error(`Failed to create related class for `, table.id, " Class: ", subject, " Error: ", e);
+        }
+    });
+}
 
 /**
  * Creates a TableRowAdder for bindings.
@@ -213,6 +234,26 @@ function createConstructorTable(target) {
         'Declared In'
     )
         ?.sortableByConstructor()
+        ?.create();
+}
+
+function createRelatedClassTable(target) {
+    let relatedClasses = target.getRelatedClasses();
+    if (relatedClasses.size <= 0) {
+        return;
+    }
+    createPagedTable(
+        'Related Classes',
+        'related-classes',
+        relatedClasses,
+        addRelatedClassToTableFunction(),
+        'Link',
+        'Relation',
+        'Signature',
+        'Package',
+        'Name'
+    )
+        ?.sortableByRelatedClass()
         ?.create();
 }
 
