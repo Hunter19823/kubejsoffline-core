@@ -79,7 +79,8 @@ function addClassToTableFunction() {
                 span(MODIFIER.toString(subject.modifiers())),
                 span(subject.getPackage()),
                 span(subject.getSimpleName()),
-                createTypeVariableSignature(subject)
+                createTypeVariableSignature(subject),
+                exists(subject.getEnclosingClass()) ? createFullSignature(subject.getEnclosingClass(), subject.getTypeVariableMap()) : span("")
             );
             appendAttributesToClassTableRow(row, table.id, subject)
         } catch (e) {
@@ -252,7 +253,8 @@ function createClassTable(title, table_id, classes) {
             'Modifiers',
             'Package',
             'Name',
-            'Type Variables'
+            'Type Variables',
+            'Enclosing Class'
         )
             ?.sortableByClass((a) => a)
             ?.create();
