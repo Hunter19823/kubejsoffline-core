@@ -160,6 +160,19 @@ function createFieldSignature(field) {
 }
 
 /**
+ * This function creates a html element representing list of parameters.
+ * @param holder {ParametersHolder} The parameters to create a signature for.
+ * @returns {HTMLSpanElement} the html element representing the parameters
+ */
+function createParametersSignature(holder) {
+    return tagJoiner(
+        holder.getParameters(),
+        ", ",
+        (param) => createParameterSignature(param)
+    )
+}
+
+/**
  * Creates a constructor signature HTML element.
  * @param constructor {Constructor} The constructor to create a signature for.
  * @returns {HTMLSpanElement} the html element representing the constructor
@@ -200,6 +213,21 @@ function createAnnotationSignature(annotation) {
     let annotation_string = `@${type.getFullyQualifiedName()}(${annotation.string()})`;
     out.append(annotation_string);
     return out;
+}
+
+/**
+ * Creates a full type variable signature HTML element.
+ *
+ * @param holder {TypeVariablesHolder & TypeVariableMapHolder} The type variable and type variable map holder
+ * @param full {boolean} Whether to create a full signature or a short one
+ * @returns {HTMLSpanElement}
+ */
+function createTypeVariableSignature(holder, full = true) {
+    return tagJoiner(
+        holder.getTypeVariables(),
+        ", ",
+        (typeVariable) => full ? createFullSignature(typeVariable, holder.getTypeVariableMap()) : createShortLink(typeVariable, holder.getTypeVariableMap()),
+    )
 }
 
 function appendAttributesToClassTableRow(row, table_id, clazz) {

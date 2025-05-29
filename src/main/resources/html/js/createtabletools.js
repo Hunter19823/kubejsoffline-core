@@ -1,16 +1,13 @@
 /**
  * Creates a TableRowAdder for fields.
- * @param id {TypeIdentifier} The id of the class to create the field table for.
- * @param typeVariableMap {TypeVariableMap} The type variable map to use for field types.
  * @return {TableDataAdder<Field>} A function that adds fields to tables.
  */
-function addFieldToTableFunction(id, typeVariableMap = {}) {
+function addFieldToTableFunction() {
     return /** @type TableDataAdder<Field> */ ((table, field) => {
         try {
-            field.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
-                createFieldSignature(field, typeVariableMap),
+                createFieldSignature(field),
                 span(MODIFIER.toString(field.modifiers())),
                 createFullSignature(field.type(), field.getTypeVariableMap()),
                 span(field.getName()),
@@ -24,66 +21,18 @@ function addFieldToTableFunction(id, typeVariableMap = {}) {
 }
 
 /**
- * Creates a TableRowAdder for methods.
- * @param id {TypeIdentifier} The id of the class to create the method table for.
- * @param typeVariableMap {TypeVariableMap} The type variable map to use for method types.
- * @return {TableDataAdder<Method>} A function that adds methods to tables.
- */
-function addMethodToTableFunction(id, typeVariableMap = {}) {
-    let target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
-    return /** @type TableDataAdder<Method> */ ((table, method) => {
-        try {
-            method.withTypeVariableMap(typeVariableMap);
-            let row = addRow(
-                table,
-                createMethodSignature(method),
-                span(MODIFIER.toString(method.getModifiers())),
-                createFullSignature(method.type(), method.getTypeVariableMap()),
-                span(method.name()),
-                tagJoiner(
-                    method.getParameters(),
-                    ", ",
-                    (param) => createParameterSignature(param)
-                ),
-                tagJoiner(
-                    method.getTypeVariables(),
-                    ", ",
-                    (typeVariable) => createFullSignature(typeVariable, method.getTypeVariableMap())
-                ),
-                createFullSignature(method.getDeclaringClass())
-            );
-            appendAttributesToMethodTableRow(row, table.id, method.getDeclaringClass(), method, target.id());
-        } catch (e) {
-            console.error("Failed to create method entry for Table: ", table.id, " Method: ", method, " Error: ", e);
-        }
-    });
-}
-
-/**
  * Creates a TableRowAdder for constructors.
- * @param id {TypeIdentifier} The id of the class to create the constructor table for.
- * @param typeVariableMap {TypeVariableMap} The type variable map to use for constructor types.
  * @return {TableDataAdder<Constructor>} A function that adds constructors to tables.
  */
-function addConstructorToTableFunction(id, typeVariableMap = {}) {
+function addConstructorToTableFunction() {
     return /** @type TableDataAdder<Constructor> */ ((table, constructor) => {
         try {
-            constructor.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
                 createConstructorSignature(constructor),
                 span(MODIFIER.toString(constructor.modifiers())),
-                tagJoiner(
-                    constructor.getParameters(),
-                    ", ",
-                    (param) => createParameterSignature(param)
-                ),
-                tagJoiner(
-                    constructor.getTypeVariables(),
-                    ", ",
-                    (typeVariable) => createFullSignature(typeVariable, constructor.getTypeVariableMap())
-                ),
+                createParametersSignature(constructor),
+                createTypeVariableSignature(constructor),
                 createFullSignature(constructor.getDeclaringClass())
             );
             appendAttributesToConstructorTableRow(row, id, constructor);
@@ -94,11 +43,35 @@ function addConstructorToTableFunction(id, typeVariableMap = {}) {
 }
 
 /**
+ * Creates a TableRowAdder for methods.
+ * @return {TableDataAdder<Method>} A function that adds methods to tables.
+ */
+function addMethodToTableFunction() {
+    return /** @type TableDataAdder<Method> */ ((table, method) => {
+        try {
+            let row = addRow(
+                table,
+                createMethodSignature(method),
+                span(MODIFIER.toString(method.getModifiers())),
+                createFullSignature(method.type(), method.getTypeVariableMap()),
+                span(method.name()),
+                createParametersSignature(method),
+                createTypeVariableSignature(method),
+                createFullSignature(method.getDeclaringClass())
+            );
+            appendAttributesToMethodTableRow(row, table.id, method.getDeclaringClass(), method);
+        } catch (e) {
+            console.error("Failed to create method entry for Table: ", table.id, " Method: ", method, " Error: ", e);
+        }
+    });
+}
+
+/**
  * Creates a TableRowAdder for classes.
- * @return {TableDataAdder<Class>} A function that adds classes to tables.
+ * @return {TableDataAdder<JavaType>} A function that adds classes to tables.
  */
 function addClassToTableFunction() {
-    return /** @type TableDataAdder<Class> */ ((table, subject) => {
+    return /** @type TableDataAdder<JavaType> */ ((table, subject) => {
         try {
             let row = addRow(
                 table,
@@ -106,11 +79,7 @@ function addClassToTableFunction() {
                 span(MODIFIER.toString(subject.modifiers())),
                 span(subject.getPackage()),
                 span(subject.getSimpleName()),
-                tagJoiner(
-                    subject.getTypeVariables(),
-                    ", ",
-                    (typeVariable) => createFullSignature(typeVariable, subject.getTypeVariableMap())
-                )
+                createTypeVariableSignature(subject)
             );
             appendAttributesToClassTableRow(row, table.id, subject)
         } catch (e) {
@@ -178,7 +147,7 @@ function createMethodTable(id, typeVariableMap = {}) {
     if (methods.length === 0) {
         return;
     }
-    createPagedTable('Methods', 'methods', methods, addMethodToTableFunction(id, typeVariableMap),
+    createPagedTable('Methods', 'methods', methods, addMethodToTableFunction(),
         'Link',
         'Signature',
         'Access Modifiers',
@@ -241,7 +210,7 @@ function createConstructorTable(id, typeVariableMap = {}) {
     if (constructors.length === 0) {
         return;
     }
-    createPagedTable('Constructors', 'constructors', constructors, addConstructorToTableFunction(id, typeVariableMap),
+    createPagedTable('Constructors', 'constructors', constructors, addConstructorToTableFunction(),
         'Link',
         'Constructors',
         'Access Modifiers',

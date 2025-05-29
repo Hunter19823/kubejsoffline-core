@@ -509,6 +509,7 @@
  * DataIndexHolder &
  * DeclaringClassHolder &
  * TypeVariableMapHolder &
+ * TypeVariablesHolder &
  * IdHolder<Constructor> &
  * HyperLinkable
  * } Constructor
