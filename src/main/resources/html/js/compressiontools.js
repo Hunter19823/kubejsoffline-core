@@ -218,7 +218,7 @@ function getGenerics(actualTypes, config) {
     return joiner(
         actualTypes,
         ", ",
-        (actualType) => cachedGenericDefinition(actualType, config),
+        (actualType) => cachedGenericDefinition(actualType, config.setDefiningTypeVariable(true, actualType)),
         "<",
         ">"
     );
