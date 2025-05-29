@@ -85,30 +85,9 @@ function loadRawClass(data, typeVariableMap = {}) {
         throw new Error("No class data found for data: " + data);
     }
     data.withTypeVariableMap(typeVariableMap);
-    /**
-     * @type {TypeIdentifier} id
-     */
-    const id = [data.id(), data.getArrayDepth()];
-    const superClass = data.getSuperClass();
-    const interfaces = data.getInterfaces();
     let classNameTag = document.createElement('h3');
     document.body.append(classNameTag);
-    classNameTag.append(createFullSignature(data.id(), data.getTypeVariableMap()));
-    if (superClass) {
-        classNameTag.append(span(" extends "));
-        classNameTag.append(createFullSignature(superClass, data.getTypeVariableMap()));
-    }
-    if (interfaces.length > 0) {
-        classNameTag.append(span(" implements "));
-        let i = 0;
-        for (let _interface of interfaces) {
-            classNameTag.append(createFullSignature(_interface, data.getTypeVariableMap()));
-            if (i < interfaces.length - 1) {
-                classNameTag.append(', ');
-            }
-            i++;
-        }
-    }
+    classNameTag.append(createFullSignature([data.id(), data.getArrayDepth()], data.getTypeVariableMap()));
 
     try {
         createRelatedClassTable(data);
