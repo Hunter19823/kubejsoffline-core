@@ -320,6 +320,7 @@ name_parameters = class {
         this.appendPackageName = true;
         this.includeGenerics = false;
         this.isDefiningParameterizedType = false;
+        this.overrideID = null;
     }
 
     clone() {
@@ -356,6 +357,12 @@ name_parameters = class {
         return clone;
     }
 
+    setOverrideID(overrideID) {
+        const clone = this.clone();
+        clone.overrideID = overrideID;
+        return clone;
+    }
+
     getTypeVariableMap() {
         return this.typeVariableMap;
     }
@@ -374,6 +381,10 @@ name_parameters = class {
 
     getDefiningParameterizedType() {
         return this.isDefiningParameterizedType;
+    }
+
+    getOverrideID() {
+        return this.overrideID;
     }
 
     remapType(type) {
@@ -429,7 +440,7 @@ function tagJoiner(values, separator, transformer = (a) => span(a), prefix, suff
 }
 
 /**
- * A helper function to create a class signature in html.
+ * Generates the HTML signature for a raw class.
  * @param type {JavaType} the type to create the signature for
  * @param outputSpan {HTMLElement} the span to append the signature to
  * @param config {signature_parameters} the config to use
@@ -437,8 +448,8 @@ function tagJoiner(values, separator, transformer = (a) => span(a), prefix, suff
  */
 function getRawClassSignature(type, outputSpan, config) {
     const name = decompressString(type.data[PROPERTY.CLASS_NAME])
-    if (exists(type.getDeclaringClass()) && config.getIncludeDeclaringClass()) {
-        outputSpan.append(createLinkableSignature(type.getDeclaringClass(), config));
+    if (type.isInnerClass() && config.getIncludeEnclosingClass()) {
+        outputSpan.append(createLinkableSignature(type.getEnclosingClass(), config));
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
     }
@@ -460,7 +471,16 @@ function getRawClassSignature(type, outputSpan, config) {
         return outputSpan;
     }
 }
-
+/**
+ * Generates the HTML signature for a type variable.
+ * Appends the type variable name as a link to the output span.
+ * If the type variable has bounds, appends them using "extends" and links for each bound.
+ *
+ * @param {JavaType} type - The type variable to generate the signature for.
+ * @param {HTMLElement} outputSpan - The span element to append the signature to.
+ * @param {signature_parameters} config - The configuration for signature generation.
+ * @returns {HTMLElement} The span element containing the type variable signature.
+ */
 function getTypeVariableSignature(type, outputSpan, config) {
     const typeVariableName = decompressString(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
     if (config.getDefiningTypeVariable()) {
@@ -487,6 +507,13 @@ function getTypeVariableSignature(type, outputSpan, config) {
     return outputSpan;
 }
 
+/**
+ * Creates a wildcard signature for a given type.
+ * @param type {JavaType} the type to create the signature for
+ * @param outputSpan {HTMLElement} the span to append the signature to
+ * @param config {signature_parameters} the config to use
+ * @returns {*} the span element containing the signature
+ */
 function getWildcardSignature(type, outputSpan, config) {
     const name = "?";
     outputSpan.append(span(name));
@@ -523,12 +550,20 @@ function getWildcardSignature(type, outputSpan, config) {
     return outputSpan;
 }
 
+/**
+ * Creates a parameterized type signature for a given type.
+ * @param type {JavaType} the type to create the signature for
+ * @param outputSpan {HTMLElement} the span to append the signature to
+ * @param config {signature_parameters} the config to use
+ * @returns {HTMLElement} the span element containing the signature
+ */
 function getParameterizedTypeSignature(type, outputSpan, config) {
     const rawTypeName = createLinkableSignature(
         type.getRawType(),
         config
             .setAppendPackageName(config.getAppendPackageName() && !(type.package().length > 0) && !exists(type.getOwnerType()))
             .disableEnclosingName(true)
+            .disableEnclosingClass()
             .setOverrideID(type.id())
     );
     const ownerType = type.getOwnerType();
@@ -537,9 +572,8 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
         outputSpan.append(ownerPrefix);
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
-    } else {
-        outputSpan.append(rawTypeName);
     }
+    outputSpan.append(rawTypeName);
     const actualTypes = type.getTypeVariables();
     if (actualTypes.length === 0) {
         return outputSpan;
@@ -599,7 +633,7 @@ signature_parameters = class {
         this.appendPackageName = true;
         this.overrideID = null;
         this.isDefiningParameterizedType = false;
-        this.includeDeclaringClass = true;
+        this.includeEnclosingClass = true;
     }
 
     clone() {
@@ -642,6 +676,12 @@ signature_parameters = class {
         return clone;
     }
 
+    disableEnclosingClass() {
+        const clone = this.clone();
+        clone.includeEnclosingClass = false;
+        return clone;
+    }
+
     getTypeVariableMap() {
         return this.typeVariableMap;
     }
@@ -662,8 +702,8 @@ signature_parameters = class {
         return this.isDefiningParameterizedType;
     }
 
-    getIncludeDeclaringClass() {
-        return this.includeDeclaringClass;
+    getIncludeEnclosingClass() {
+        return this.includeEnclosingClass;
     }
 
     remapType(type) {

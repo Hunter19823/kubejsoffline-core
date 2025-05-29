@@ -292,9 +292,17 @@
  * @method declaringClass - Retrieves the index of the object that declares this object.
  * @method getDeclaringClass - Retrieves the index of the object that declares this object. (Alias for declaredIn)
  * @method getDeclaringClassWrapped - Retrieves the wrapped form of a declaring class.
- * @property {function(): int} declaringClass - Retrieves the index of the object that declares this object.
- * @property {function(): int} getDeclaringClass - Retrieves the index of the object that declares this object. (Alias for declaredIn)
+ * @property {function(): TypeIdentifier} declaringClass - Retrieves the index of the object that declares this object.
+ * @property {function(): TypeIdentifier} getDeclaringClass - Retrieves the index of the object that declares this object. (Alias for declaredIn)
  * @property {function(): JavaType} getDeclaringClassWrapped - Retrieves the wrapped form of a declaring class.
+ * @public
+ */
+/**
+ * @typedef EnclosingClassHolder
+ * @method getEnclosingClass - Retrieves the enclosing class of the object.
+ * @method isInnerClass - Checks if the object is an inner class.
+ * @property {function(): TypeIdentifier} getEnclosingClass - Retrieves the enclosing class of the object.
+ * @property {function(): boolean} isInnerClass - Checks if the object is an inner class.
  * @public
  */
 /**
@@ -443,6 +451,7 @@
  * @method isWildcard - Checks if the object is a wildcard type.
  * @method isWildcardType - Checks if the object is a wildcard type (Alias for isWildcard).
  * @method isTypeVariable - Checks if the object is a type variable.
+ * @method isInnerClass - Checks if the object is an inner class.
  * @property {function(): boolean} isRaw - Checks if the object is a raw type.
  * @property {function(): boolean} isRawType - Checks if the object is a raw type.
  * @property {function(): boolean} isRawClass - Checks if the object is a raw type.
@@ -451,6 +460,7 @@
  * @property {function(): boolean} isWildcard - Checks if the object is a wildcard type.
  * @property {function(): boolean} isWildcardType - Checks if the object is a wildcard type.
  * @property {function(): boolean} isTypeVariable - Checks if the object is a type variable.
+ * @property {function(): boolean} isInnerClass - Checks if the object is an inner class.
  * @public
  */
 
@@ -585,7 +595,8 @@
  * TypeVariableHolder &
  * RawClassTypeHolder &
  * TypeWrapper &
- * DeclaringClassHolder
+ * DeclaringClassHolder &
+ * EnclosingClassHolder
  * } JavaType
  *
  * @public

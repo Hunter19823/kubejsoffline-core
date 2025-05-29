@@ -306,6 +306,10 @@ function getClass(id) {
         return this.data[PROPERTY.ENCLOSING_CLASS];
     }
 
+    output.isInnerClass = function () {
+        return exists(output.getEnclosingClass());
+    }
+
     output.getDeclaringClass = function () {
         return this.data[PROPERTY.DECLARING_CLASS];
     }
