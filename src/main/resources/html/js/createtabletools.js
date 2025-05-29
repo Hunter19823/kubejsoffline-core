@@ -6,8 +6,10 @@
  */
 function addFieldToTableFunction(id, typeVariableMap = {}) {
     let target = getClass(id);
+    target.withTypeVariableMap(typeVariableMap);
     return /** @type TableDataAdder<Field> */ ((table, field) => {
         try {
+            field.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
                 createFieldSignature(field, typeVariableMap),
@@ -31,8 +33,10 @@ function addFieldToTableFunction(id, typeVariableMap = {}) {
  */
 function addMethodToTableFunction(id, typeVariableMap = {}) {
     let target = getClass(id);
+    target.withTypeVariableMap(typeVariableMap);
     return /** @type TableDataAdder<Method> */ ((table, method) => {
         try {
+            method.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
                 createMethodSignature(method, typeVariableMap),
@@ -66,8 +70,10 @@ function addMethodToTableFunction(id, typeVariableMap = {}) {
  */
 function addConstructorToTableFunction(id, typeVariableMap = {}) {
     let target = getClass(id);
+    target.withTypeVariableMap(typeVariableMap);
     return /** @type TableDataAdder<Constructor> */ ((table, constructor) => {
         try {
+            constructor.withTypeVariableMap(typeVariableMap);
             let row = addRow(
                 table,
                 createConstructorSignature(constructor, id, typeVariableMap),
@@ -145,7 +151,8 @@ function addBindingToTableFunction(scope) {
  */
 function createMethodTable(id, typeVariableMap = {}) {
     let target = getClass(id);
-    let methods = target.methods();
+    target.withTypeVariableMap(typeVariableMap);
+    let methods = target.getMethods();
     if (!(methods && GLOBAL_SETTINGS.showMethods)) {
         return;
     }
@@ -156,9 +163,9 @@ function createMethodTable(id, typeVariableMap = {}) {
         if (GLOBAL_SETTINGS.showProtected === false && MODIFIER.isProtected(method.modifiers())) {
             return false;
         }
-        if (GLOBAL_SETTINGS.showMethodsInherited === false && method.getDeclaringClass() != id) {
-            return false;
-        }
+        // if (GLOBAL_SETTINGS.showMethodsInherited === false && method.getDeclaringClass() != id) {
+        //     return false;
+        // }
         return true;
     });
     if (methods.length === 0) {
@@ -180,7 +187,8 @@ function createMethodTable(id, typeVariableMap = {}) {
 
 function createFieldTable(id, typeVariableMap = {}) {
     let target = getClass(id);
-    let fields = target.fields();
+    target.withTypeVariableMap(typeVariableMap);
+    let fields = target.getFields();
     if (!(fields && GLOBAL_SETTINGS.showFields)) {
         return;
     }
@@ -191,9 +199,9 @@ function createFieldTable(id, typeVariableMap = {}) {
         if (GLOBAL_SETTINGS.showProtected === false && MODIFIER.isProtected(field.modifiers())) {
             return false;
         }
-        if (GLOBAL_SETTINGS.showFieldsInherited === false && field.getDeclaringClass() != id) {
-            return false;
-        }
+        // if (GLOBAL_SETTINGS.showFieldsInherited === false && field.getDeclaringClass() != id) {
+        //     return false;
+        // }
         return true;
     });
     if (fields.length === 0) {
@@ -206,7 +214,8 @@ function createFieldTable(id, typeVariableMap = {}) {
 
 function createConstructorTable(id, typeVariableMap = {}) {
     let target = getClass(id);
-    let constructors = target.constructors();
+    target.withTypeVariableMap(typeVariableMap);
+    let constructors = target.getConstructors();
     if (!(constructors && GLOBAL_SETTINGS.showConstructors)) {
         return;
     }
@@ -217,9 +226,9 @@ function createConstructorTable(id, typeVariableMap = {}) {
         if (GLOBAL_SETTINGS.showProtected === false && MODIFIER.isProtected(constructor.modifiers())) {
             return false;
         }
-        if (GLOBAL_SETTINGS.showConstructorsInherited === false && constructor.getDeclaringClass() !== id) {
-            return false;
-        }
+        // if (GLOBAL_SETTINGS.showConstructorsInherited === false && constructor.getDeclaringClass() !== id) {
+        //     return false;
+        // }
         return true;
     });
     if (constructors.length === 0) {
@@ -239,6 +248,7 @@ function createConstructorTable(id, typeVariableMap = {}) {
 
 function createRelationshipTable(id, typeVariableMap = {}) {
     let data = getClass(id);
+    data.withTypeVariableMap(typeVariableMap);
     if (!GLOBAL_SETTINGS.showRelationships) {
         return;
     }

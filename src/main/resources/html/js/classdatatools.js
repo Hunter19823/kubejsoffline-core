@@ -490,11 +490,14 @@ function getClass(id) {
     //     End of TypeVariable Properties
     // ========================================
 
+    setTypeVariableMap(output);
+
+    // Override the type variable map getter to create a new one if it doesn't exist
     output.getTypeVariableMap = function () {
-        if (!exists(this.data._type_variable_map)) {
-            this.data._type_variable_map = createTypeVariableMap(this.id());
+        if (!exists(this._type_variable_map)) {
+            this._type_variable_map = createTypeVariableMap(this.id());
         }
-        return this.data._type_variable_map;
+        return this._type_variable_map;
     }
 
     /**
@@ -702,7 +705,6 @@ function getParameter(parameterID, typeVariableMap = {}) {
 
     let output = {};
     output.data = paramData;
-    output._type_variable_map = typeVariableMap;
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -710,6 +712,7 @@ function getParameter(parameterID, typeVariableMap = {}) {
     output = setAnnotations(output);
     output = setDataIndex(output);
     output = setTypeVariableMap(output);
+    output.withTypeVariableMap(typeVariableMap);
 
     output.id = function () {
         return getClass(this.getType()).getReferenceName(this.getTypeVariableMap());
@@ -735,7 +738,6 @@ function getMethod(methodData, typeVariableMap = {}) {
 
     let output = {};
     output.data = methodData;
-    output._type_variable_map = typeVariableMap;
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -746,6 +748,7 @@ function getMethod(methodData, typeVariableMap = {}) {
     output = setDeclaringClass(output);
     output = setTypeVariables(output);
     output = setTypeVariableMap(output);
+    output.withTypeVariableMap(typeVariableMap);
 
     output.toKubeJSStaticCall = function () {
         let parent = getClass(this.getDeclaringClass());
@@ -794,7 +797,6 @@ function getField(fieldData, typeVariableMap = {}) {
 
     let output = {};
     output.data = fieldData;
-    output._type_variable_map = typeVariableMap;
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -803,6 +805,7 @@ function getField(fieldData, typeVariableMap = {}) {
     output = setDataIndex(output);
     output = setDeclaringClass(output);
     output = setTypeVariableMap(output);
+    output.withTypeVariableMap(typeVariableMap);
 
     output.toKubeJSStaticReference = function () {
         let parent = getClass(this.getDeclaringClass());
@@ -842,7 +845,6 @@ function getConstructor(constructorData, typeVariableMap = {}) {
     }
     let output = {};
     output.data = constructorData;
-    output._type_variable_map = typeVariableMap;
 
     output = setModifiers(output);
     output = setAnnotations(output);
@@ -851,6 +853,7 @@ function getConstructor(constructorData, typeVariableMap = {}) {
     output = setDeclaringClass(output);
     output = setTypeVariables(output);
     output = setTypeVariableMap(output);
+    output.withTypeVariableMap(typeVariableMap);
 
     output.toKubeJSStaticCall = function () {
         let parent = getClass(this.getDeclaringClass());
@@ -886,10 +889,9 @@ function getConstructor(constructorData, typeVariableMap = {}) {
  * Returns an annotation wrapper object with the given annotation data.
  *
  * @param {Object} annotationData
- * @param {TypeVariableMap} typeVariableMap
  * @returns {Annotation}
  */
-function getAnnotation(annotationData, typeVariableMap = {}) {
+function getAnnotation(annotationData) {
     if (!exists(annotationData)) {
         throw new Error("Invalid annotation data: " + annotationData);
     }
@@ -899,10 +901,8 @@ function getAnnotation(annotationData, typeVariableMap = {}) {
     }
     let output = {};
     output.data = getAnnotationData(annotationData);
-    output._type_variable_map = typeVariableMap;
 
     output = setRemapType(output);
-    output = setTypeVariableMap(output);
     output = setDataIndex(output);
 
     output.string = function () {

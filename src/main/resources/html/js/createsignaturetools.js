@@ -39,6 +39,7 @@ function createLink(element, id, rawId = null, focus = null) {
 
 function createShortLink(id, typeVariableMap = {}) {
     const target = getClass(id);
+    target.withTypeVariableMap(typeVariableMap);
     const shortSignature = createLinkableSignature(
         id,
         new signature_parameters()
@@ -72,6 +73,7 @@ function createShortLink(id, typeVariableMap = {}) {
 
 function createFullSignature(id, typeVariableMap = {}) {
     const target = getClass(id);
+    target.withTypeVariableMap(typeVariableMap);
     const fullSignature = createLinkableSignature(
         id,
         new signature_parameters()

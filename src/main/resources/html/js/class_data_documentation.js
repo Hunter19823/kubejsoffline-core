@@ -259,7 +259,9 @@
  * @typedef TypeVariableMapHolder
  * @property _type_variable_map - The type variable map.
  * @method getTypeVariableMap - Retrieves the type variable map of the object.
+ * @method withTypeVariableMap - Merges the type variable map with the provided type variable map.
  * @property {function(): TypeVariableMap} getTypeVariableMap - Retrieves the type variable map of the object.
+ * @property {function(TypeVariableMap): TypeVariableMap} withTypeVariableMap - Merges the type variable map with the provided type variable map.
  * @public
  */
 /**
@@ -757,6 +759,24 @@ function setTypeVariableMap(target) {
     target.getTypeVariableMap = function () {
         if (!exists(target._type_variable_map)) {
             target._type_variable_map = {}
+        }
+        return target._type_variable_map;
+    }
+
+    /**
+     * Merges the provided type variable map into the object's type variable map.
+     *
+     * @param map {TypeVariableMap} The type variable map to merge.
+     * @return {TypeVariableMap} The merged type variable map.
+     */
+    target.withTypeVariableMap = function (map) {
+        if (!exists(target._type_variable_map)) {
+            target.getTypeVariableMap();
+        }
+        if (exists(map)) {
+            for (const [key, value] of Object.entries(map)) {
+                target._type_variable_map[key] = value;
+            }
         }
         return target._type_variable_map;
     }
