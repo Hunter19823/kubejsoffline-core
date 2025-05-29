@@ -121,17 +121,28 @@ function addClassToTableFunction() {
 
 /**
  * Creates a TableRowAdder for bindings.
- * @param scope {String} The scope of the bindings.
  * @return {TableDataAdder<Binding>} A function that adds bindings to tables.
  */
-function addBindingToTableFunction(scope) {
+function addBindingToTableFunction() {
     return /** @type TableDataAdder<Binding> */ ((table, binding) => {
         try {
+            let data = null;
+            // Check if the binding name is formatted as a function
+            let bindingName = binding.getName();
+            if (exists(bindingName) && bindingName.includes('(') && bindingName.includes(')') && bindingName.includes(',')) {
+                // If the data is a number, we should test to see if it is a type identifier.
+                if (typeof data === 'number' && data > 0) {
+                    if (getClass(data) != null) {
+                        data = createFullSignature(data);
+                    }
+                }
+            }
+            data = exists(data) ? data : span(exists(binding.getData()) ? JSON.stringify(binding.getData(), null, 2) : "")
             let row = addRow(
                 table,
                 span(binding.getName()),
                 createFullSignature(binding.getType()),
-                span(exists(binding.getData()) ? JSON.stringify(binding.getData(), null, 2) : "")
+                data
             );
             appendAttributesToBindingTableRow(row, table.id, binding)
         } catch (e) {
@@ -296,7 +307,7 @@ function createClassTable(title, table_id, classes) {
  * @param bindings {Array<Binding>} The bindings to display
  */
 function createBindingsTable(title, scope, table_id, bindings) {
-    createPagedTable(title, table_id, bindings, addBindingToTableFunction(scope),
+    createPagedTable(title, table_id, bindings, addBindingToTableFunction(),
         'Link',
         'Name',
         'Type',
