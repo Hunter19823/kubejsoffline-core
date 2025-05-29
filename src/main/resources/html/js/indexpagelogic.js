@@ -84,6 +84,9 @@ function loadRawClass(data, typeVariableMap = {}) {
     if (!exists(data)) {
         throw new Error("No class data found for data: " + data);
     }
+    /**
+     * @type {TypeIdentifier} id
+     */
     const id = [data.id(), data.getArrayDepth()];
     const superClass = data.getSuperClass();
     const interfaces = data.getInterfaces();

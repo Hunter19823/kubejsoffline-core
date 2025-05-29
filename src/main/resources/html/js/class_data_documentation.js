@@ -146,31 +146,31 @@
 /**
  * The index of a type within the {@link DATA.types} array
  * @extends {Identifier}
- * @typedef {(int)} TypeIdentifier
+ * @typedef {(int)|[int, int]} TypeIdentifier
  * @public
  */
 /**
  * The index of a parameter within the {@link DATA.parameters} array
  * @extends {Identifier}
- * @typedef {(int)} ParameterIdentifier
+ * @typedef {(int)|[int, int]} ParameterIdentifier
  * @public
  */
 /**
  * The index of a package within the {@link DATA.packages} array
  * @extends {Identifier}
- * @typedef {(int)} PackageIdentifier
+ * @typedef {(int)|[int, int]} PackageIdentifier
  * @public
  */
 /**
  * The index of a name within the {@link DATA.names} array
  * @extends {Identifier}
- * @typedef {(int)} NameIdentifier
+ * @typedef {(int)|[int, int]} NameIdentifier
  * @public
  */
 /**
  * The index of an annotation within the {@link DATA.annotations} array
  * @extends {Identifier}
- * @typedef {(int)} AnnotationIdentifier
+ * @typedef {(int)|[int, int]} AnnotationIdentifier
  * @public
  */
 /**

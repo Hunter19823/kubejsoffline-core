@@ -14,7 +14,7 @@ function addFieldToTableFunction(id, typeVariableMap = {}) {
                 table,
                 createFieldSignature(field, typeVariableMap),
                 span(MODIFIER.toString(field.modifiers())),
-                createFullSignature(field.type()),
+                createFullSignature(field.type(), field.getTypeVariableMap()),
                 span(field.getName()),
                 createFullSignature(field.getDeclaringClass())
             );
@@ -41,7 +41,7 @@ function addMethodToTableFunction(id, typeVariableMap = {}) {
                 table,
                 createMethodSignature(method, typeVariableMap),
                 span(MODIFIER.toString(method.getModifiers())),
-                createFullSignature(method.type()),
+                createFullSignature(method.type(), method.getTypeVariableMap()),
                 span(method.name()),
                 tagJoiner(
                     method.getParameters(),
@@ -106,7 +106,7 @@ function addClassToTableFunction() {
         try {
             let row = addRow(
                 table,
-                createFullSignature(subject),
+                createFullSignature(subject, subject.getTypeVariableMap()),
                 span(MODIFIER.toString(subject.modifiers())),
                 span(subject.getPackage()),
                 span(subject.getSimpleName()),
