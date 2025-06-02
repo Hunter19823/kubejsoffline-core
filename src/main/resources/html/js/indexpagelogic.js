@@ -463,7 +463,7 @@ function createOptimizationWorkerThread() {
     parts.push(document.getElementById('class-documentation-tools').innerText);
     parts.push(document.getElementById('compression-tools').innerText);
     parts.push(document.getElementById('relationship-graphs').innerText);
-    parts.push(document.getElementById('class-data-tools').innerText);
+    [...document.getElementsByClassName('data-holding-script')].map((script => script.innerText)).forEach((script) => parts.push(script));
     parts.push(document.getElementById('worker-script').innerText);
 
     return new Worker(URL.createObjectURL(new Blob(parts, {type: 'application/javascript'})));
