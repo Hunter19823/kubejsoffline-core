@@ -470,49 +470,56 @@ function createOptimizationWorkerThread() {
 }
 
 function onWindowLoad() {
-    console.log("Window Loaded. Now optimizing data.");
-    setToast("Please wait while data is being indexed. This should only take a few seconds.");
-    const WORKER = createOptimizationWorkerThread();
-    WORKER.onmessage = (e) => {
-        console.log("Worker thread has sent data back.");
-        const OPTIMIZED_DATA = e.data.data;
-        Object.entries(OPTIMIZED_DATA).forEach(([key, value]) => {
-            DATA[key] = value;
-        });
-        const NEW_CACHE = e.data.cache;
-        Object.entries(NEW_CACHE).forEach(([key, value]) => {
-            LOOK_UP_CACHE.set(key, value);
-        });
-        const NEW_RELATIONSHIP_GRAPH = e.data.RELATIONSHIP_GRAPH;
-        loadJSONToRelationshipGraph(NEW_RELATIONSHIP_GRAPH);
-        WORKER.terminate();
-        clearToast();
-        onHashChange();
-
-        addEventListener('popstate', (event) => {
-            console.debug("Popstate changed");
+    try {
+        console.log("Window Loaded. Now optimizing data.");
+        setToast("Please wait while data is being indexed. This should only take a few seconds.");
+        const WORKER = createOptimizationWorkerThread();
+        WORKER.onmessage = (e) => {
+            console.log("Worker thread has sent data back.");
+            const OPTIMIZED_DATA = e.data.data;
+            Object.entries(OPTIMIZED_DATA).forEach(([key, value]) => {
+                DATA[key] = value;
+            });
+            const NEW_CACHE = e.data.cache;
+            Object.entries(NEW_CACHE).forEach(([key, value]) => {
+                LOOK_UP_CACHE.set(key, value);
+            });
+            const NEW_RELATIONSHIP_GRAPH = e.data.RELATIONSHIP_GRAPH;
+            loadJSONToRelationshipGraph(NEW_RELATIONSHIP_GRAPH);
+            WORKER.terminate();
+            clearToast();
             onHashChange();
-        });
-        window.addEventListener('scroll', (e) => {
-            if (GLOBAL_DATA['handleScroll']) {
-                GLOBAL_DATA['handleScroll']();
-            }
-        });
-        window.addEventListener('resize', (e) => {
-            if (GLOBAL_DATA['handleResize']) {
-                GLOBAL_DATA['handleResize']();
-            }
-        });
 
-        console.debug("Hash Change Complete.");
+            addEventListener('popstate', (event) => {
+                console.debug("Popstate changed");
+                onHashChange();
+            });
+            window.addEventListener('scroll', (e) => {
+                if (GLOBAL_DATA['handleScroll']) {
+                    GLOBAL_DATA['handleScroll']();
+                }
+            });
+            window.addEventListener('resize', (e) => {
+                if (GLOBAL_DATA['handleResize']) {
+                    GLOBAL_DATA['handleResize']();
+                }
+            });
+
+            console.debug("Hash Change Complete.");
+        }
+        WORKER.onerror = (e) => {
+            console.error("Error occurred optimizing data: ", e);
+            setToast("An error occurred while optimizing data. Please refresh the page to try again. Please report this issue if it persists.");
+            flushLogs();
+        }
+        console.log("Now sending the optimize task...");
+        WORKER.postMessage({task: TASKS.OPTIMIZE})
+        console.log("Optimize task sent.");
+    } catch (e) {
+        console.error("Error occurred while loading the page: ", e);
+        setToast("An error occurred while loading the page. Please refresh the page to try again. Please report this issue if it persists.");
+        flushLogs();
     }
-    WORKER.onerror = (e) => {
-        console.error("Error occurred optimizing data: ", e);
-        setToast("An error occurred while optimizing data. Please refresh the page to try again. Please report this issue if it persists.");
-    }
-    console.log("Now sending the optimize task...");
-    WORKER.postMessage({task: TASKS.OPTIMIZE})
-    console.log("Optimize task sent.");
 }
 
 
@@ -526,38 +533,4 @@ document.onload = () => {
 }
 
 
-function createInPageLog() {
-    let log = document.createElement("div");
-    log.id = "log";
-    log.classList.add("refresh-persistent");
-    document.body.append(log);
-}
 
-if (GLOBAL_SETTINGS.debug) {
-    const MESSAGES = [];
-    (function () {
-        const old = console.log;
-        console.log = function () {
-            if (!document.getElementById('log')) {
-                let logger = document.getElementById('log');
-                if (logger) {
-                    logger.innerHTML = MESSAGES.join('') + '<br />';
-                }
-                createInPageLog();
-            }
-            let logger = document.getElementById('log');
-            for (let i = 0; i < arguments.length; i++) {
-                if (typeof arguments[i] == 'object') {
-                    MESSAGES.push((JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />');
-                } else {
-                    MESSAGES.push(arguments[i] + '<br />');
-                }
-                logger.innerHTML += MESSAGES[MESSAGES.length - 1];
-            }
-
-            old(...arguments);
-        }
-        console.error = console.log;
-        console.warn = console.log;
-    })();
-}
