@@ -24,10 +24,6 @@ function clearAllCaches() {
     DATA._optimized = false;
 }
 
-function decompressString(compressedString) {
-    return DATA.names[compressedString];
-}
-
 function deobfuscateData(data) {
     if (typeof data === 'number') {
         data = getClass(data).data;
@@ -261,7 +257,7 @@ function getWildcardName(type, config) {
 }
 
 function getTypeVariableName(type, config) {
-    const typeVariableName = decompressString(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
+    const typeVariableName = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
     if (config.getDefiningTypeVariable(type.id())) {
         return typeVariableName;
     }
@@ -273,7 +269,7 @@ function getTypeVariableName(type, config) {
 }
 
 function getRawClassName(type, config) {
-    const name = decompressString(type.data[PROPERTY.CLASS_NAME])
+    const name = getNameData(type.data[PROPERTY.CLASS_NAME])
     if (config.getAppendPackageName()) {
         if (type.package() === '') {
             return name;
@@ -289,7 +285,7 @@ function getGenericDefinitionLogic(type, config) {
     if (type.isTypeVariable()) {
         if (config.getDefiningTypeVariable(type.id())) {
             if (!exists(type.data._name_cache)) {
-                type.data._name_cache = decompressString(type.data[PROPERTY.NAME]);
+                type.data._name_cache = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
             }
             return type.data._name_cache;
         }
@@ -461,7 +457,7 @@ function tagJoiner(values, separator, transformer = (a) => span(a), prefix, suff
  * @returns {*}
  */
 function getRawClassSignature(type, outputSpan, config) {
-    const name = decompressString(type.data[PROPERTY.CLASS_NAME])
+    const name = getNameData(type.data[PROPERTY.CLASS_NAME])
     if (type.isInnerClass() && config.getIncludeEnclosingClass()) {
         outputSpan.append(createLinkableSignature(type.getEnclosingClass(), config));
         outputSpan.append(span('$'));
@@ -511,7 +507,7 @@ function getRawClassSignature(type, outputSpan, config) {
  * @returns {HTMLElement} The span element containing the type variable signature.
  */
 function getTypeVariableSignature(type, outputSpan, config) {
-    const typeVariableName = decompressString(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
+    const typeVariableName = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
     if (config.getDefiningTypeVariable(type.id())) {
         outputSpan.append(createLink(span(typeVariableName), type.id()));
         return outputSpan;

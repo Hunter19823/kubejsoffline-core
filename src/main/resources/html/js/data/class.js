@@ -421,14 +421,14 @@ function getClass(id) {
             return "?" + "[]".repeat(this.getArrayDepth());
         }
         if (this.isTypeVariable()) {
-            return decompressString(this.data[PROPERTY.TYPE_VARIABLE_NAME]) + "[]".repeat(this.getArrayDepth());
+            return getNameData(this.data[PROPERTY.TYPE_VARIABLE_NAME]) + "[]".repeat(this.getArrayDepth());
         }
         if (this.isParameterizedType()) {
             const rawName = getClass(this.getRawType()).getSimpleName(typeVariableMap);
             const ownerPrefix = this.getOwnerType() ? getClass(this.getOwnerType()).getSimpleName(typeVariableMap) + "$" : "";
             return ownerPrefix + rawName + "[]".repeat(this.getArrayDepth());
         }
-        return decompressString(this.data[PROPERTY.CLASS_NAME]) + "[]".repeat(this.getArrayDepth());
+        return getNameData(this.data[PROPERTY.CLASS_NAME]) + "[]".repeat(this.getArrayDepth());
     }
     output.simpleName = output.simplename;
     output.getSimpleName = output.simplename;

@@ -854,7 +854,7 @@ function setBasicName(target) {
      */
     target.name = function () {
         if (!exists(target.data._name_cache)) {
-            target.data._name_cache = decompressString(target.data[PROPERTY.NAME]);
+            target.data._name_cache = getNameData(target.data[PROPERTY.NAME]);
         }
         return target.data._name_cache;
     }
