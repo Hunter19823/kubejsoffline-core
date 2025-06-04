@@ -13,7 +13,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
     protected final Map<VALUE, INDEX> valueToIndexMap = new HashMap<>();
     protected IndexFactory<INDEX> indexFactory;
 
-    protected TwoWayMap(IndexFactory<INDEX> indexFactory) {
+    public TwoWayMap(IndexFactory<INDEX> indexFactory) {
         this.indexFactory = indexFactory;
     }
 

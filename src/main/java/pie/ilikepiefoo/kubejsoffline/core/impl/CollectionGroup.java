@@ -22,9 +22,9 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.AnnotationsWrapper;
-import pie.ilikepiefoo.kubejsoffline.core.impl.collection.NamesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.PackagesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.ParametersWrapper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.collection.SplitNameCollection;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.TypesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.AnnotationWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.ConstructorWrapper;
@@ -54,7 +54,7 @@ public record CollectionGroup(
     public static final CollectionGroup INSTANCE = new CollectionGroup();
 
     public CollectionGroup() {
-        this(new TypesWrapper(), new ParametersWrapper(), new PackagesWrapper(), new NamesWrapper(), new AnnotationsWrapper());
+        this(new TypesWrapper(), new ParametersWrapper(), new PackagesWrapper(), new SplitNameCollection(), new AnnotationsWrapper());
     }
 
     public List<AnnotationID> of(Annotation[] annotations) {

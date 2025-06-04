@@ -7,7 +7,14 @@ function getNameData(id) {
         throw new Error("Invalid name id: " + id);
     }
     if (typeof id !== "number") {
-        throw new Error("Invalid name id type: " + typeof id);
+        if (typeof id === "string") {
+            return id;
+        }
+        if (Array.isArray(id)) {
+            return id.map((part) => {
+                return getNameData(part);
+            }).join("");
+        }
     }
     if (id < 0 || id >= DATA.names.length) {
         throw new Error("Name id not within range: " + id);
@@ -17,5 +24,5 @@ function getNameData(id) {
         throw new Error("Illegal State: Name data does not exist for id: " + id);
     }
 
-    return DATA.names[id];
+    return getNameData(DATA.names[id]);
 }
