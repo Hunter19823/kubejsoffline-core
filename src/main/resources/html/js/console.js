@@ -52,7 +52,7 @@ function logMessageHandler(level) {
             {
                 level: level,
                 args: args.map(arg => {
-                    if (typeof arg === 'object') {
+                    if (typeof arg === 'object' && !(arg instanceof Error)) {
                         return JSON.stringify(arg, undefined, 2);
                     } else {
                         return arg;

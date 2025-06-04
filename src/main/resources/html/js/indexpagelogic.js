@@ -509,6 +509,12 @@ function onWindowLoad() {
         }
         WORKER.onerror = (e) => {
             console.error("Error occurred optimizing data: ", e);
+            MESSAGES.push(
+                {
+                    level: 'error',
+                    args: ["Error occurred optimizing data: ", e.message, e.stack, e.error, e.composedPath()]
+                }
+            );
             setToast("An error occurred while optimizing data. Please refresh the page to try again. Please report this issue if it persists.");
             flushLogs();
         }
