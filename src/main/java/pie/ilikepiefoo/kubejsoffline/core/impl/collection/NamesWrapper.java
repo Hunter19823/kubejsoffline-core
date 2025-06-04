@@ -51,5 +51,11 @@ public class NamesWrapper implements Names {
         public NameIdentifier(int arrayIndex) {
             super(arrayIndex);
         }
+
+        @Override
+        public NameIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 }

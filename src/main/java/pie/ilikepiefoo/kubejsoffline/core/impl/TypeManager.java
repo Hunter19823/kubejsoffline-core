@@ -125,5 +125,11 @@ public class TypeManager {
         public TypeIdentifier(TypeOrTypeVariableID typeID, int arrayDepth) {
             super(typeID, arrayDepth);
         }
+
+        @Override
+        public TypeIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 }

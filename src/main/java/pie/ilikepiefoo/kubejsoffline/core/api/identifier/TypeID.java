@@ -11,4 +11,7 @@ public interface TypeID extends TypeOrTypeVariableID {
     default TypeID asType() {
         return this;
     }
+
+    @Override
+    TypeID getSelfWithReference();
 }

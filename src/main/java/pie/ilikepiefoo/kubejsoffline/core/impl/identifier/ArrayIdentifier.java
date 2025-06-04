@@ -39,4 +39,10 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
         jsonArray.add(this.arrayDepth);
         return jsonArray;
     }
+
+    @Override
+    public ArrayIdentifier getSelfWithReference() {
+        super.getSelfWithReference();
+        return this;
+    }
 }

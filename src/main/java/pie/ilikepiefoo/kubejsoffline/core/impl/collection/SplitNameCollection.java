@@ -205,6 +205,12 @@ public class SplitNameCollection implements Names {
         }
 
         @Override
+        public NameIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
+
+        @Override
         public String toString() {
             return data.get(this).toString();
         }

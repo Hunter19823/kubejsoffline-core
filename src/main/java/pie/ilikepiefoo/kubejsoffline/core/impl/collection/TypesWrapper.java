@@ -148,6 +148,12 @@ public class TypesWrapper implements Types {
         public TypeIdentifier(int arrayIndex, int arrayDepth) {
             super(arrayIndex, arrayDepth);
         }
+
+        @Override
+        public TypeIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 
     public static class TypeVariableIdentifier extends ArrayIdentifier implements TypeVariableID {
@@ -158,6 +164,12 @@ public class TypesWrapper implements Types {
 
         public TypeVariableIdentifier(int arrayIndex, int arrayDepth) {
             super(arrayIndex, arrayDepth);
+        }
+
+        @Override
+        public TypeVariableIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
         }
     }
 }

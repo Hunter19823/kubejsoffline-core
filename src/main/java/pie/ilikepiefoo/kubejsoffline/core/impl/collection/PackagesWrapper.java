@@ -91,5 +91,11 @@ public class PackagesWrapper implements Packages {
         public PackageIdentifier(int arrayIndex) {
             super(arrayIndex);
         }
+
+        @Override
+        public PackageIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 }

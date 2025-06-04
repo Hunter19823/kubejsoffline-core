@@ -53,5 +53,11 @@ public class ParametersWrapper implements Parameters {
         public ParameterIdentifier(int arrayIndex) {
             super(arrayIndex);
         }
+
+        @Override
+        public ParameterIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 }

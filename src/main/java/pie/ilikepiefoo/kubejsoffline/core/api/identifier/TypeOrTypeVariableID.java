@@ -16,4 +16,7 @@ public interface TypeOrTypeVariableID extends ArrayBasedIndex {
     default TypeID asType() {
         throw new UnsupportedOperationException("Cannot cast to TypeID.");
     }
+
+    @Override
+    TypeOrTypeVariableID getSelfWithReference();
 }

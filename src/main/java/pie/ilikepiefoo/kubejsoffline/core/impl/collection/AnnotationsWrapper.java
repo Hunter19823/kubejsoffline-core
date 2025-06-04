@@ -44,6 +44,12 @@ public class AnnotationsWrapper implements Annotations {
         public AnnotationIdentifier(int arrayIndex) {
             super(arrayIndex);
         }
+
+        @Override
+        public AnnotationIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
     }
 
 }
