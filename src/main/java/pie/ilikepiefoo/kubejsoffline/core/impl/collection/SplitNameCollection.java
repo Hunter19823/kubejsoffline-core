@@ -154,8 +154,8 @@ public class SplitNameCollection implements Names {
         if (this.parts.containsKey(name)) {
             return this.parts.get(name);
         }
-        if (name.length() <= 5) {
-            // If the name is 3 characters or less, treat it as a SimpleName.
+        if (name.length() <= 3) {
+            // If the name is 3 characters or fewer, treat it as a SimpleName.
             var namePart = new NamePartIdentifier(name);
             this.data.put(namePart.index, namePart);
             this.parts.put(name, namePart.index);
@@ -174,6 +174,25 @@ public class SplitNameCollection implements Names {
             this.parts.put(part, namePart.index);
             return namePart.index;
         }
+
+        if (splitParts.length >= 3) {
+            var nameId = joinPartsByReusableNames(splitParts, 0, splitParts.length - 1);
+            if (nameId.length == 1) {
+                // If the name can be indexed as a single NameID, return it.
+                return nameId[0];
+            }
+            // If the name is split into multiple parts, create a NamePartIdentifier for each part.
+            //noinspection unchecked
+            var namePart = new NamePartIdentifier(
+                    Arrays.stream(nameId)
+                            .map(Either::ofRight)
+                            .toArray(Either[]::new)
+            );
+            this.data.put(namePart.index, namePart);
+            this.parts.put(name, namePart.index);
+            return namePart.index;
+        }
+
         // If the name is split into multiple parts, create a NamePartIdentifier for each part.
         // Each part is either a SimpleName or a NamePartIdentifier.
         Either<SimpleName, NameID>[] parts = new Either[splitParts.length];
@@ -192,6 +211,105 @@ public class SplitNameCollection implements Names {
         this.data.put(namePart.index, namePart);
         this.parts.put(name, namePart.index);
         return namePart.index;
+    }
+
+    public boolean containsJoinedParts(String[] parts, int startIndex, int endIndex) {
+        // Check if the parts are null or empty.
+        if (parts == null || parts.length == 0) {
+            throw new IllegalArgumentException("Parts cannot be null or empty.");
+        }
+        if (startIndex < 0 || endIndex >= parts.length || startIndex > endIndex) {
+            return false; // Invalid range, return false.
+        }
+        // Combine the parts from startIndex to endIndex into a single name.
+        StringBuilder combinedName = new StringBuilder();
+        for (int i = startIndex; i <= endIndex; i++) {
+            combinedName.append(parts[i]);
+        }
+        // Check if the combined name exists in the parts map.
+        return this.parts.containsKey(combinedName.toString());
+    }
+
+    public NameID indexJoinedParts(String[] parts, int startIndex, int endIndex) {
+        // Check if the parts are null or empty.
+        if (parts == null || parts.length == 0) {
+            throw new IllegalArgumentException("Parts cannot be null or empty.");
+        }
+        if (startIndex < 0 || endIndex >= parts.length || startIndex > endIndex) {
+            throw new IllegalArgumentException("Invalid range for parts.");
+        }
+        // Combine the parts from startIndex to endIndex into a single name.
+        StringBuilder combinedName = new StringBuilder();
+        for (int i = startIndex; i <= endIndex; i++) {
+            combinedName.append(parts[i]);
+        }
+        // If the combined name exists in the parts map, return its ID.
+        if (this.parts.containsKey(combinedName.toString())) {
+            return this.parts.get(combinedName.toString());
+        }
+        // If not, index the combined name and return its ID.
+        return indexName(combinedName.toString());
+    }
+
+    public NameID[] joinPartsByReusableNames(String[] parts, int startIndex, int endIndex) {
+        // Example:
+        // We have cached getJWT
+        // And we have also cached getByName
+        // We will store getJWT as [get, JWT]
+        // And we will store getByName as [get, [By, Name]]
+        // We want to optimize the storage of something like getJWTByName such that is stored as [[get, JWT], [By, Name]]
+        // In this example the Index array would look like:
+        // Scan getJWT:
+        // 0. get
+        // 1. JWT
+        // 2. [0, 1] = (get, JWT)
+        // Scan getByName:
+        // 3. By
+        // 4. Name
+        // 5. [3, 4] = (By, Name)
+        // Scan getJWTByName:
+        // 5. [2, 5] = ([get, JWT], [By, Name])
+        // If the parts are null or empty, throw an exception.
+        if (parts == null || parts.length == 0) {
+            throw new IllegalArgumentException("Parts cannot be null or empty.");
+        }
+        if (startIndex < 0 || endIndex >= parts.length || startIndex > endIndex) {
+            throw new IllegalArgumentException("Invalid range for parts.");
+        }
+        // If there is only one part, return it as a single NameID.
+        if (startIndex == endIndex) {
+            // If the start and end index are the same, return a single NameID.
+            return new NameID[]{indexJoinedParts(parts, startIndex, endIndex)};
+        }
+
+        // If the combined parts already exist as the most optimal combination, return its ID.
+        if (containsJoinedParts(parts, startIndex, endIndex)) {
+            // If the combined parts already exist, return its ID.
+            return new NameID[]{indexJoinedParts(parts, startIndex, endIndex)};
+        }
+
+        if (endIndex - startIndex == 1) {
+            // If there are only two parts, return them as a combined NameID.
+            // Example: [get, JWT] -> [[get, JWT]]
+            return new NameID[]{
+                    indexJoinedParts(parts, startIndex, endIndex)
+            };
+        }
+        // If there is an odd number of parts, take the middle part and join the left and right parts.
+        // Example: [get, JWT, By] -> [get, [JWT, By]]
+        // Example: [get, JWT, By, Name] -> [[get, JWT], [By, Name]]
+        // If the startIndex is the same as the endIndex, return a single NameID.
+        int middleIndex = (startIndex + endIndex) / 2;
+
+        // Try to find the least number of parts from the left, and then repeat the process for the right.
+        NameID[] leftParts = joinPartsByReusableNames(parts, startIndex, middleIndex);
+        NameID[] rightParts = joinPartsByReusableNames(parts, middleIndex + 1, endIndex);
+        // If both left and right parts are single NameIDs, return them as a combined NameID.
+
+        NameID[] combinedParts = new NameID[leftParts.length + rightParts.length];
+        System.arraycopy(leftParts, 0, combinedParts, 0, leftParts.length);
+        System.arraycopy(rightParts, 0, combinedParts, leftParts.length, rightParts.length);
+        return combinedParts;
     }
 
     @Override
