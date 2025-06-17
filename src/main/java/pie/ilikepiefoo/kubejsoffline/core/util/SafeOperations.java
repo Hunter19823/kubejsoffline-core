@@ -29,7 +29,16 @@ public class SafeOperations {
         }
         try {
             Object result = null;
-            result = type.getName();
+            String name = type.getName();
+            if (name.contains("$")) {
+                name = name.substring(name.lastIndexOf("$") + 1);
+            }
+            if (name.contains(".")) {
+                name = name.substring(name.lastIndexOf(".") + 1);
+            }
+            if (name.isBlank()) {
+                return false;
+            }
             result = type.getCanonicalName();
             result = type.getModifiers();
             result = type.getPackage();
