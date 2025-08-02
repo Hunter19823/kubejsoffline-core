@@ -2,7 +2,6 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.WildcardTypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
@@ -41,15 +40,8 @@ public class WildcardTypeWrapper implements WildcardTypeData {
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
-        if (getSuper().isEmpty() && getExtends().isEmpty()) {
-            return json;
-        }
-        if (!getSuper().isEmpty()) {
-            json.add(JSONProperty.WILDCARD_LOWER_BOUNDS.jsName, JSONSerializable.of(getSuper()));
-        }
-        if (!getExtends().isEmpty()) {
-            json.add(JSONProperty.WILDCARD_UPPER_BOUNDS.jsName, JSONSerializable.of(getExtends()));
-        }
+        addAllTo(json, JSONProperty.WILDCARD_LOWER_BOUNDS.jsName, false, this::getSuper);
+        addAllTo(json, JSONProperty.WILDCARD_UPPER_BOUNDS.jsName, false, this::getExtends);
         return json;
     }
 

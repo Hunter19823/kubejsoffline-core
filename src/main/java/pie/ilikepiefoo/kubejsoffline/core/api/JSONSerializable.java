@@ -49,7 +49,7 @@ public interface JSONSerializable {
                 collectionAdder.accept(jsonValue);
             }
         } catch (final Throwable e) {
-            LOG.warn("Failed to add JSONSerializable to JSONElement", e);
+            LOG.warn("Failed to add JSONSerializable to JSONElement when serializing key {}", key, e);
         }
     }
 
@@ -70,7 +70,7 @@ public interface JSONSerializable {
         try {
             jsonSerializable = jsonSerializableSupplier.get();
         } catch (final Throwable e) {
-            LOG.warn("Failed to retrieve JSON Serializable collection", e);
+            LOG.warn("Failed to retrieve JSON Serializable collection when serializing key {}", key, e);
             return;
         }
         Consumer<JsonElement> collectionAdder = jsonElement instanceof JsonObject jsonObject ?

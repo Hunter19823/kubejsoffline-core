@@ -2,7 +2,6 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterizedTypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
@@ -40,14 +39,15 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
-        json.add(JSONProperty.RAW_PARAMETERIZED_TYPE.jsName, getRawType().toJSON());
-        if (getOwnerType() != null) {
-            json.add(JSONProperty.OWNER_TYPE.jsName, getOwnerType().toJSON());
+        addTo(json, JSONProperty.RAW_PARAMETERIZED_TYPE.jsName, this::getRawType);
+        addTo(json, JSONProperty.OWNER_TYPE.jsName, this::getOwnerType);
+        if (json.has(JSONProperty.OWNER_TYPE.jsName)) {
+            addAllTo(json, JSONProperty.TYPE_VARIABLES.jsName, false, this::getActualTypeArguments);
         }
-        if (getActualTypeArguments().isEmpty()) {
-            return json;
+        if (json.size() == 0) {
+            LOG.warn("Attempted to serialize an empty ParameterizedTypeWrapper, returning null.");
+            return null; // No data to serialize
         }
-        json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getActualTypeArguments()));
         return json;
     }
 

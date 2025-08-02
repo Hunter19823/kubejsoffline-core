@@ -2,7 +2,6 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.TypeVariableData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
@@ -37,11 +36,12 @@ public class TypeVariableWrapper implements TypeVariableData {
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
-        json.add(JSONProperty.TYPE_VARIABLE_NAME.jsName, getName().toJSON());
-        if (getBounds().isEmpty()) {
-            return json;
+        addTo(json, JSONProperty.TYPE_VARIABLE_NAME.jsName, this::getName);
+        addAllTo(json, JSONProperty.TYPE_VARIABLE_BOUNDS.jsName, false, this::getBounds);
+        if (json.size() == 0) {
+            LOG.warn("Attempted to serialize an empty TypeVariableWrapper, returning null.");
+            return null; // No data to serialize
         }
-        json.add(JSONProperty.TYPE_VARIABLE_BOUNDS.jsName, JSONSerializable.of(getBounds()));
         return json;
     }
 

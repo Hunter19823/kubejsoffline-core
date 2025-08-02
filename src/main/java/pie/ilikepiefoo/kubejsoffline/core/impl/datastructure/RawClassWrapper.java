@@ -2,7 +2,6 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.MethodData;
@@ -18,6 +17,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.util.List;
+import java.util.Objects;
 
 public class RawClassWrapper implements RawClassData {
     protected final Class<?> clazz;
@@ -55,44 +55,23 @@ public class RawClassWrapper implements RawClassData {
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
-        json.add(JSONProperty.CLASS_NAME.jsName, getName().toJSON());
-        if (!getAnnotations().isEmpty()) {
-            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
-        }
+        // If getName() returns null, it will throw an exception
+        json.add(JSONProperty.CLASS_NAME.jsName, Objects.requireNonNull(getName().toJSON()));
+        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
 
         if (getModifiers() != 0) {
             json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
         }
-        if (!getTypeParameters().isEmpty()) {
-            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
-        }
-        if (getPackage() != null) {
-            json.add(JSONProperty.PACKAGE_NAME.jsName, getPackage().toJSON());
-        }
-        if (getSuperClass() != null) {
-            json.add(JSONProperty.SUPER_CLASS.jsName, getSuperClass().toJSON());
-        }
-        if (!getInterfaces().isEmpty()) {
-            json.add(JSONProperty.INTERFACES.jsName, JSONSerializable.of(getInterfaces()));
-        }
-        if (!getInnerClasses().isEmpty()) {
-            json.add(JSONProperty.INNER_CLASSES.jsName, JSONSerializable.of(getInnerClasses()));
-        }
-        if (getEnclosingClass() != null) {
-            json.add(JSONProperty.ENCLOSING_CLASS.jsName, getEnclosingClass().toJSON());
-        }
-        if (getDeclaringClass() != null) {
-            json.add(JSONProperty.DECLARING_CLASS.jsName, getDeclaringClass().toJSON());
-        }
-        if (!getFields().isEmpty()) {
-            json.add(JSONProperty.FIELDS.jsName, JSONSerializable.of(getFields()));
-        }
-        if (!getConstructors().isEmpty()) {
-            json.add(JSONProperty.CONSTRUCTORS.jsName, JSONSerializable.of(getConstructors()));
-        }
-        if (!getMethods().isEmpty()) {
-            json.add(JSONProperty.METHODS.jsName, JSONSerializable.of(getMethods()));
-        }
+        addAllTo(json, JSONProperty.TYPE_VARIABLES.jsName, true, this::getTypeParameters);
+        addTo(json, JSONProperty.PACKAGE_NAME.jsName, this::getPackage);
+        addTo(json, JSONProperty.SUPER_CLASS.jsName, this::getSuperClass);
+        addAllTo(json, JSONProperty.INTERFACES.jsName, true, this::getInterfaces);
+        addAllTo(json, JSONProperty.INNER_CLASSES.jsName, true, this::getInnerClasses);
+        addTo(json, JSONProperty.ENCLOSING_CLASS.jsName, this::getEnclosingClass);
+        addTo(json, JSONProperty.DECLARING_CLASS.jsName, this::getDeclaringClass);
+        addAllTo(json, JSONProperty.FIELDS.jsName, true, this::getFields);
+        addAllTo(json, JSONProperty.CONSTRUCTORS.jsName, true, this::getConstructors);
+        addAllTo(json, JSONProperty.METHODS.jsName, true, this::getMethods);
         return json;
     }
 
