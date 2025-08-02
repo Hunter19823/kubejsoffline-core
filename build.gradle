@@ -51,7 +51,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/${project.github_user}/${project.github_repository}")
+            url = uri("https://maven.pkg.github.com/Hunter19823/kubejsoffline-core")
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")
