@@ -28,4 +28,5 @@ jobs:
         run: ./gradlew publish
         env:
           BUILD_VERSION: ${{ github.run_number }}
+          GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
