@@ -5,7 +5,7 @@ plugins {
 }
 
 group = project.group
-version = "${project.version}.${System.getenv("BUILD_NUMBER") ?: 9999}"
+version = "${project.version}.${System.getenv("BUILD_VERSION") ?: 9999}"
 
 repositories {
     mavenCentral()
