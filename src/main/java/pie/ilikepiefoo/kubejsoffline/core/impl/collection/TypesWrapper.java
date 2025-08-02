@@ -13,6 +13,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.ArrayIdentifier;
+import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -133,9 +134,14 @@ public class TypesWrapper implements Types {
     @Override
     public JsonElement toJSON() {
         var json = new JsonArray();
-        while (json.size() != this.data.size()) {
-            json.add(this.data.get(new TypeIdentifier(json.size())).toJSON());
-        }
+        this.data
+                .getValues()
+                .stream()
+                .parallel()
+                .sorted()
+                .map((typeData) -> SafeOperations.tryGet(typeData::toJSON))
+                .map((optional) -> optional.orElse(null))
+                .forEachOrdered(json::add);
         return json;
     }
 
