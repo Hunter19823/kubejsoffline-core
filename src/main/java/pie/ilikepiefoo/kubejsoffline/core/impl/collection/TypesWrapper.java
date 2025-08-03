@@ -132,15 +132,24 @@ public class TypesWrapper implements Types {
     }
 
     public void generateAllTypes() {
+        int count = 0;
+        int maxIterations = 100;
         TypeOrTypeVariableID currentType = this.data.getFirstIndex();
         TypeOrTypeVariableID lastType = this.data.getLastIndex();
-        while (currentType != lastType) {
+        while (currentType != lastType && count < maxIterations) {
+            LOG.info("Pre-Generating all types from {} to {}", currentType, lastType);
             this.data
                     .getValuesBetween(currentType, lastType)
                     .parallelStream()
                     .forEach(TypeData::toJSON);
             currentType = lastType;
             lastType = this.data.getLastIndex();
+            count++;
+        }
+        if (count >= maxIterations) {
+            LOG.warn("Reached maximum iterations while generating all types. Some types may not be fully initialized.");
+        } else {
+            LOG.info("Successfully Pre-generated all types from {} to {}", this.data.getFirstIndex(), lastType);
         }
     }
 

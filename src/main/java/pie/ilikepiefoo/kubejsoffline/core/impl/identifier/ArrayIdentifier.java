@@ -44,4 +44,9 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
         super.getSelfWithReference();
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "%d%s%s".formatted(getArrayIndex(), "[".repeat(getArrayDepth()), "]".repeat(getArrayDepth()));
+    }
 }
