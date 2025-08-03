@@ -85,7 +85,7 @@ public record CollectionGroup(
             if (parameters[i] == null || genericTypes[i] == null) {
                 continue;
             }
-            if (!SafeOperations.isParameterPresent(parameters[i]) && !SafeOperations.isTypePresent(genericTypes[i])) {
+            if (!SafeOperations.isParameterPresent(parameters[i]) && SafeOperations.isTypeNotLoaded(genericTypes[i])) {
                 throw new IllegalStateException("The full list of parameters is not loaded yet.");
             }
             parameterList.add(parameters().addParameter(new ParameterWrapper(this, parameters[i], genericTypes[i])));
@@ -99,7 +99,7 @@ public record CollectionGroup(
             if (type == null) {
                 continue;
             }
-            if (!SafeOperations.isTypePresent(type)) {
+            if (SafeOperations.isTypeNotLoaded(type)) {
                 continue;
             }
             if (ignoreType.test(type)) {
@@ -120,7 +120,7 @@ public record CollectionGroup(
             if (type == null) {
                 continue;
             }
-            if (!SafeOperations.isTypePresent(type)) {
+            if (SafeOperations.isTypeNotLoaded(type)) {
                 continue;
             }
             typeList.add(of(type));
@@ -134,7 +134,7 @@ public record CollectionGroup(
             if (type == null) {
                 continue;
             }
-            if (!SafeOperations.isTypePresent(type)) {
+            if (SafeOperations.isTypeNotLoaded(type)) {
                 continue;
             }
             typeList.add(of(type).asType());
@@ -148,7 +148,7 @@ public record CollectionGroup(
             if (type == null) {
                 continue;
             }
-            if (!SafeOperations.isClassPresent(type)) {
+            if (!SafeOperations.isTypeNotLoaded(type)) {
                 continue;
             }
             typeList.add(of(type).asType());

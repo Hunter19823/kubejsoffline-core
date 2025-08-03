@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.TypeNameMapper;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -24,13 +23,13 @@ import java.util.Set;
 public class SafeOperations {
     private static final Logger LOG = LogManager.getLogger();
     private static TypeNameMapper mapper;
-    protected static final ThreadLocal<Set<Type>> TYPES_PROCESSING = ThreadLocal.withInitial(() -> new HashSet<>());
+    protected static final ThreadLocal<Set<Type>> TYPES_PROCESSING = ThreadLocal.withInitial(HashSet::new);
 
     public static void setTypeMapper(TypeNameMapper mapper) {
         SafeOperations.mapper = mapper;
     }
 
-    public static boolean isClassPresent(Class<?> type) {
+    private static boolean isClassPresent(Class<?> type) {
         if (type == null) {
             return true;
         }
@@ -76,7 +75,13 @@ public class SafeOperations {
         }
     }
 
-    public static boolean isTypePresent(Type type) {
+    public static boolean isTypeNotLoaded(Type type) {
+        var isTypePresent = isTypePresent(type);
+        TYPES_PROCESSING.get().clear();
+        return !isTypePresent;
+    }
+
+    private static boolean isTypePresent(Type type) {
         if (type == null) {
             return true;
         }
@@ -88,74 +93,46 @@ public class SafeOperations {
             TYPES_PROCESSING.get().add(type);
             type.getTypeName();
             if (type.getTypeName().isBlank()) {
-                TYPES_PROCESSING.get().remove(type);
                 return false;
             }
             if (type instanceof Class<?> clazz) {
                 var result = isClassPresent(clazz);
-                TYPES_PROCESSING.get().remove(type);
                 return result;
             }
             if (type instanceof TypeVariable<?> typeVariable) {
                 var result = isTypeVariablePresent(typeVariable);
-                TYPES_PROCESSING.get().remove(type);
                 return result;
             }
             if (type instanceof ParameterizedType parameterizedType) {
                 for (var argument : parameterizedType.getActualTypeArguments()) {
                     if (!isTypePresent(argument)) {
-                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
                 if (parameterizedType == parameterizedType.getRawType()) {
-                    TYPES_PROCESSING.get().remove(type);
                     return false;
                 }
                 if (parameterizedType == parameterizedType.getOwnerType()) {
-                    TYPES_PROCESSING.get().remove(type);
                     return false;
                 }
                 var result = isTypePresent(parameterizedType.getRawType()) && isTypePresent(parameterizedType.getOwnerType());
-                TYPES_PROCESSING.get().remove(type);
                 return result;
             }
             if (type instanceof WildcardType wildcardType) {
                 for (var bound : wildcardType.getUpperBounds()) {
                     if (!isTypePresent(bound)) {
-                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
                 for (var bound : wildcardType.getLowerBounds()) {
                     if (!isTypePresent(bound)) {
-                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
             }
 
-            TYPES_PROCESSING.get().remove(type);
             return true;
         } catch (final Throwable e) {
-            TYPES_PROCESSING.get().remove(type);
-            return false;
-        }
-    }
-
-    public static boolean isAnnotatedElementPresent(AnnotatedElement annotatedElement) {
-        if (annotatedElement == null) {
-            return true;
-        }
-        try {
-            for (var annotation : annotatedElement.getAnnotations()) {
-                if (!isAnnotationPresent(annotation)) {
-                    return false;
-                }
-            }
-            return true;
-        } catch (final Throwable e) {
-            LOG.warn("Skipping AnnotatedElement that isn't fully loaded...", e);
             return false;
         }
     }
@@ -164,7 +141,7 @@ public class SafeOperations {
         if (method == null) {
             return true;
         }
-        return isTypePresent(method.getReturnType()) && isExecutableLoaded(method);
+        return !isTypeNotLoaded(method.getReturnType()) && isExecutableLoaded(method);
     }
 
     public static boolean isFieldPresent(Field field) {
@@ -172,7 +149,7 @@ public class SafeOperations {
             return true;
         }
         try {
-            return isTypePresent(field.getType()) || isTypePresent(field.getGenericType());
+            return !isTypeNotLoaded(field.getType()) || !isTypeNotLoaded(field.getGenericType());
         } catch (final Throwable e) {
             return false;
         }
@@ -391,16 +368,10 @@ public class SafeOperations {
             return true;
         }
         try {
-            if (!isTypePresent(parameter.getType())) {
+            if (isTypeNotLoaded(parameter.getType())) {
                 return false;
             }
-            if (!isTypePresent(parameter.getParameterizedType())) {
-                return false;
-            }
-            if (!isAnnotatedElementPresent(parameter)) {
-                return false;
-            }
-            return true;
+            return !isTypeNotLoaded(parameter.getParameterizedType());
         } catch (final Throwable e) {
             LOG.warn("Skipping Parameter that isn't fully loaded...", e);
             return false;

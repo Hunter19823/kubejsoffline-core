@@ -41,7 +41,7 @@ public class TypeManager {
         if (type == null) {
             throw new NullPointerException("Type cannot be null");
         }
-        if (!SafeOperations.isTypePresent(type)) {
+        if (SafeOperations.isTypeNotLoaded(type)) {
             throw new UnsupportedOperationException("Type " + type + " is not fully loaded");
         }
         if (cache.containsKey(type)) {
