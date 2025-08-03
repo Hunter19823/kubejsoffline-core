@@ -4,20 +4,26 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.TypeNameMapper;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 public class SafeOperations {
     private static final Logger LOG = LogManager.getLogger();
     private static TypeNameMapper mapper;
+    protected static final ThreadLocal<Set<Type>> TYPES_PROCESSING = ThreadLocal.withInitial(() -> new HashSet<>());
 
     public static void setTypeMapper(TypeNameMapper mapper) {
         SafeOperations.mapper = mapper;
@@ -28,7 +34,6 @@ public class SafeOperations {
             return true;
         }
         try {
-            Object result = null;
             String name = type.getName();
             if (name.contains("$")) {
                 name = name.substring(name.lastIndexOf("$") + 1);
@@ -39,25 +44,30 @@ public class SafeOperations {
             if (name.isBlank()) {
                 return false;
             }
-            result = type.getCanonicalName();
-            result = type.getModifiers();
-            result = type.getPackage();
-            if (!isClassPresent(type.getSuperclass())) {
+            type.getCanonicalName();
+            type.getModifiers();
+            type.getPackage();
+            if (!isTypePresent(type.getSuperclass())) {
+                return false;
+            }
+            if (!isGenericDeclarationPresent(type)) {
                 return false;
             }
             for (var typeParameter : type.getTypeParameters()) {
-                if (!isTypeVariablePresent(typeParameter)) {
+                if (!isTypePresent(typeParameter)) {
                     return false;
                 }
             }
-            result = type.getInterfaces();
             for (var interfaceType : type.getInterfaces()) {
-                if (!isClassPresent(interfaceType)) {
+                if (!isTypePresent(interfaceType)) {
                     return false;
                 }
             }
-            result = type.getGenericInterfaces();
-            result = type.getAnnotations();
+            for (var genericInterface : type.getGenericInterfaces()) {
+                if (!isTypePresent(genericInterface)) {
+                    return false;
+                }
+            }
             return true;
         } catch (final Throwable e) {
             LOG.warn("Skipping Class that isn't fully loaded...", e);
@@ -70,45 +80,81 @@ public class SafeOperations {
             return true;
         }
         try {
+            if (TYPES_PROCESSING.get().contains(type)) {
+                return true;
+            }
+
+            TYPES_PROCESSING.get().add(type);
             type.getTypeName();
             if (type.getTypeName().isBlank()) {
+                TYPES_PROCESSING.get().remove(type);
                 return false;
             }
             if (type instanceof Class<?> clazz) {
-                return isClassPresent(clazz);
+                var result = isClassPresent(clazz);
+                TYPES_PROCESSING.get().remove(type);
+                return result;
             }
             if (type instanceof TypeVariable<?> typeVariable) {
-                return isTypeVariablePresent(typeVariable);
+                var result = isTypeVariablePresent(typeVariable);
+                TYPES_PROCESSING.get().remove(type);
+                return result;
             }
             if (type instanceof ParameterizedType parameterizedType) {
                 for (var argument : parameterizedType.getActualTypeArguments()) {
                     if (!isTypePresent(argument)) {
+                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
                 if (parameterizedType == parameterizedType.getRawType()) {
+                    TYPES_PROCESSING.get().remove(type);
                     return false;
                 }
                 if (parameterizedType == parameterizedType.getOwnerType()) {
+                    TYPES_PROCESSING.get().remove(type);
                     return false;
                 }
-                return isTypePresent(parameterizedType.getRawType()) && isTypePresent(parameterizedType.getOwnerType());
+                var result = isTypePresent(parameterizedType.getRawType()) && isTypePresent(parameterizedType.getOwnerType());
+                TYPES_PROCESSING.get().remove(type);
+                return result;
             }
             if (type instanceof WildcardType wildcardType) {
                 for (var bound : wildcardType.getUpperBounds()) {
                     if (!isTypePresent(bound)) {
+                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
                 for (var bound : wildcardType.getLowerBounds()) {
                     if (!isTypePresent(bound)) {
+                        TYPES_PROCESSING.get().remove(type);
                         return false;
                     }
                 }
             }
 
+            TYPES_PROCESSING.get().remove(type);
             return true;
         } catch (final Throwable e) {
+            TYPES_PROCESSING.get().remove(type);
+            return false;
+        }
+    }
+
+    public static boolean isAnnotatedElementPresent(AnnotatedElement annotatedElement) {
+        if (annotatedElement == null) {
+            return true;
+        }
+        try {
+            for (var annotation : annotatedElement.getAnnotations()) {
+                if (!isAnnotationPresent(annotation)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (final Throwable e) {
+            LOG.warn("Skipping AnnotatedElement that isn't fully loaded...", e);
             return false;
         }
     }
@@ -117,7 +163,7 @@ public class SafeOperations {
         if (method == null) {
             return true;
         }
-        return isClassPresent(method.getReturnType()) && isExecutableLoaded(method);
+        return isTypePresent(method.getReturnType()) && isExecutableLoaded(method);
     }
 
     public static boolean isFieldPresent(Field field) {
@@ -125,11 +171,47 @@ public class SafeOperations {
             return true;
         }
         try {
-            isClassPresent(field.getType());
-            Object obj = field.getGenericType();
-            field.getAnnotations();
+            if (isTypePresent(field.getType())) {
+                return false;
+            }
+            if (isTypePresent(field.getGenericType())) {
+                return false;
+            }
+            return isAnnotatedElementPresent(field);
+        } catch (final Throwable e) {
+            return false;
+        }
+    }
+
+    public static boolean isAnnotationPresent(Annotation annotation) {
+        if (annotation == null) {
+            return true;
+        }
+        try {
+            if (!isTypePresent(annotation.annotationType())) {
+                return false;
+            }
+            annotation.toString();
             return true;
         } catch (final Throwable e) {
+            LOG.warn("Skipping Annotation that isn't fully loaded...", e);
+            return false;
+        }
+    }
+
+    public static boolean isGenericDeclarationPresent(GenericDeclaration genericDeclaration) {
+        if (genericDeclaration == null) {
+            return true;
+        }
+        try {
+            for (var typeParameter : genericDeclaration.getTypeParameters()) {
+                if (!isTypePresent(typeParameter)) {
+                    return false;
+                }
+            }
+            return isAnnotatedElementPresent(genericDeclaration);
+        } catch (final Throwable e) {
+            LOG.warn("Skipping GenericDeclaration that isn't fully loaded...", e);
             return false;
         }
     }
@@ -147,11 +229,14 @@ public class SafeOperations {
         }
         try {
             type.getTypeName();
-            type.getGenericDeclaration();
             type.getName();
-            type.getBounds();
+            if (!isGenericDeclarationPresent(type.getGenericDeclaration())) {
+                return false;
+            }
             for (var bound : type.getBounds()) {
-                bound.getTypeName();
+                if (!isTypePresent(bound)) {
+                    return false;
+                }
             }
             return true;
         } catch (final Throwable e) {
@@ -167,19 +252,21 @@ public class SafeOperations {
             executable.getName();
             executable.toGenericString();
             executable.getModifiers();
-            for (var typeParameter : executable.getTypeParameters()) {
-                if (!isTypeVariablePresent(typeParameter)) {
-                    return false;
-                }
+            if (!isGenericDeclarationPresent(executable)) {
+                return false;
             }
             for (var parameter : executable.getParameters()) {
-                if (!isClassPresent(parameter.getType())) {
+                if (!isTypePresent(parameter.getType())) {
                     return false;
                 }
-                parameter.getParameterizedType();
+                if (!isTypePresent(parameter.getParameterizedType())) {
+                    return false;
+                }
             }
             for (var parameter : executable.getGenericParameterTypes()) {
-                parameter.getTypeName();
+                if (!isTypePresent(parameter)) {
+                    return false;
+                }
             }
 
             return true;

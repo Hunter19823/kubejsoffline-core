@@ -1,5 +1,7 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.ExecutableData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
@@ -16,6 +18,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -24,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TypeManager {
+    public static final Logger LOG = LogManager.getLogger();
     public static final TypeManager INSTANCE = new TypeManager(CollectionGroup.INSTANCE);
     protected final Map<Type, TypeOrTypeVariableID> cache = new HashMap<>();
 
@@ -90,7 +94,7 @@ public class TypeManager {
         if (executable instanceof Constructor<?>) {
             return new ConstructorWrapper(collectionGroup, (Constructor<?>) executable);
         }
-        if (executable instanceof java.lang.reflect.Method method) {
+        if (executable instanceof Method method) {
             return new MethodWrapper(collectionGroup, method);
         }
         throw new IllegalArgumentException("Executable " + executable + " is not supported");
