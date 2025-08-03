@@ -13,8 +13,8 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.ArrayIdentifier;
-import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -134,14 +134,27 @@ public class TypesWrapper implements Types {
     @Override
     public JsonElement toJSON() {
         var json = new JsonArray();
-        this.data
+        var entries = this.data
                 .getValues()
                 .stream()
                 .parallel()
                 .sorted()
-                .map((typeData) -> SafeOperations.tryGet(typeData::toJSON))
-                .map((optional) -> optional.orElse(null))
-                .forEachOrdered(json::add);
+                .map((typeData) -> Map.entry(typeData, typeData.getIndex()))
+                .toList();
+        for (int i = 0; i < entries.size(); i++) {
+            var entry = entries.get(i);
+            var typeData = entry.getKey();
+            var index = entry.getValue();
+            if (typeData == null || index == null) {
+                LOG.error("Type data or index is null at index: {}", i);
+                continue;
+            }
+            if (index.getArrayIndex() != i) {
+                LOG.error("Type data index mismatch at index: {}, expected: {}", i, index.getArrayIndex());
+                continue;
+            }
+            json.add(typeData.toJSON());
+        }
         return json;
     }
 
