@@ -6,6 +6,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.WildcardTypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
+import pie.ilikepiefoo.kubejsoffline.core.util.ReflectionUtils;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Type;
@@ -64,8 +65,8 @@ public class WildcardTypeWrapper implements WildcardTypeData {
     @Override
     public int hashCode() {
         return Objects.hash(
-                getExtends(),
-                getSuper()
+                ReflectionUtils.hashCode(wildcardType.getLowerBounds()),
+                ReflectionUtils.hashCode(wildcardType.getUpperBounds())
         );
     }
 

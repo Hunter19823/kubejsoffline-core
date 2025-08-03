@@ -2,7 +2,7 @@ package pie.ilikepiefoo.kubejsoffline.core.util.json;
 
 import com.google.gson.JsonElement;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -14,7 +14,7 @@ public class GlobalConstants {
 
     private GlobalConstants() {
         // Private constructor to prevent instantiation
-        constantSupplier = new HashMap<>();
+        constantSupplier = new LinkedHashMap<>();
     }
 
     public void setConstant(String key, JsonElement value) {

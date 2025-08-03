@@ -22,8 +22,8 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
         return indexToValueMap.values();
     }
 
-    public Collection<VALUE> getValuesAfter(INDEX index) {
-        return indexToValueMap.tailMap(index, false).values();
+    public Collection<VALUE> getValuesBetween(INDEX from, INDEX to) {
+        return indexToValueMap.subMap(from, true, to, true).values();
     }
 
     public INDEX getFirstIndex() {
@@ -45,6 +45,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
                 .sorted(Map.Entry.comparingByValue(comparator))
                 .toList();
         indexToValueMap.clear();
+        valueToIndexMap.clear();
         for (int i = 0; i < newValues.size(); i++) {
             var entry = newValues.get(i);
             var index = entry.getKey();
@@ -52,7 +53,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
             if (index.getArrayIndex() != i) {
                 index.setArrayIndex(i);
             }
-            indexToValueMap.put(index, value);
+            put(index, value);
         }
     }
 

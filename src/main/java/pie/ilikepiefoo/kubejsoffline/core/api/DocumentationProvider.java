@@ -64,12 +64,12 @@ public interface DocumentationProvider {
         CollectionGroup.INSTANCE.clear();
 
         // Set the global constants
-        GlobalConstants.INSTANCE.setConstant("DATA", CollectionGroup.INSTANCE::toJSON);
         GlobalConstants.INSTANCE.setConstant("BINDINGS", getBindingsProvider()::toJSON);
-        GlobalConstants.INSTANCE.setConstant("PROPERTY", JSONProperty::createTranslation);
-        GlobalConstants.INSTANCE.setConstant("RELATIONS", RelationType::getRelationTypeData);
         GlobalConstants.INSTANCE.setConstant("EVENTS", reflectionHelper::getEventClassesAsJson);
         GlobalConstants.INSTANCE.setConstant("TYPE_WRAPPER", getTypeWrapperProvider()::toJSON);
+        GlobalConstants.INSTANCE.setConstant("DATA", CollectionGroup.INSTANCE::toJSON);
+        GlobalConstants.INSTANCE.setConstant("PROPERTY", JSONProperty::createTranslation);
+        GlobalConstants.INSTANCE.setConstant("RELATIONS", RelationType::getRelationTypeData);
         // Log the bindings.
         int step = 0;
         final int totalSteps = 8;

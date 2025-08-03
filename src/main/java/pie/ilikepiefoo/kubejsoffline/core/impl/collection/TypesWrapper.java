@@ -14,7 +14,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.ArrayIdentifier;
 
-import java.util.Comparator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -136,8 +135,11 @@ public class TypesWrapper implements Types {
         TypeOrTypeVariableID currentType = this.data.getFirstIndex();
         TypeOrTypeVariableID lastType = this.data.getLastIndex();
         while (currentType != lastType) {
-            this.data.get(currentType).toJSON();
-            currentType = this.data.getNextIndex(currentType);
+            this.data
+                    .getValuesBetween(currentType, lastType)
+                    .parallelStream()
+                    .forEach(TypeData::toJSON);
+            currentType = lastType;
             lastType = this.data.getLastIndex();
         }
     }
@@ -146,7 +148,6 @@ public class TypesWrapper implements Types {
     public JsonElement toJSON() {
         var json = new JsonArray();
         generateAllTypes();
-        this.data.reorganize(Comparator.comparingLong((TypeData typeData) -> typeData.getIndex().getReferenceCount()).reversed());
         var entries = this.data
                 .getValues()
                 .stream()
