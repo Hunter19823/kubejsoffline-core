@@ -45,7 +45,6 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
                 .sorted(Map.Entry.comparingByValue(comparator))
                 .toList();
         indexToValueMap.clear();
-        valueToIndexMap.clear();
         for (int i = 0; i < newValues.size(); i++) {
             var entry = newValues.get(i);
             var index = entry.getKey();
