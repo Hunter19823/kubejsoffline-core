@@ -59,10 +59,6 @@ publishing {
         }
     }
     publications {
-        publishToMavenLocal(MavenPublication) {
-            artifactId = project.archives_base_name
-            from components.java
-        }
         gpr(MavenPublication) {
             from(components.java)
         }
