@@ -3,6 +3,7 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.collection;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.Index;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -35,6 +36,25 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
 
     public INDEX getLastIndex() {
         return indexToValueMap.lastEntry().getKey();
+    }
+
+    public void reorganize(Comparator<VALUE> comparator) {
+        var newValues = indexToValueMap
+                .entrySet()
+                .parallelStream()
+                .sorted(Map.Entry.comparingByValue(comparator))
+                .toList();
+        indexToValueMap.clear();
+        valueToIndexMap.clear();
+        for (int i = 0; i < newValues.size(); i++) {
+            var entry = newValues.get(i);
+            var index = entry.getKey();
+            var value = entry.getValue();
+            if (index.getArrayIndex() != i) {
+                index.setArrayIndex(i);
+            }
+            indexToValueMap.put(index, value);
+        }
     }
 
     public Collection<INDEX> getIndexes() {

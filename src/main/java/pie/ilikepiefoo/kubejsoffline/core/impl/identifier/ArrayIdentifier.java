@@ -34,7 +34,7 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
             return super.toJSON();
         }
         var jsonArray = new JsonArray();
-        jsonArray.add(this.getArrayIndex());
+        jsonArray.add(this.getSelfWithReference().getArrayIndex());
         jsonArray.add(this.arrayDepth);
         return jsonArray;
     }

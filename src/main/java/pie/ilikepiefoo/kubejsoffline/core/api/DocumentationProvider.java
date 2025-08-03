@@ -9,6 +9,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.context.TypeWrapperProvider;
 import pie.ilikepiefoo.kubejsoffline.core.html.page.IndexPage;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
+import pie.ilikepiefoo.kubejsoffline.core.impl.collection.TypesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.util.RelationType;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.GlobalConstants;
@@ -71,7 +72,7 @@ public interface DocumentationProvider {
         GlobalConstants.INSTANCE.setConstant("TYPE_WRAPPER", getTypeWrapperProvider()::toJSON);
         // Log the bindings.
         int step = 0;
-        final int totalSteps = 7;
+        final int totalSteps = 8;
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Initializing Reflections Library...", ++step, totalSteps));
         final long start = System.currentTimeMillis();
         long timeMillis = System.currentTimeMillis();
@@ -87,6 +88,14 @@ public interface DocumentationProvider {
         timeMillis = System.currentTimeMillis();
 
         Arrays.stream(classes).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
+
+        timeMillis = System.currentTimeMillis() - timeMillis;
+        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding classes to indexer in %,dms. Now searching classes for all nested connections...", ++step, totalSteps, timeMillis));
+        timeMillis = System.currentTimeMillis();
+
+        if (CollectionGroup.INSTANCE.types() instanceof TypesWrapper typesWrapper) {
+            typesWrapper.generateAllTypes();
+        }
 
         timeMillis = System.currentTimeMillis() - timeMillis;
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding %s classes to indexer in %,dms", step, totalSteps, classes.length, timeMillis));

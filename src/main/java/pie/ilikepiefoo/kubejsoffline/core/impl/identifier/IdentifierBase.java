@@ -87,6 +87,6 @@ public class IdentifierBase implements Index {
 
     @Override
     public JsonElement toJSON() {
-        return new JsonPrimitive(getArrayIndex());
+        return new JsonPrimitive(getSelfWithReference().getArrayIndex());
     }
 }
