@@ -60,7 +60,7 @@ public record CollectionGroup(
     public List<AnnotationID> of(Annotation[] annotations) {
         LinkedList<AnnotationID> annotationList = new LinkedList<>();
         for (Annotation annotation : annotations) {
-            if (annotation == null) {
+            if (annotation == null || !SafeOperations.isAnnotationPresent(annotation)) {
                 continue;
             }
             annotationList.add(annotations().addAnnotation(new AnnotationWrapper(this, annotation)));
@@ -84,6 +84,9 @@ public record CollectionGroup(
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i] == null || genericTypes[i] == null) {
                 continue;
+            }
+            if (!SafeOperations.isParameterPresent(parameters[i]) && !SafeOperations.isTypePresent(genericTypes[i])) {
+                throw new IllegalStateException("The full list of parameters is not loaded yet.");
             }
             parameterList.add(parameters().addParameter(new ParameterWrapper(this, parameters[i], genericTypes[i])));
         }

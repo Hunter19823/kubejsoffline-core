@@ -36,7 +36,7 @@ public class TypeVariableWrapper implements TypeVariableData {
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
-        addTo(json, JSONProperty.TYPE_VARIABLE_NAME.jsName, this::getName);
+        json.add(JSONProperty.TYPE_VARIABLE_NAME.jsName, getName().toJSON());
         addAllTo(json, JSONProperty.TYPE_VARIABLE_BOUNDS.jsName, false, this::getBounds);
         if (json.size() == 0) {
             LOG.warn("Attempted to serialize an empty TypeVariableWrapper, returning null.");

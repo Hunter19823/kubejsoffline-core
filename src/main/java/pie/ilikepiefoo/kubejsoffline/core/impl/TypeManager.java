@@ -118,14 +118,6 @@ public class TypeManager {
 
     public static class TypeIdentifier extends ArrayIdentifier implements TypeOrTypeVariableID {
 
-        public TypeIdentifier(int arrayIndex) {
-            super(arrayIndex);
-        }
-
-        public TypeIdentifier(int arrayIndex, int arrayDepth) {
-            super(arrayIndex, arrayDepth);
-        }
-
         public TypeIdentifier(TypeOrTypeVariableID typeID, int arrayDepth) {
             super(typeID, arrayDepth);
         }

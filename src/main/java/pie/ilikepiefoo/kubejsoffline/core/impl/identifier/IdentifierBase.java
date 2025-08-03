@@ -5,19 +5,27 @@ import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.Index;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 public class IdentifierBase implements Index {
 
-    protected int arrayIndex;
+    protected Supplier<Integer> arrayIndexSupplier = null;
     protected AtomicLong referenceCount = new AtomicLong(0);
 
     public IdentifierBase(int arrayIndex) {
-        this.arrayIndex = arrayIndex;
+        this.arrayIndexSupplier = () -> arrayIndex;
+    }
+
+    public IdentifierBase(Supplier<Integer> arrayIndexSupplier) {
+        if (arrayIndexSupplier == null) {
+            throw new IllegalArgumentException("Array index supplier cannot be null");
+        }
+        this.arrayIndexSupplier = arrayIndexSupplier;
     }
 
     @Override
     public int getArrayIndex() {
-        return arrayIndex;
+        return arrayIndexSupplier.get();
     }
 
     @Override
@@ -25,6 +33,7 @@ public class IdentifierBase implements Index {
         if (other == null) {
             throw new IllegalArgumentException("Cannot swap with null");
         }
+        int arrayIndex = this.getArrayIndex();
         if (other.getArrayIndex() == arrayIndex) {
             return; // No need to swap with itself
         }
@@ -35,7 +44,7 @@ public class IdentifierBase implements Index {
 
     @Override
     public void setArrayIndex(int arrayIndex) {
-        this.arrayIndex = arrayIndex;
+        this.arrayIndexSupplier = () -> arrayIndex;
     }
 
     @Override
@@ -52,6 +61,7 @@ public class IdentifierBase implements Index {
 
     @Override
     public int hashCode() {
+        int arrayIndex = getArrayIndex();
         return Integer.hashCode(arrayIndex);
     }
 
@@ -64,19 +74,19 @@ public class IdentifierBase implements Index {
             return true;
         }
         if (obj instanceof IdentifierBase) {
-            return ((IdentifierBase) obj).arrayIndex == arrayIndex;
+            return ((IdentifierBase) obj).getArrayIndex() == getArrayIndex();
         }
         if (obj instanceof Index) {
-            return ((Index) obj).getArrayIndex() == arrayIndex;
+            return ((Index) obj).getArrayIndex() == getArrayIndex();
         }
         if (obj instanceof Integer) {
-            return ((Integer) obj) == arrayIndex;
+            return ((Integer) obj) == getArrayIndex();
         }
         return false;
     }
 
     @Override
     public JsonElement toJSON() {
-        return new JsonPrimitive(arrayIndex);
+        return new JsonPrimitive(getArrayIndex());
     }
 }

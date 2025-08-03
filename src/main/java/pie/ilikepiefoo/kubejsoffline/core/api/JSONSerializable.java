@@ -98,6 +98,10 @@ public interface JSONSerializable {
                 }
             }
         }
+        if (jsonArray.isEmpty()) {
+            // If the array is empty, we do not add it to the JSON element
+            return;
+        }
         collectionAdder.accept(jsonArray);
     }
 

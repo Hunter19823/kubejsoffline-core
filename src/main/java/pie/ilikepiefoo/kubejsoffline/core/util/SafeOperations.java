@@ -11,6 +11,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -171,13 +172,7 @@ public class SafeOperations {
             return true;
         }
         try {
-            if (isTypePresent(field.getType())) {
-                return false;
-            }
-            if (isTypePresent(field.getGenericType())) {
-                return false;
-            }
-            return isAnnotatedElementPresent(field);
+            return isTypePresent(field.getType()) || isTypePresent(field.getGenericType());
         } catch (final Throwable e) {
             return false;
         }
@@ -209,7 +204,7 @@ public class SafeOperations {
                     return false;
                 }
             }
-            return isAnnotatedElementPresent(genericDeclaration);
+            return true;
         } catch (final Throwable e) {
             LOG.warn("Skipping GenericDeclaration that isn't fully loaded...", e);
             return false;
@@ -389,6 +384,27 @@ public class SafeOperations {
             return new Type[]{};
         }
         return Arrays.stream(bounds).filter((bound) -> bound != Object.class).toArray(Type[]::new);
+    }
+
+    public static boolean isParameterPresent(Parameter parameter) {
+        if (parameter == null) {
+            return true;
+        }
+        try {
+            if (!isTypePresent(parameter.getType())) {
+                return false;
+            }
+            if (!isTypePresent(parameter.getParameterizedType())) {
+                return false;
+            }
+            if (!isAnnotatedElementPresent(parameter)) {
+                return false;
+            }
+            return true;
+        } catch (final Throwable e) {
+            LOG.warn("Skipping Parameter that isn't fully loaded...", e);
+            return false;
+        }
     }
 
     @FunctionalInterface

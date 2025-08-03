@@ -131,9 +131,20 @@ public class TypesWrapper implements Types {
         TypeManager.INSTANCE.clear();
     }
 
+    private void generateAllTypes() {
+        TypeOrTypeVariableID currentType = this.data.getFirstIndex();
+        TypeOrTypeVariableID lastType = this.data.getLastIndex();
+        while (currentType != lastType) {
+            this.data.get(currentType).toJSON();
+            currentType = this.data.getNextIndex(currentType);
+            lastType = this.data.getLastIndex();
+        }
+    }
+
     @Override
     public JsonElement toJSON() {
         var json = new JsonArray();
+        generateAllTypes();
         var entries = this.data
                 .getValues()
                 .stream()
@@ -158,14 +169,14 @@ public class TypesWrapper implements Types {
         return json;
     }
 
+    private void backFillArray(JsonArray jsonArray, int index) {
+
+    }
+
     public static class TypeIdentifier extends ArrayIdentifier implements TypeID {
 
         public TypeIdentifier(int arrayIndex) {
             super(arrayIndex);
-        }
-
-        public TypeIdentifier(int arrayIndex, int arrayDepth) {
-            super(arrayIndex, arrayDepth);
         }
 
         @Override
@@ -179,10 +190,6 @@ public class TypesWrapper implements Types {
 
         public TypeVariableIdentifier(int arrayIndex) {
             super(arrayIndex);
-        }
-
-        public TypeVariableIdentifier(int arrayIndex, int arrayDepth) {
-            super(arrayIndex, arrayDepth);
         }
 
         @Override

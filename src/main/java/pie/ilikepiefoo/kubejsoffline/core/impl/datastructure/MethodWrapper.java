@@ -38,23 +38,18 @@ public class MethodWrapper implements MethodData {
     public JsonElement toJSON() {
         var json = new JsonObject();
         json.add(JSONProperty.METHOD_NAME.jsName, getName().toJSON());
-
         if (getModifiers() != 0) {
             json.addProperty(JSONProperty.MODIFIERS.jsName, method.getModifiers());
         }
         json.add(JSONProperty.METHOD_RETURN_TYPE.jsName, getType().toJSON());
-        if (!getAnnotations().isEmpty()) {
-            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
-        }
+        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
         if (!getParameters().isEmpty()) {
             json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
         }
         if (!getTypeParameters().isEmpty()) {
             json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
         }
-        if (!getExceptions().isEmpty()) {
-            json.add(JSONProperty.EXCEPTIONS.jsName, JSONSerializable.of(getExceptions()));
-        }
+        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
         return json;
     }
 

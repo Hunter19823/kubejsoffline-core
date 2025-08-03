@@ -2,6 +2,7 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterizedTypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
@@ -48,6 +49,7 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
             LOG.warn("Attempted to serialize an empty ParameterizedTypeWrapper, returning null.");
             return null; // No data to serialize
         }
+        json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getActualTypeArguments()));
         return json;
     }
 
@@ -64,7 +66,11 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
         if (actualTypeArguments != null) {
             return actualTypeArguments;
         }
-        return this.actualTypeArguments = collectionGroup.of(parameterizedType.getActualTypeArguments());
+        this.actualTypeArguments = collectionGroup.of(parameterizedType.getActualTypeArguments());
+        if (this.actualTypeArguments.size() != parameterizedType.getActualTypeArguments().length) {
+            throw new IllegalStateException("Mismatch in actual type arguments size for " + parameterizedType);
+        }
+        return this.actualTypeArguments;
     }
 
     @Override

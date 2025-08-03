@@ -35,17 +35,14 @@ public class ConstructorWrapper implements ConstructorData {
         if (getModifiers() != 0) {
             json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
         }
-        if (!getAnnotations().isEmpty()) {
-            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
-        }
+        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
+        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
+        // Throw an exception if the type parameters or parameters cannot be loaded.
         if (!getTypeParameters().isEmpty()) {
             json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
         }
         if (!getParameters().isEmpty()) {
             json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
-        }
-        if (!getExceptions().isEmpty()) {
-            json.add(JSONProperty.EXCEPTIONS.jsName, JSONSerializable.of(getExceptions()));
         }
         return json;
     }

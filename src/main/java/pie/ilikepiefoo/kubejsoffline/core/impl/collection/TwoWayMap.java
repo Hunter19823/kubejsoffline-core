@@ -21,6 +21,22 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
         return indexToValueMap.values();
     }
 
+    public Collection<VALUE> getValuesAfter(INDEX index) {
+        return indexToValueMap.tailMap(index, false).values();
+    }
+
+    public INDEX getFirstIndex() {
+        return indexToValueMap.firstEntry().getKey();
+    }
+
+    public INDEX getNextIndex(INDEX index) {
+        return indexToValueMap.higherKey(index);
+    }
+
+    public INDEX getLastIndex() {
+        return indexToValueMap.lastEntry().getKey();
+    }
+
     public Collection<INDEX> getIndexes() {
         return indexToValueMap.keySet();
     }
