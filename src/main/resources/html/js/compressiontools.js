@@ -162,6 +162,9 @@ function remapTypeVariables(typeVariableMap, parameterizedType) {
             }
             let actualTypeId = actualTypes[i];
             let actualType = getClass(actualTypeId);
+            if (!exists(actualType)) {
+                throw new Error(`Actual type is not defined. Cannot remap type variables. Parameterized Type: ${parameterizedType} Raw type: ${rawType.getId()} Type: ${typeVariables[i]}, Actual Type: ${actualTypeId}`);
+            }
             if (!actualType.isTypeVariable()) {
                 typeVariableMap[typeVariables[i]] = actualTypes[i];
                 continue;
