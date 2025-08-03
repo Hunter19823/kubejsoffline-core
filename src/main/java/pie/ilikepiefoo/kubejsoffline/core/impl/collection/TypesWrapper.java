@@ -138,10 +138,13 @@ public class TypesWrapper implements Types {
         TypeOrTypeVariableID lastType = this.data.getLastIndex();
         while (currentType != lastType && count < maxIterations) {
             LOG.info("Pre-Generating all types from {} to {}", currentType, lastType);
-            this.data
-                    .getValuesBetween(currentType, lastType)
-                    .parallelStream()
-                    .forEach(TypeData::toJSON);
+            for (var typeData : this.data.getValuesBetween(currentType, lastType).toArray(TypeData[]::new)) {
+                try {
+                    typeData.toJSON(); // Ensure the type data is initialized
+                } catch (final Throwable e) {
+                    LOG.error("Failed to initialize type data: {}", typeData, e);
+                }
+            }
             currentType = lastType;
             lastType = this.data.getLastIndex();
             count++;
