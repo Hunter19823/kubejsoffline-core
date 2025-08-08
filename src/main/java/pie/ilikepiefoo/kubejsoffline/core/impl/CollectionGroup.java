@@ -42,7 +42,9 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public record CollectionGroup(
         Types types,
@@ -58,56 +60,29 @@ public record CollectionGroup(
     }
 
     public List<AnnotationID> of(Annotation[] annotations) {
-        LinkedList<AnnotationID> annotationList = new LinkedList<>();
-        for (Annotation annotation : annotations) {
-            if (annotation == null || !SafeOperations.isAnnotationPresent(annotation)) {
-                continue;
-            }
-            annotationList.add(annotations().addAnnotation(new AnnotationWrapper(this, annotation)));
-        }
-        return annotationList;
+        return Stream
+                .of(annotations)
+                .filter(SafeOperations::isAnnotationPresent)
+                .map(annotation -> annotations().addAnnotation(new AnnotationWrapper(this, annotation)))
+                .toList();
     }
 
     public List<ParameterID> of(Parameter[] parameters, Type[] genericTypes) {
-        LinkedList<ParameterID> parameterList = new LinkedList<>();
-        if (genericTypes.length < parameters.length) {
-            Type[] newGenericTypes = new Type[parameters.length];
-            int i;
-            for (i = 0; i < genericTypes.length; i++) {
-                newGenericTypes[i] = genericTypes[i];
-            }
-            for (; i < parameters.length; i++) {
-                newGenericTypes[i] = parameters[i].getType();
-            }
-            genericTypes = newGenericTypes;
-        }
-        for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i] == null || genericTypes[i] == null) {
-                continue;
-            }
-            if (!SafeOperations.isParameterPresent(parameters[i]) && SafeOperations.isTypeNotLoaded(genericTypes[i])) {
-                throw new IllegalStateException("The full list of parameters is not loaded yet.");
-            }
-            parameterList.add(parameters().addParameter(new ParameterWrapper(this, parameters[i], genericTypes[i])));
-        }
-        return parameterList;
+        return Objects
+                .requireNonNull(SafeOperations.safelyGetParametersAndTypes(parameters, genericTypes))
+                .stream()
+                .map((pair) -> parameters().addParameter(new ParameterWrapper(this, pair.left(), pair.right())))
+                .toList();
     }
 
     public List<TypeOrTypeVariableID> of(Type[] types, Predicate<Type> ignoreType) {
-        LinkedList<TypeOrTypeVariableID> typeList = new LinkedList<>();
-        for (Type type : types) {
-            if (type == null) {
-                continue;
-            }
-            if (SafeOperations.isTypeNotLoaded(type)) {
-                continue;
-            }
-            if (ignoreType.test(type)) {
-                continue;
-            }
-            typeList.add(of(type));
-        }
-        return typeList;
+        return Stream
+                .of(types)
+                .filter(Objects::nonNull)
+                .filter(type -> !SafeOperations.isTypeNotLoaded(type))
+                .filter(ignoreType.negate())
+                .map(this::of)
+                .toList();
     }
 
     public TypeOrTypeVariableID of(Type type) {
@@ -115,17 +90,7 @@ public record CollectionGroup(
     }
 
     public List<TypeOrTypeVariableID> of(Type[] types) {
-        LinkedList<TypeOrTypeVariableID> typeList = new LinkedList<>();
-        for (Type type : types) {
-            if (type == null) {
-                continue;
-            }
-            if (SafeOperations.isTypeNotLoaded(type)) {
-                continue;
-            }
-            typeList.add(of(type));
-        }
-        return typeList;
+        return this.of(types, (type) -> false);
     }
 
     public List<TypeID> ofTypes(Type[] types) {
