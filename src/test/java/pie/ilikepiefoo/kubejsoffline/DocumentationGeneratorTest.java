@@ -11,6 +11,7 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.SimpleDocumentationProvider;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.context.SimpleBinding;
 import pie.ilikepiefoo.kubejsoffline.testclasses.AClass;
+import pie.ilikepiefoo.kubejsoffline.testclasses.AnonymousClassExample;
 import pie.ilikepiefoo.kubejsoffline.testclasses.BaseGenericType;
 import pie.ilikepiefoo.kubejsoffline.testclasses.RootClass;
 import pie.ilikepiefoo.kubejsoffline.testclasses.TestData;
@@ -39,7 +40,8 @@ public class DocumentationGeneratorTest {
                         TestData.class,
                         ThirdClass.class,
                         RootClass.class,
-                        BaseGenericType.class
+                        BaseGenericType.class,
+                        AnonymousClassExample.class
                 )
         );
         // Create some sample bindings.
