@@ -148,7 +148,7 @@ public record CollectionGroup(
             if (type == null) {
                 continue;
             }
-            if (!SafeOperations.isTypeNotLoaded(type)) {
+            if (SafeOperations.isTypeNotLoaded(type)) {
                 continue;
             }
             typeList.add(of(type).asType());
@@ -162,7 +162,7 @@ public record CollectionGroup(
             if (typeVariable == null) {
                 throw new NullPointerException("TypeVariable cannot be null");
             }
-            if (!SafeOperations.isTypeVariablePresent(typeVariable)) {
+            if (SafeOperations.isTypeNotLoaded(typeVariable)) {
                 throw new IllegalStateException("TypeVariable " + typeVariable + " is not fully loaded");
             }
             typeVariableList.add(of(typeVariable).asTypeVariable());
