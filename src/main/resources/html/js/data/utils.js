@@ -35,3 +35,39 @@ function findAllClassesThatMatch(predicate) {
     });
     return output;
 }
+
+function doesObjectInclude(object, value, seen=new Set()) {
+    if (!exists(object)) {
+        return false;
+    }
+    if (object === value) {
+        return true;
+    }
+    if (seen.has(object)) {
+        return false; // Prevent circular references
+    }
+    seen.add(object);
+    if (Array.isArray(object)) {
+        for (let i = 0; i < object.length; i++) {
+            if (object[i] === value) {
+                return true;
+            }
+            if (doesObjectInclude(object[i], value, seen)) {
+                return true;
+            }
+        }
+    }
+    if (typeof object === 'object') {
+        for (const key in object) {
+            if (object.hasOwnProperty(key)) {
+                if (object[key] === value) {
+                    return true;
+                }
+                if (doesObjectInclude(object[key], value, seen)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}

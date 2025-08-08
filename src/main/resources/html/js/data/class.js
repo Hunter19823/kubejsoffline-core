@@ -550,5 +550,9 @@ function getClass(id) {
 
     output.getHrefLink = output.hrefLink;
 
+    output.hasDependency = function(id) {
+        return doesObjectInclude(output.data, id);
+    }
+
     return output;
 }
