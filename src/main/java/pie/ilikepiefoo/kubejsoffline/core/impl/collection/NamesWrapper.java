@@ -12,6 +12,11 @@ public class NamesWrapper implements Names {
     protected final TwoWayMap<NameID, String> data = new TwoWayMap<>(NameIdentifier::new);
 
     @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
+
+    @Override
     public NavigableMap<NameID, String> getAllNames() {
         return this.data.getIndexToValueMap();
     }

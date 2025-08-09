@@ -2,12 +2,13 @@ package pie.ilikepiefoo.kubejsoffline.core.api.datastructure;
 
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.NamedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 
 import java.util.List;
 
-public interface TypeVariableData extends NamedData, TypeData {
+public interface TypeVariableData extends NamedData, TypeData, IndexGenerator {
 
     List<TypeOrTypeVariableID> getBounds();
 
@@ -23,4 +24,10 @@ public interface TypeVariableData extends NamedData, TypeData {
 
     @Override
     TypeVariableID getIndex();
+
+    @Override
+    default void index() {
+        getName();
+        getBounds();
+    }
 }

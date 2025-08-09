@@ -10,7 +10,6 @@ import pie.ilikepiefoo.kubejsoffline.core.html.page.IndexPage;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.TypesWrapper;
-import pie.ilikepiefoo.kubejsoffline.core.util.RelationType;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.GlobalConstants;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
@@ -23,6 +22,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.stream.StreamSupport;
 
 public interface DocumentationProvider {
 
@@ -69,7 +69,6 @@ public interface DocumentationProvider {
         GlobalConstants.INSTANCE.setConstant("TYPE_WRAPPER", getTypeWrapperProvider()::toJSON);
         GlobalConstants.INSTANCE.setConstant("DATA", CollectionGroup.INSTANCE::toJSON);
         GlobalConstants.INSTANCE.setConstant("PROPERTY", JSONProperty::createTranslation);
-        GlobalConstants.INSTANCE.setConstant("RELATIONS", RelationType::getRelationTypeData);
         // Log the bindings.
         int step = 0;
         final int totalSteps = 8;
@@ -87,11 +86,17 @@ public interface DocumentationProvider {
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Now adding classes to indexer...", ++step, totalSteps));
         timeMillis = System.currentTimeMillis();
 
+        StreamSupport
+                .stream(getBindingsProvider().getBindings().spliterator(), true)
+                .forEach((binding) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(binding.getType())));
+
         Arrays.stream(classes).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
 
         timeMillis = System.currentTimeMillis() - timeMillis;
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding classes to indexer in %,dms. Now searching classes for all nested connections...", ++step, totalSteps, timeMillis));
         timeMillis = System.currentTimeMillis();
+
+        CollectionGroup.INSTANCE.index();
 
         if (CollectionGroup.INSTANCE.types() instanceof TypesWrapper typesWrapper) {
             typesWrapper.generateAllTypes();

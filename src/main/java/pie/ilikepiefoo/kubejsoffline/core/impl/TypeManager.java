@@ -41,6 +41,12 @@ public class TypeManager {
         if (type == null) {
             throw new NullPointerException("Type cannot be null");
         }
+        if (type instanceof Class<?> clazz && (clazz.isAnonymousClass())) {
+            return SafeOperations
+                    .tryGet(clazz::getGenericSuperclass)
+                    .map(this::getID)
+                    .orElseThrow(() -> new UnsupportedOperationException("Anonymous class "+ clazz +" is not supported."));
+        }
         if (SafeOperations.isTypeNotLoaded(type)) {
             throw new UnsupportedOperationException("Type " + type + " is not fully loaded");
         }

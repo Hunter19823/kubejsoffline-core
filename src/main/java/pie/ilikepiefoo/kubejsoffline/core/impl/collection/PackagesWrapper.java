@@ -9,6 +9,7 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.datastructure.PackagePartWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.IdentifierBase;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -17,8 +18,18 @@ public class PackagesWrapper implements Packages {
     protected Map<String, PackageID> parts = new HashMap<>();
 
     @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
+
+    @Override
     public NavigableMap<PackageID, PackagePart> getAllPackages() {
         return this.data.getIndexToValueMap();
+    }
+
+    @Override
+    public Iterator<PackagePart> iterator() {
+        return data.iterator();
     }
 
     @Override

@@ -1,12 +1,13 @@
 package pie.ilikepiefoo.kubejsoffline.core.api.datastructure;
 
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 
 import java.util.List;
 
-public interface ParameterizedTypeData extends TypeData {
+public interface ParameterizedTypeData extends TypeData, IndexGenerator {
     TypeID getRawType();
 
     List<TypeOrTypeVariableID> getActualTypeArguments();
@@ -22,6 +23,13 @@ public interface ParameterizedTypeData extends TypeData {
     @Override
     default ParameterizedTypeData asParameterizedType() {
         return this;
+    }
+
+    @Override
+    default void index() {
+        getRawType();
+        getActualTypeArguments();
+        getOwnerType();
     }
 
 }

@@ -8,6 +8,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -17,6 +18,9 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -34,41 +38,30 @@ public class SafeOperations {
             return true;
         }
         try {
-            String name = type.getName();
-            if (name.contains("$")) {
-                name = name.substring(name.lastIndexOf("$") + 1);
+            boolean nested = type.isArray();
+            while (nested) {
+                type = type.getComponentType();
+                nested = type.isArray();
             }
-            if (name.contains(".")) {
-                name = name.substring(name.lastIndexOf(".") + 1);
+            if (type.isAnonymousClass()) {
+                return isTypePresent(type.getGenericSuperclass());
             }
-            if (name.isBlank()) {
+
+            Objects.requireNonNull(SafeOperations.getSimpleRemappedClassName(type));
+
+            if (!type.isPrimitive() || type.equals(Void.class)) {
+                Objects.requireNonNull(type.getPackage());
+            }
+
+            if (!isTypePresent(type.getGenericSuperclass())) {
                 return false;
             }
-            type.getCanonicalName();
-            type.getModifiers();
-            type.getPackage();
-            if (!isTypePresent(type.getSuperclass())) {
+
+            if (!isTypePresent(type.getEnclosingClass())) {
                 return false;
             }
-            if (!isGenericDeclarationPresent(type)) {
-                return false;
-            }
-            for (var typeParameter : type.getTypeParameters()) {
-                if (!isTypePresent(typeParameter)) {
-                    return false;
-                }
-            }
-            for (var interfaceType : type.getInterfaces()) {
-                if (!isTypePresent(interfaceType)) {
-                    return false;
-                }
-            }
-            for (var genericInterface : type.getGenericInterfaces()) {
-                if (!isTypePresent(genericInterface)) {
-                    return false;
-                }
-            }
-            return true;
+
+            return isGenericDeclarationPresent(type);
         } catch (final Throwable e) {
             LOG.warn("Skipping Class that isn't fully loaded...", e);
             return false;
@@ -91,17 +84,17 @@ public class SafeOperations {
             }
 
             TYPES_PROCESSING.get().add(type);
-            type.getTypeName();
             if (type.getTypeName().isBlank()) {
                 return false;
             }
             if (type instanceof Class<?> clazz) {
-                var result = isClassPresent(clazz);
-                return result;
+                return isClassPresent(clazz);
+            }
+            if (type instanceof GenericArrayType genericArrayType) {
+                return isTypePresent(genericArrayType.getGenericComponentType());
             }
             if (type instanceof TypeVariable<?> typeVariable) {
-                var result = isTypeVariablePresent(typeVariable);
-                return result;
+                return isTypeVariablePresent(typeVariable);
             }
             if (type instanceof ParameterizedType parameterizedType) {
                 for (var argument : parameterizedType.getActualTypeArguments()) {
@@ -119,22 +112,30 @@ public class SafeOperations {
                 return result;
             }
             if (type instanceof WildcardType wildcardType) {
-                for (var bound : wildcardType.getUpperBounds()) {
-                    if (!isTypePresent(bound)) {
-                        return false;
-                    }
-                }
-                for (var bound : wildcardType.getLowerBounds()) {
-                    if (!isTypePresent(bound)) {
-                        return false;
-                    }
-                }
+                return isPresent(wildcardType.getUpperBounds()) && isPresent(wildcardType.getLowerBounds());
             }
 
             return true;
         } catch (final Throwable e) {
             return false;
         }
+    }
+
+    private static boolean isPresent(Type... types) {
+        if (types == null) {
+            return true;
+        }
+        try {
+            for (var type : types) {
+                if (!isTypePresent(type)) {
+                    return false;
+                }
+            }
+        } catch (final Throwable e) {
+            LOG.warn("Skipping Type that isn't fully loaded...", e);
+            return false;
+        }
+        return true;
     }
 
     public static boolean isMethodPresent(Method method) {
@@ -163,7 +164,7 @@ public class SafeOperations {
             if (!isTypePresent(annotation.annotationType())) {
                 return false;
             }
-            annotation.toString();
+            Objects.requireNonNull(annotation.toString());
             return true;
         } catch (final Throwable e) {
             LOG.warn("Skipping Annotation that isn't fully loaded...", e);
@@ -176,12 +177,7 @@ public class SafeOperations {
             return true;
         }
         try {
-            for (var typeParameter : genericDeclaration.getTypeParameters()) {
-                if (!isTypePresent(typeParameter)) {
-                    return false;
-                }
-            }
-            return true;
+            return isPresent(genericDeclaration.getTypeParameters());
         } catch (final Throwable e) {
             LOG.warn("Skipping GenericDeclaration that isn't fully loaded...", e);
             return false;
@@ -195,16 +191,18 @@ public class SafeOperations {
         return isExecutableLoaded(constructor);
     }
 
+    /**
+     * When it comes to serializing the type variable, we only care about the name and bounds.
+     * If the type variable is null, we return true, indicating that it is present.
+     * @param type the TypeVariable to check
+     * @return true if the TypeVariable is present, false otherwise
+     */
     public static boolean isTypeVariablePresent(TypeVariable<?> type) {
         if (type == null) {
             return true;
         }
         try {
-            type.getTypeName();
-            type.getName();
-            if (!isGenericDeclarationPresent(type.getGenericDeclaration())) {
-                return false;
-            }
+            Objects.requireNonNull(type.getName());
             for (var bound : type.getBounds()) {
                 if (!isTypePresent(bound)) {
                     return false;
@@ -221,31 +219,46 @@ public class SafeOperations {
             return true;
         }
         try {
-            executable.getName();
-            executable.toGenericString();
-            executable.getModifiers();
+            Objects.requireNonNull(executable.getName());
             if (!isGenericDeclarationPresent(executable)) {
                 return false;
             }
-            for (var parameter : executable.getParameters()) {
-                if (!isTypePresent(parameter.getType())) {
-                    return false;
-                }
-                if (!isTypePresent(parameter.getParameterizedType())) {
-                    return false;
-                }
-            }
-            for (var parameter : executable.getGenericParameterTypes()) {
-                if (!isTypePresent(parameter)) {
-                    return false;
-                }
-            }
-
+            Objects.requireNonNull(safelyGetParametersAndTypes(executable.getParameters(), executable.getGenericParameterTypes()));
             return true;
         } catch (final Throwable e) {
-            LOG.warn("Skipping Executable that isn't fully loaded...", e);
+            LOG.warn("Skipping Executable {} that isn't fully loaded...", executable, e);
             return false;
         }
+    }
+
+    public static List<Pair<Parameter, Type>> safelyGetParametersAndTypes(Parameter[] parameters, Type[] genericTypes) {
+        LinkedList<Pair<Parameter, Type>> pairs = new LinkedList<>();
+        try {
+            if (genericTypes.length < parameters.length) {
+                Type[] newGenericTypes = new Type[parameters.length];
+                int i;
+                for (i = 0; i < genericTypes.length; i++) {
+                    newGenericTypes[i] = genericTypes[i];
+                }
+                for (; i < parameters.length; i++) {
+                    newGenericTypes[i] = parameters[i].getType();
+                }
+                genericTypes = newGenericTypes;
+            }
+            for (int i = 0; i < parameters.length; i++) {
+                if (parameters[i] == null || genericTypes[i] == null) {
+                    throw new NullPointerException("Parameter or generic type cannot be null at index " + i);
+                }
+                if (!SafeOperations.isParameterPresent(parameters[i]) || SafeOperations.isTypeNotLoaded(genericTypes[i])) {
+                    throw new IllegalStateException("The full list of parameters is not loaded yet.");
+                }
+                pairs.add(new Pair<>(parameters[i], genericTypes[i]));
+            }
+        } catch (final Throwable e) {
+            LOG.warn("Skipping Parameters that aren't fully loaded...", e);
+            return null;
+        }
+        return pairs;
     }
 
     public static String safeRemap(final Method method) {
@@ -320,13 +333,41 @@ public class SafeOperations {
         }
         final var name = tryGet(clazz::getName);
         if (getRemap().isEmpty() || name.isEmpty()) {
-            return getRemappedClassName(clazz, true);
+            return getRemappedClassName(clazz, false);
         }
         final var remap = getRemap().get().getMappedClass(clazz);
         if (remap.isBlank()) {
-            return getRemappedClassName(clazz, true);
+            return getRemappedClassName(clazz, false);
         }
         return remap;
+    }
+
+    public static String getSimpleRemappedClassName(Class<?> clazz) {
+        String name = SafeOperations.safeRemap(clazz);
+        String packageName = clazz.getPackageName();
+        if (!packageName.isBlank()) {
+            name = name.replace(packageName + ".", "");
+        }
+        if (name.contains("$")) {
+            name = name.substring(name.lastIndexOf("$") + 1);
+        }
+        if (name.isBlank()) {
+            if (clazz.isLocalClass()) {
+                LOG.info("Local class {}'s simple name is blank.", clazz);
+            }
+            if (clazz.isAnonymousClass()) {
+                LOG.info("Anonymous class {}'s simple name is blank.", clazz);
+            }
+            if (clazz.isSynthetic()) {
+                LOG.info("Synthetic class {}'s simple name is blank.", clazz);
+            }
+            if (clazz.isHidden()) {
+                LOG.info("Hidden class {}'s simple name is blank.", clazz);
+            }
+
+            throw new IllegalStateException("Name of %s is blank!".formatted(clazz));
+        }
+        return name;
     }
 
     public static String getRemappedClassName(Class<?> clazz, boolean simple) {

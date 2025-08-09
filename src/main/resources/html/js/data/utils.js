@@ -22,7 +22,11 @@ function getAsArray(value) {
 
 function applyToAllClasses(action) {
     for (let i = 0; i < DATA.types.length; i++) {
-        action(getClass(i));
+        try {
+            action(getClass(i));
+        } catch(e) {
+            console.error(`An error occurred performing operation on class #${i}`, e);
+        }
     }
 }
 

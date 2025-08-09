@@ -24,6 +24,11 @@ public class SplitNameCollection implements Names {
     protected final TwoWayMap<NameID, NamePartIdentifier> data = new TwoWayMap<>(SplitNameCollection.NameIdentifier::new);
     protected Map<String, NameID> parts = new HashMap<>();
 
+    @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
+
     private static int findEndIndexForPart(String name) {
         if (name.length() == 1) {
             return 0; // If the name is a single character, return 0 as the end index.

@@ -5,7 +5,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 
 import java.util.NavigableMap;
 
-public interface Names extends JSONSerializable {
+public interface Names extends JSONSerializable, Lockable {
     NavigableMap<NameID, String> getAllNames();
 
     boolean contains(String name);

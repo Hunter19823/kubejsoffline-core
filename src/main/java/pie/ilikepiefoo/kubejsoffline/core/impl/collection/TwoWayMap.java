@@ -1,6 +1,7 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.collection;
 
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.Index;
+import pie.ilikepiefoo.kubejsoffline.core.util.ConcurrentNavigableMapIterator;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -9,13 +10,27 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-public class TwoWayMap<INDEX extends Index, VALUE> {
+public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
     protected final NavigableMap<INDEX, VALUE> indexToValueMap = new TreeMap<>();
     protected final Map<VALUE, INDEX> valueToIndexMap = new HashMap<>();
     protected IndexFactory<INDEX> indexFactory;
+    protected final ConcurrentNavigableMapIterator<INDEX, VALUE> iterator = new ConcurrentNavigableMapIterator<>(
+            indexToValueMap,
+            StackWalker.getInstance().walk(
+                    (s) -> s.skip(1).findFirst().orElseThrow(
+                            () -> new RuntimeException("Failed to get caller class for iterator")
+                    )
+            ).getClassName()
+    );
+    protected boolean locked = false;
 
     public TwoWayMap(IndexFactory<INDEX> indexFactory) {
         this.indexFactory = indexFactory;
+    }
+
+    @Override
+    public ConcurrentNavigableMapIterator<INDEX, VALUE> iterator() {
+        return iterator;
     }
 
     public Collection<VALUE> getValues() {
@@ -39,6 +54,9 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
     }
 
     public void reorganize(Comparator<VALUE> comparator) {
+        if (locked) {
+            throw new IllegalStateException("Cannot reorganize TwoWayMap while it is locked");
+        }
         var newValues = indexToValueMap
                 .entrySet()
                 .parallelStream()
@@ -78,16 +96,22 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
     }
 
     public synchronized INDEX add(VALUE value, IndexFactory<INDEX> indexFactory) {
-        INDEX index = indexFactory.createIndex(indexToValueMap.size());
+        if (locked) {
+            throw new IllegalStateException("Cannot modify TwoWayMap while it is locked");
+        }
         if (valueToIndexMap.containsKey(value)) {
             return valueToIndexMap.get(value);
         }
+        INDEX index = indexFactory.createIndex(indexToValueMap.size());
         indexToValueMap.put(index, value);
         valueToIndexMap.put(value, index);
         return index;
     }
 
     public synchronized void put(INDEX index, VALUE value) {
+        if (locked) {
+            throw new IllegalStateException("Cannot modify TwoWayMap while it is locked");
+        }
         indexToValueMap.put(index, value);
         valueToIndexMap.put(value, index);
     }
@@ -115,6 +139,10 @@ public class TwoWayMap<INDEX extends Index, VALUE> {
     public void clear() {
         indexToValueMap.clear();
         valueToIndexMap.clear();
+    }
+
+    public synchronized void toggleLock() {
+        locked = !locked;
     }
 
     public interface IndexFactory<INDEX extends Index> {

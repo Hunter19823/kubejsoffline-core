@@ -12,7 +12,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 
 import java.util.NavigableMap;
 
-public interface Types extends JSONSerializable {
+public interface Types extends JSONSerializable, Iterable<TypeData>, Lockable {
     NavigableMap<TypeOrTypeVariableID, TypeData> getAllTypes();
 
     NavigableMap<TypeID, RawClassData> getAllRawTypes();

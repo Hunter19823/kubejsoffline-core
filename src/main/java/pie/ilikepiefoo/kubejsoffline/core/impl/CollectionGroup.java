@@ -85,7 +85,7 @@ public record CollectionGroup(
                 .toList();
     }
 
-    public TypeOrTypeVariableID of(Type type) {
+    public synchronized TypeOrTypeVariableID of(Type type) {
         return TypeManager.INSTANCE.getID(type);
     }
 
@@ -198,6 +198,25 @@ public record CollectionGroup(
         packages().clear();
         names().clear();
         annotations().clear();
+    }
+
+    public synchronized void index() {
+        for (var type : types) {
+            type.index();
+            for (var annotation : annotations) {
+                annotation.index();
+            }
+            for (var parameter : parameters) {
+                parameter.index();
+            }
+        }
+        for (var pkg : packages) {
+            pkg.index();
+        }
+        types.toggleLock();
+        annotations.toggleLock();
+        parameters.toggleLock();
+        packages.toggleLock();
     }
 
     @Override

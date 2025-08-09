@@ -4,9 +4,10 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterizedTypeDat
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.RawClassData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.TypeVariableData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.WildcardTypeData;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 
-public interface TypeData extends IndexedData<TypeOrTypeVariableID> {
+public interface TypeData extends IndexedData<TypeOrTypeVariableID>, IndexGenerator {
     default boolean isRawType() {
         return false;
     }

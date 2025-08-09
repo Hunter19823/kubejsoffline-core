@@ -4,6 +4,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.AnnotatedDa
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.ModifierData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.NamedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
@@ -11,7 +12,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import java.util.List;
 
 
-public interface RawClassData extends AnnotatedData, NamedData, ModifierData, TypeData {
+public interface RawClassData extends AnnotatedData, NamedData, ModifierData, TypeData, IndexGenerator {
     List<TypeVariableID> getTypeParameters();
 
     PackageID getPackage();
@@ -43,4 +44,19 @@ public interface RawClassData extends AnnotatedData, NamedData, ModifierData, Ty
         return this;
     }
 
+    @Override
+    default void index() {
+        getPackage();
+        getName();
+        getSuperClass();
+        getInterfaces();
+        getInnerClasses();
+        getEnclosingClass();
+        getDeclaringClass();
+        getAnnotations();
+        getTypeParameters();
+        getConstructors().forEach(ConstructorData::index);
+        getFields().forEach(FieldData::index);
+        getMethods().forEach(MethodData::index);
+    }
 }

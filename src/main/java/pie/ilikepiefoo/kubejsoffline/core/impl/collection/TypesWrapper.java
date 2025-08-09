@@ -14,6 +14,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.ArrayIdentifier;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -28,6 +29,11 @@ public class TypesWrapper implements Types {
 
     public TypesWrapper() {
         this.data = new TwoWayMap<>(TypeIdentifier::new);
+    }
+
+    @Override
+    public void toggleLock() {
+        this.data.toggleLock();
     }
 
     @Override
@@ -122,6 +128,11 @@ public class TypesWrapper implements Types {
     }
 
     @Override
+    public Iterator<TypeData> iterator() {
+        return data.iterator();
+    }
+
+    @Override
     public void clear() {
         this.data.clear();
         this.rawTypes.clear();
@@ -153,6 +164,9 @@ public class TypesWrapper implements Types {
             LOG.warn("Reached maximum iterations while generating all types. Some types may not be fully initialized.");
         } else {
             LOG.info("Successfully Pre-generated all types from {} to {}", this.data.getFirstIndex(), lastType);
+        }
+        if ((lastType.getArrayIndex() + 1) != data.size()) {
+            LOG.warn("Type generation count mismatch: expected {}, got {}", data.size(), lastType.getArrayIndex());
         }
     }
 

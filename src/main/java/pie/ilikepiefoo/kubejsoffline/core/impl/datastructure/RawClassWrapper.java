@@ -62,7 +62,7 @@ public class RawClassWrapper implements RawClassData {
         if (getModifiers() != 0) {
             json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
         }
-        addAllTo(json, JSONProperty.TYPE_VARIABLES.jsName, true, this::getTypeParameters);
+        addAllTo(json, JSONProperty.TYPE_VARIABLES.jsName, false, this::getTypeParameters);
         addTo(json, JSONProperty.PACKAGE_NAME.jsName, this::getPackage);
         addTo(json, JSONProperty.SUPER_CLASS.jsName, this::getSuperClass);
         addAllTo(json, JSONProperty.INTERFACES.jsName, true, this::getInterfaces);
@@ -80,17 +80,7 @@ public class RawClassWrapper implements RawClassData {
         if (name != null) {
             return name;
         }
-        String name = SafeOperations.safeRemap(clazz);
-        if (name.contains("$")) {
-            name = name.substring(name.lastIndexOf("$") + 1);
-        }
-        if (name.contains(".")) {
-            name = name.substring(name.lastIndexOf(".") + 1);
-        }
-        if (name.isBlank()) {
-            throw new IllegalStateException("Name of %s is blank!".formatted(clazz));
-        }
-        return this.name = collectionGroup.names().addName(name);
+        return this.name = collectionGroup.names().addName(SafeOperations.getSimpleRemappedClassName(clazz));
     }
 
     @Override

@@ -108,7 +108,12 @@ function dataFilter() {
         const MATCHER = attributeMatcher(attribute, query, exact, includes);
 
         return (parameter) => {
-            return MATCHER(getClass(parameter.type()));
+            try {
+                return MATCHER(getClass(parameter.type()));
+            } catch(e) {
+                console.error(`Error matching parameter type attribute: ${attribute} with query: ${query}. Parameter Type: ${parameter.type()}`, e);
+                return false;
+            }
         }
     }
 
@@ -429,55 +434,83 @@ function dataFilter() {
     }
 
     // Collector
+    output.analyzeFields = function (subject) {
+        if (this._fieldFilters.length === 0) {
+            return;
+        }
+        for (let field of subject.fields(true)) {
+            if (this.matchesField(field)) {
+                this.results.fields.push(field);
+            }
+        }
+    }
+    output.analyzeOnlyParameters = function (subject) {
+        if (this._methodFilters.length === 0 && this._paramFilters.length !== 0) {
+            return;
+        }
+        for (let method of subject.methods(true)) {
+            for (let param of method.parameters()) {
+                if (this.matchesParam(param)) {
+                    this.results.parameters.push(method);
+                    break;
+                }
+            }
+        }
+    }
+
+    output.analyzeOnlyMethod = function (subject) {
+        if (this._methodFilters.length !== 0 && this._paramFilters.length === 0) {
+            return;
+        }
+        for (let method of subject.methods(true)) {
+            if (this._paramFilters.length === 0) {
+                if (this.matchesMethod(method)) {
+                    this.results.methods.push(method);
+                }
+            }
+        }
+    }
+    output.analyzeMethodAndParameters = function (subject) {
+        if (this._methodFilters.length !== 0 && this._paramFilters.length !== 0) {
+            return;
+        }
+        for (let method of subject.methods(true)) {
+            if (this.matchesMethod(method)) {
+                this.results.methods.push(method);
+            }
+            for (let param of method.parameters()) {
+                if (this.matchesParam(param)) {
+                    this.results.parameters.push(method);
+                    break;
+                }
+            }
+        }
+    }
+    output.analyzeMethods = function (subject) {
+        if (this._methodFilters.length === 0 && this._paramFilters.length === 0) {
+            return;
+        }
+        output.analyzeOnlyMethod(subject);
+        output.analyzeOnlyParameters(subject);
+        output.analyzeMethodAndParameters(subject);
+    }
+    output.findMatchingProperties = function (subject) {
+        if (!subject) {
+            console.error("subject is null!");
+        }
+        if (this._classFilters.length !== 0) {
+            if (this.matchesClass(subject)) {
+                this.results.classes.push(subject);
+            }
+        }
+        // TODO: Constructor Support.
+        output.analyzeFields(subject);
+        output.analyzeMethods(subject);
+    }
 
     output.findAllThatMatch = function () {
         console.debug(`Performing search with ${this._classFilters.length} class filters, ${this._fieldFilters.length} field filters, ${this._methodFilters.length} method filters, and ${this._paramFilters.length} param filters.`);
-        applyToAllClasses((subject) => {
-            if (!subject) {
-                console.error("subject is null!");
-            }
-            if (this._classFilters.length !== 0) {
-                if (this.matchesClass(subject)) {
-                    this.results.classes.push(subject);
-                }
-            }
-            // TODO: Constructor Support.
-            if (this._fieldFilters.length !== 0) {
-                for (let field of subject.fields(true)) {
-                    if (this.matchesField(field)) {
-                        this.results.fields.push(field);
-                    }
-                }
-            }
-            if (this._methodFilters.length !== 0 || this._paramFilters.length !== 0) {
-                if (this._methodFilters.length === 0) {
-                    for (let method of subject.methods(true)) {
-                        for (let param of method.parameters()) {
-                            if (this.matchesParam(param)) {
-                                this.results.parameters.push(method);
-                                break;
-                            }
-                        }
-                    }
-                } else {
-                    for (let method of subject.methods(true)) {
-                        if (this._paramFilters.length === 0) {
-                            if (this.matchesMethod(method)) {
-                                this.results.methods.push(method);
-                            }
-                            continue;
-                        }
-                        for (let param of method.parameters()) {
-                            if (this.matchesParam(param) && this.matchesMethod(method)) {
-                                this.results.methods.push(method);
-                                this.results.parameters.push(method);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        });
+        applyToAllClasses((subject) => output.findMatchingProperties(subject));
         return this;
     }
 

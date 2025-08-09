@@ -7,10 +7,16 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.AnnotationData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.IdentifierBase;
 
+import java.util.Iterator;
 import java.util.NavigableMap;
 
 public class AnnotationsWrapper implements Annotations {
     protected final TwoWayMap<AnnotationID, AnnotationData> data = new TwoWayMap<>(AnnotationIdentifier::new);
+
+    @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
 
     @Override
     public NavigableMap<AnnotationID, AnnotationData> getAllAnnotations() {
@@ -32,6 +38,11 @@ public class AnnotationsWrapper implements Annotations {
     @Override
     public void clear() {
         this.data.clear();
+    }
+
+    @Override
+    public Iterator<AnnotationData> iterator() {
+        return data.iterator();
     }
 
 

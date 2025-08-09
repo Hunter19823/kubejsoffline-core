@@ -7,10 +7,21 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.identifier.IdentifierBase;
 
+import java.util.Iterator;
 import java.util.NavigableMap;
 
 public class ParametersWrapper implements Parameters {
     protected final TwoWayMap<ParameterID, ParameterData> data = new TwoWayMap<>(ParameterIdentifier::new);
+
+    @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
+
+    @Override
+    public Iterator<ParameterData> iterator() {
+        return data.iterator();
+    }
 
     @Override
     public NavigableMap<ParameterID, ParameterData> getAllParameters() {

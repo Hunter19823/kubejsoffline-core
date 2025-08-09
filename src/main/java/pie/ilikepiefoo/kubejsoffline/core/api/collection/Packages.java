@@ -6,7 +6,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 
 import java.util.NavigableMap;
 
-public interface Packages extends JSONSerializable {
+public interface Packages extends JSONSerializable, Iterable<PackagePart>, Lockable {
 
     NavigableMap<PackageID, PackagePart> getAllPackages();
 
@@ -23,5 +23,4 @@ public interface Packages extends JSONSerializable {
     PackagePart getPackage(String packageName);
 
     void clear();
-
 }
