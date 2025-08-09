@@ -1,5 +1,5 @@
 function changeURL(url) {
-    console.log("Changing URL to: " + url);
+    console.debug("Changing URL to: " + url);
     const oldScrollY = window.scrollY;
     const oldScrollX = window.scrollX;
     history.pushState("", document.title, window.location.pathname + url);
@@ -292,9 +292,9 @@ function createLinkSpan(action) {
 
 function copyLinkToClipboard(link, currentElementID = null) {
     return createLinkSpan(() => {
-        navigator.clipboard.writeText(link).then(r => console.log("Successfully Copied link to clipboard"));
+        navigator.clipboard.writeText(link).then(r => console.debug("Successfully Copied link to clipboard"));
         if (currentElementID) {
-            console.log("Focusing link element: " + currentElementID);
+            console.debug("Focusing link element: " + currentElementID);
             focusElement(currentElementID);
         }
     });

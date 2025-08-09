@@ -574,7 +574,7 @@ function searchFromParameters(parameters) {
 
     if (!_last_search_parameters || !compareSearchParameters(_last_search_parameters, parameters)) {
         // The search parameters have changed or don't exist, so we need to create a new filter
-        console.log("Creating new filter either because the search parameters have changed or don't exist");
+        console.debug("Creating new filter either because the search parameters have changed or don't exist");
         _last_search_parameters = parameters;
         _last_filter = dataFilter();
         const INCLUSIVE = parameters.has('inclusive') ? parameters.get('inclusive') === 'true' : true;
@@ -592,13 +592,13 @@ function searchFromParameters(parameters) {
             }
         }
 
-        console.log("Finding all matches...");
+        console.debug("Finding all matches...");
         _last_filter.findAllThatMatch();
-        console.log("Done finding all matches");
+        console.debug("Done finding all matches");
         // Sort the results
-        console.log("Sorting results...");
+        console.debug("Sorting results...");
         _last_filter.sortResults();
-        console.log("Done sorting results");
+        console.debug("Done sorting results");
     }
 
     loadSearchResults();

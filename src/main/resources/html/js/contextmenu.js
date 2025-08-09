@@ -90,7 +90,7 @@ function createBaseContextMenu() {
     function addSettingItem(name, setting) {
         return addToggleMenuItem(name, async () => {
             GLOBAL_SETTINGS[setting] = !GLOBAL_SETTINGS[setting];
-            console.log("Setting item triggered: " + GLOBAL_SETTINGS[setting]);
+            console.debug("Setting item triggered: " + GLOBAL_SETTINGS[setting]);
             onHashChange();
         }, GLOBAL_SETTINGS[setting]);
     }
@@ -104,7 +104,7 @@ function createBaseContextMenu() {
     if (!window.getSelection().isCollapsed) {
         addMenuItem('Copy', () => {
             navigator.clipboard.writeText(window.getSelection().toString()).then(r => {
-                console.log('Finished Copying to clipboard');
+                console.debug('Finished Copying to clipboard');
             });
         });
         // Find all selected entries with a type attribute
@@ -172,7 +172,7 @@ function createBaseContextMenu() {
             if (code.length !== 0) {
                 addMenuItem('Copy Selected Code' + (classes.length > 1 ? 'es' : ''), () => {
                     navigator.clipboard.writeText(code).then(r => {
-                        console.log('Finished Copying Code to clipboard...');
+                        console.debug('Finished Copying Code to clipboard...');
                     });
 
                     menu.remove();
@@ -190,7 +190,7 @@ function createBaseContextMenu() {
         history.forward();
     });
     addMenuItem('Reload', async () => {
-        console.log("Reload Triggered...");
+        console.debug("Reload Triggered...");
         onHashChange();
     });
     addMenuItem('Go To Home Page', () => {

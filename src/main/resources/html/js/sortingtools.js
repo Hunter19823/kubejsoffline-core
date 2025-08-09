@@ -279,7 +279,7 @@ function addSortTables() {
     if (GLOBAL_SETTINGS.debug) {
         document.body.append(document.getElementById('log'));
 
-        console.log("Finished adding sort tables and removing log to force logs to be at the bottom of the page.");
+        console.debug("Finished adding sort tables and removing log to force logs to be at the bottom of the page.");
     }
 }
 

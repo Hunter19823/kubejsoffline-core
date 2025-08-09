@@ -673,7 +673,7 @@ PageableSortableTable = class {
         let sort_header_name = this.getSortForHeader(header);
         th.append(span(header));
         if (!exists(sort_header_name) || index > this.sort_option_names.length) {
-            console.log("Header of ", this.table_id, " does not have a sort option for ", header);
+            console.debug("Header of ", this.table_id, " does not have a sort option for ", header);
             return th;
         }
         const clonedURL = this.url.clone();

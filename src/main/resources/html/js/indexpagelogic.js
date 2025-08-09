@@ -253,7 +253,7 @@ function onHashChange() {
         return;
     }
 
-    console.log(`Decoded URL created in hash change. Raw Hash: '${window.location.hash}' Decoded Hash: '${CURRENT_URL.hash}' Hash Length: '${CURRENT_URL.hash.length}' Params: '${CURRENT_URL.params.toString()}' Href: '${CURRENT_URL.href()}' Is Homepage: '${CURRENT_URL.isHome()}' Is Class: '${CURRENT_URL.isClass()}' Is Search: '${CURRENT_URL.isSearch()}' Has Focus: '${CURRENT_URL.hasFocus()}' Focus: '${CURRENT_URL.getFocusOrDefaultHeader()}' Parameter Size: '${CURRENT_URL.getParamSize()}' Safe Parameter Size: '${CURRENT_URL.getParamSizeSafe()}'`);
+    console.debug(`Decoded URL created in hash change. Raw Hash: '${window.location.hash}' Decoded Hash: '${CURRENT_URL.hash}' Hash Length: '${CURRENT_URL.hash.length}' Params: '${CURRENT_URL.params.toString()}' Href: '${CURRENT_URL.href()}' Is Homepage: '${CURRENT_URL.isHome()}' Is Class: '${CURRENT_URL.isClass()}' Is Search: '${CURRENT_URL.isSearch()}' Has Focus: '${CURRENT_URL.hasFocus()}' Focus: '${CURRENT_URL.getFocusOrDefaultHeader()}' Parameter Size: '${CURRENT_URL.getParamSize()}' Safe Parameter Size: '${CURRENT_URL.getParamSizeSafe()}'`);
 
     if (!DATA._optimized) {
         throw new Error("Data is not optimized. Please optimize the data before using the page.");
@@ -263,7 +263,7 @@ function onHashChange() {
 
     // Is this the home page?
     if (CURRENT_URL.isHome() && !hasState) {
-        console.log("Loading Homepage.");
+        console.debug("Loading Homepage.");
 
         // Load the home page.
         createHomePage();
@@ -278,7 +278,7 @@ function onHashChange() {
             console.error("Error state in URL detected.Cannot be a class and a homepage at the same time.");
             return;
         }
-        console.log("Loading Class from URL.");
+        console.debug("Loading Class from URL.");
 
         // Load the class.
         loadClass(CURRENT_URL.hash);
@@ -292,7 +292,7 @@ function onHashChange() {
             console.error("Error state in URL detected. Cannot be a search and a class/homepage at the same time.");
             return;
         }
-        console.log("Loading search from URL.");
+        console.debug("Loading search from URL.");
 
         // Load the search.
         searchFromParameters(CURRENT_URL.clone().params);
@@ -534,7 +534,7 @@ window.onload = () => {
 }
 
 document.onload = () => {
-    console.log("Document Loaded.");
+    console.debug("Document Loaded.");
     createInPageLog();
 }
 
