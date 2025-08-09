@@ -55,8 +55,8 @@ public interface RawClassData extends AnnotatedData, NamedData, ModifierData, Ty
         getDeclaringClass();
         getAnnotations();
         getTypeParameters();
-        getConstructors().forEach(ConstructorData::index);
-        getFields().forEach(FieldData::index);
-        getMethods().forEach(MethodData::index);
+        getConstructors();
+        getFields();
+        getMethods();
     }
 }

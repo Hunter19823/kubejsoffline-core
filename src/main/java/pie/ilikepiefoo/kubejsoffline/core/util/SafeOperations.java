@@ -3,6 +3,7 @@ package pie.ilikepiefoo.kubejsoffline.core.util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.TypeNameMapper;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -395,6 +396,31 @@ public class SafeOperations {
         } catch (final Throwable e) {
             return Optional.empty();
         }
+    }
+
+    public static <T extends IndexGenerator> Optional<T> tryIndex(final T data) {
+        if (null == data) {
+            return Optional.empty();
+        }
+        try {
+            data.index();
+            return Optional.of(data);
+        } catch (final Throwable e) {
+            LOG.warn("An error occurred while executing the index", e);
+            return Optional.empty();
+        }
+    }
+
+    public static <T extends IndexGenerator> List<T> tryIndexDroppingFailures(final List<T> data) {
+        if (null == data || data.isEmpty()) {
+            return List.of();
+        }
+        return data
+                .stream()
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
     }
 
     public static Type[] getAllNonObjects(Type[] bounds) {

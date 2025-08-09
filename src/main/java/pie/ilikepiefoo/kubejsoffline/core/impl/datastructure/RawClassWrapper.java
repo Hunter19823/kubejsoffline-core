@@ -166,7 +166,7 @@ public class RawClassWrapper implements RawClassData {
         if (fields != null) {
             return fields;
         }
-        return this.fields = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of());
+        return this.fields = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of()));
     }
 
     @Override
@@ -174,7 +174,7 @@ public class RawClassWrapper implements RawClassData {
         if (constructors != null) {
             return constructors;
         }
-        return this.constructors = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredConstructors())).orElse(List.of());
+        return this.constructors = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredConstructors())).orElse(List.of()));
     }
 
     @Override
@@ -182,7 +182,7 @@ public class RawClassWrapper implements RawClassData {
         if (methods != null) {
             return methods;
         }
-        return this.methods = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredMethods())).orElse(List.of());
+        return this.methods = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredMethods())).orElse(List.of()));
     }
 
     @Override
