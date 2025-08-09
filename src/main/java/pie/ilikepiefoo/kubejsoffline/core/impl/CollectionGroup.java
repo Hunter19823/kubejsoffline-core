@@ -203,6 +203,15 @@ public record CollectionGroup(
     public synchronized void index() {
         for (var type : types) {
             type.index();
+        }
+        for (var annotation : annotations) {
+            annotation.index();
+        }
+        for (var parameter : parameters) {
+            parameter.index();
+        }
+        for (var type : types) {
+            type.index();
             for (var annotation : annotations) {
                 annotation.index();
             }

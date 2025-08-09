@@ -31,7 +31,27 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
      */
     @Override
     public boolean hasNext() {
-        return refillRemainingKeys() || !remainingValues.empty();
+        if (!remainingValues.empty()) {
+            return true; // If there are already remaining values, no need to refill
+        }
+        if (currentKey == null && !map.isEmpty()) {
+            currentKey = map.firstKey(); // Start from the first key if currentKey is null
+        }
+        if (currentKey == null) {
+            return false; // No keys to iterate
+        }
+        var finalKey = map.lastKey();
+        if (currentKey == null) {
+            return false; // No more keys to iterate
+        }
+        if (currentKey == finalKey) {
+            return false; // If currentKey is the last key, no more elements to iterate
+        }
+        var subMap = map.subMap(currentKey, true, finalKey, true);
+        remainingValues.addAll(subMap.values());
+        LOG.info("Found {} new elements that need to be processed in the {} queue. Finished Processing {} elements.", remainingValues.size(), name, currentKey);
+        currentKey = finalKey;
+        return !remainingValues.isEmpty();
     }
 
     /**
@@ -46,24 +66,6 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
             throw new NoSuchElementException("No more elements in the iterator.");
         }
         return remainingValues.pop();
-    }
-
-    private boolean refillRemainingKeys() {
-        if (currentKey == null && !map.isEmpty()) {
-            currentKey = map.firstKey(); // Start from the first key if currentKey is null
-        }
-        if (currentKey == null) {
-            return false; // No keys to iterate
-        }
-        var finalKey = map.lastKey();
-        if (currentKey == null || currentKey == finalKey) {
-            return false; // No more keys to iterate
-        }
-        var subMap = map.subMap(currentKey, true, finalKey, true);
-        currentKey = finalKey;
-        remainingValues.addAll(subMap.values());
-        LOG.info("Refilled remaining values in {} iterator with {} elements.", name, remainingValues.size());
-        return !remainingValues.isEmpty();
     }
 
     /**

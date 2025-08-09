@@ -9,7 +9,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.context.TypeWrapperProvider;
 import pie.ilikepiefoo.kubejsoffline.core.html.page.IndexPage;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.impl.TypeManager;
-import pie.ilikepiefoo.kubejsoffline.core.impl.collection.TypesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.GlobalConstants;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
@@ -20,8 +19,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 public interface DocumentationProvider {
@@ -89,22 +90,37 @@ public interface DocumentationProvider {
         StreamSupport
                 .stream(getBindingsProvider().getBindings().spliterator(), true)
                 .forEach((binding) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(binding.getType())));
+        StreamSupport
+                .stream(getTypeWrapperProvider().getTypeWrappers().spliterator(), true)
+                        .forEach((wrapper) -> {
+                            SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(wrapper.getWrappedType()));
+                            long supportedTypes = SafeOperations.tryGet(wrapper::getSupportedTypes)
+                                    .stream()
+                                    .parallel()
+                                    .flatMap((types) -> Arrays.stream(types.toArray(Type[]::new)))
+                                    .map((type) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(type)))
+                                    .filter(Optional::isPresent)
+                                    .count();
+                            if (supportedTypes == 0) {
+                                LOG.info("Type wrapper {} has no supported types!", wrapper.getWrappedType());
+                            }
+                        });
 
         Arrays.stream(classes).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
 
+        Arrays.stream(reflectionHelper.getEventClasses()).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
+
         timeMillis = System.currentTimeMillis() - timeMillis;
-        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding classes to indexer in %,dms. Now searching classes for all nested connections...", ++step, totalSteps, timeMillis));
+        int totalClasses = CollectionGroup.INSTANCE.types().getAllTypes().size();
+        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding classes to indexer in %,dms. A total of %,d classes were found. Now searching classes for all nested connections...", ++step, totalSteps, timeMillis, CollectionGroup.INSTANCE.types().getAllTypes().size()));
         timeMillis = System.currentTimeMillis();
 
         CollectionGroup.INSTANCE.index();
 
-        if (CollectionGroup.INSTANCE.types() instanceof TypesWrapper typesWrapper) {
-            typesWrapper.generateAllTypes();
-        }
-
         timeMillis = System.currentTimeMillis() - timeMillis;
-        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding %s classes to indexer in %,dms", step, totalSteps, classes.length, timeMillis));
-
+        int newClasses = CollectionGroup.INSTANCE.types().getAllTypes().size();
+        int difference = newClasses - totalClasses;
+        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Finished adding %s classes to indexer in %,dms. A total of %,d additional classes were found.", step, totalSteps, classes.length, timeMillis, difference));
 
         // Create index.html
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Generating index.html and transforming all dependants... (this may take a while)", ++step, totalSteps));

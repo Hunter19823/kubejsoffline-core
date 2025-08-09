@@ -129,7 +129,7 @@ public class TypesWrapper implements Types {
 
     @Override
     public Iterator<TypeData> iterator() {
-        return data.iterator();
+        return this.data.iterator();
     }
 
     @Override
@@ -173,7 +173,6 @@ public class TypesWrapper implements Types {
     @Override
     public JsonElement toJSON() {
         var json = new JsonArray();
-        generateAllTypes();
         var entries = this.data
                 .getValues()
                 .stream()

@@ -16,11 +16,21 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
     protected IndexFactory<INDEX> indexFactory;
     protected final ConcurrentNavigableMapIterator<INDEX, VALUE> iterator = new ConcurrentNavigableMapIterator<>(
             indexToValueMap,
-            StackWalker.getInstance().walk(
-                    (s) -> s.skip(1).findFirst().orElseThrow(
-                            () -> new RuntimeException("Failed to get caller class for iterator")
+            StackWalker
+                    .getInstance()
+                    .walk(
+                            (s) -> s
+                                    .skip(1)
+                                    .findFirst()
+                                    .orElseThrow(
+                                            () -> new RuntimeException("Failed to get caller class for iterator")
+                                    )
                     )
-            ).getClassName()
+                    .getClassName()
+                    .replace(
+                            this.getClass().getPackageName()+".",
+                            ""
+                    )
     );
     protected boolean locked = false;
 
