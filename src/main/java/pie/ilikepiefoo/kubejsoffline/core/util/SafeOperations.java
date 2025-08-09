@@ -44,9 +44,6 @@ public class SafeOperations {
                 type = type.getComponentType();
                 nested = type.isArray();
             }
-            if (type.isAnonymousClass()) {
-                return isTypePresent(type.getGenericSuperclass());
-            }
 
             Objects.requireNonNull(SafeOperations.getSimpleRemappedClassName(type));
 
@@ -59,6 +56,10 @@ public class SafeOperations {
             }
 
             if (!isTypePresent(type.getEnclosingClass())) {
+                return false;
+            }
+
+            if (!isTypePresent(type.getDeclaringClass())) {
                 return false;
             }
 
