@@ -106,9 +106,9 @@ public interface DocumentationProvider {
                             }
                         });
 
-        Arrays.stream(classes).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
-
         Arrays.stream(reflectionHelper.getEventClasses()).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
+
+        Arrays.stream(classes).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
 
         timeMillis = System.currentTimeMillis() - timeMillis;
         int totalClasses = CollectionGroup.INSTANCE.types().getAllTypes().size();
