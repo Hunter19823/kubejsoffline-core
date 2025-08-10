@@ -471,11 +471,7 @@ function getRawClassSignature(type, outputSpan, config) {
         outputSpan.append(span('.'));
     }
 
-    if (exists(config.getOverrideID())) {
-        outputSpan.append(createLink(span(name), config.getOverrideID()));
-    } else {
-        outputSpan.append(createLink(span(name), type.id()));
-    }
+    outputSpan.append(createLink(span(name), config.getLinkableID(type.id())));
 
     if (config.getDefiningParameterizedType()) {
         return outputSpan;
@@ -512,15 +508,15 @@ function getRawClassSignature(type, outputSpan, config) {
 function getTypeVariableSignature(type, outputSpan, config) {
     const typeVariableName = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
     if (config.getDefiningTypeVariable(type.id())) {
-        outputSpan.append(createLink(span(typeVariableName), type.id()));
+        outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
         return outputSpan;
     }
     const bounds = type.getTypeVariableBounds();
     if (bounds.length === 0) {
-        outputSpan.append(createLink(span(typeVariableName), type.id()));
+        outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
         return outputSpan;
     }
-    outputSpan.append(createLink(span(typeVariableName), type.id()));
+    outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
     outputSpan.append(
         tagJoiner(
             bounds,
@@ -601,6 +597,7 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             ownerType,
             config
                 .setDefiningParameterizedType(false)
+                .setOverrideID(type.id())
                 .setTypeVariableMap(type.getTypeVariableMap())
         );
         outputSpan.append(ownerPrefix);
@@ -639,7 +636,7 @@ function createLinkableSignature(type, config) {
     const outputSpan = document.createElement('span');
     if (type.isTypeVariable()) {
         if (config.getDefiningTypeVariable(type.id())) {
-            outputSpan.append(createLink(span(type.name()), type.id()));
+            outputSpan.append(createLink(span(type.name()), config.getLinkableID(type.id())));
             return outputSpan;
         }
         type = config.remapType(type);
@@ -738,6 +735,16 @@ signature_parameters = class {
 
     getOverrideID() {
         return this.overrideID;
+    }
+
+    getLinkableID(fallbackId) {
+        if (exists(this.overrideID)) {
+            return this.overrideID;
+        }
+        if (exists(fallbackId)) {
+            return fallbackId;
+        }
+        throw new Error("No override ID or fallback ID provided. Cannot create linkable signature.");
     }
 
     getDefiningParameterizedType() {
