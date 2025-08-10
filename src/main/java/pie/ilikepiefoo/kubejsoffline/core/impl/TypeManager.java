@@ -41,12 +41,6 @@ public class TypeManager {
         if (type == null) {
             throw new NullPointerException("Type cannot be null");
         }
-        if (type instanceof Class<?> clazz && (clazz.isAnonymousClass())) {
-            return SafeOperations
-                    .tryGet(clazz::getGenericSuperclass)
-                    .map(this::getID)
-                    .orElseThrow(() -> new UnsupportedOperationException("Anonymous class "+ clazz +" is not supported."));
-        }
         if (SafeOperations.isTypeNotLoaded(type)) {
             throw new UnsupportedOperationException("Type " + type + " is not fully loaded");
         }
@@ -65,14 +59,6 @@ public class TypeManager {
         }
         if (arrayDepth > 0) {
             return new TypeIdentifier(getID(currentType), arrayDepth);
-        }
-        boolean isAnonymous = false;
-        while (currentType instanceof Class<?> clazz && clazz.isAnonymousClass()) {
-            currentType = clazz.getGenericSuperclass();
-            isAnonymous = true;
-        }
-        if (isAnonymous) {
-            return getID(currentType);
         }
         // Raw Type
         if (type instanceof Class<?> clazz) {

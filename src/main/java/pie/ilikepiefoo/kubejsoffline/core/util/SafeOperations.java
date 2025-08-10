@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class SafeOperations {
     private static final Logger LOG = LogManager.getLogger();
@@ -51,7 +52,7 @@ public class SafeOperations {
                 Objects.requireNonNull(type.getPackage());
             }
 
-            if (!isTypePresent(type.getGenericSuperclass())) {
+            if (!hasNoSuperClass(type) && getSuperClass(type, SafeOperations::isTypePresent).isEmpty()) {
                 return false;
             }
 
@@ -121,6 +122,26 @@ public class SafeOperations {
         } catch (final Throwable e) {
             return false;
         }
+    }
+
+    private static boolean hasNoSuperClass(Class<?> clazz) {
+        return clazz == null ||
+                clazz == Object.class ||
+                clazz == Void.class ||
+                clazz.isArray() ||
+                clazz.isPrimitive() ||
+                clazz.isInterface();
+    }
+
+    public static Optional<Type> getSuperClass(Class<?> clazz, Predicate<Type> filter) {
+        if (clazz == null) {
+            return Optional.empty();
+        }
+        var genericSuperClass = tryGet(clazz::getGenericSuperclass)
+                .filter(filter);
+        var superClass = tryGet(clazz::getSuperclass)
+                .filter(filter);
+        return genericSuperClass.or(() -> superClass);
     }
 
     private static boolean isPresent(Type... types) {
@@ -436,14 +457,12 @@ public class SafeOperations {
             return true;
         }
         try {
-            if (isTypeNotLoaded(parameter.getType())) {
-                return false;
-            }
-            return !isTypeNotLoaded(parameter.getParameterizedType());
+            Objects.requireNonNull(parameter.getName());
         } catch (final Throwable e) {
             LOG.warn("Skipping Parameter that isn't fully loaded...", e);
             return false;
         }
+        return true;
     }
 
     @FunctionalInterface

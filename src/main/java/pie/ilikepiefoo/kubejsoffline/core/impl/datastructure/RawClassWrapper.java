@@ -16,8 +16,10 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 public class RawClassWrapper implements RawClassData {
     protected final Class<?> clazz;
@@ -120,7 +122,7 @@ public class RawClassWrapper implements RawClassData {
         if (superClass != null) {
             return superClass;
         }
-        return this.superClass = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getGenericSuperclass()).asType()).orElse(null);
+        return this.superClass = SafeOperations.getSuperClass(clazz, ((Predicate<Type>) SafeOperations::isTypeNotLoaded).negate()).map(collectionGroup::of).map(TypeOrTypeVariableID::asType).orElse(null);
     }
 
     @Override
