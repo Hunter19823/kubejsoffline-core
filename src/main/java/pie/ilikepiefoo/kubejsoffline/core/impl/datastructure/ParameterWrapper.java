@@ -92,7 +92,7 @@ public class ParameterWrapper implements ParameterData {
         return Objects.hash(
                 getName(),
                 getModifiers(),
-                parameter.getType(),
+                getType(),
                 getAnnotations()
         );
     }
