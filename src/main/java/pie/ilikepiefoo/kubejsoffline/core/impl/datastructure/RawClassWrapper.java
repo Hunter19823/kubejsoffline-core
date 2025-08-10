@@ -189,7 +189,7 @@ public class RawClassWrapper implements RawClassData {
 
     @Override
     public int hashCode() {
-        return this.clazz.hashCode();
+        return this.index.hashCode();
     }
 
     @Override

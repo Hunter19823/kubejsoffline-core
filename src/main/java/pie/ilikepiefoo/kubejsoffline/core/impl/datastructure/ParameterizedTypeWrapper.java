@@ -84,7 +84,7 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
 
     @Override
     public int hashCode() {
-        return parameterizedType.hashCode();
+        return this.index.hashCode();
     }
 
     @Override

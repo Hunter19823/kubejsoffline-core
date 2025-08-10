@@ -66,7 +66,7 @@ public class TypeVariableWrapper implements TypeVariableData {
 
     @Override
     public int hashCode() {
-        return typeVariable.hashCode();
+        return this.index.hashCode();
     }
 
     @Override

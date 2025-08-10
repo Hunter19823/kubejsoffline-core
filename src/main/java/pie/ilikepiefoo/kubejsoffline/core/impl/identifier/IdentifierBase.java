@@ -27,7 +27,9 @@ public class IdentifierBase implements Index {
     public int hashCode() {
         int arrayIndex = getArrayIndex();
         return Integer.hashCode(arrayIndex);
-    }    @Override
+    }
+
+    @Override
     public int getArrayIndex() {
         return arrayIndexSupplier.get();
     }
