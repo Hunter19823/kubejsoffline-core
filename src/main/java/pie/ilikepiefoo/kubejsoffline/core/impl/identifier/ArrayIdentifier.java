@@ -49,4 +49,9 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
     public String toString() {
         return "%d%s%s".formatted(getArrayIndex(), "[".repeat(getArrayDepth()), "]".repeat(getArrayDepth()));
     }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode() ^ arrayDepth;
+    }
 }

@@ -13,7 +13,7 @@ import java.util.StringJoiner;
 public class ReflectionUtils {
 
     public static int hashCode(final Type type) {
-        return Optional.ofNullable(type).map(ReflectionUtils::getGenericDefinition).map(Objects::hashCode).orElse(0);
+        return Optional.ofNullable(type).map(ReflectionUtils::getGenericDefinition).map(Objects::hashCode).orElse();
     }
 
     public static int hashCode(Type[] types) {

@@ -7,7 +7,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterizedTypeDat
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
-import pie.ilikepiefoo.kubejsoffline.core.util.ReflectionUtils;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.ParameterizedType;
@@ -89,7 +88,7 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
         return Objects.hash(
                 parameterizedType.getRawType(),
                 parameterizedType.getOwnerType(),
-                ReflectionUtils.hashCode(parameterizedType.getActualTypeArguments())
+                getActualTypeArguments().hashCode()
         );
     }
 
