@@ -445,7 +445,11 @@ function getClass(id) {
         if (exists(packageName)) {
             this.data._cachedPackageName = getPackageName(packageName);
         } else {
-            this.data._cachedPackageName = "";
+            if (this.isRawClass()) {
+                this.data._cachedPackageName = "";
+            } else if (this.isParameterized()) {
+                this.data._cachedPackageName = getClass(this.getRawType()).getPackageName();
+            }
         }
         return this.data._cachedPackageName;
     }
