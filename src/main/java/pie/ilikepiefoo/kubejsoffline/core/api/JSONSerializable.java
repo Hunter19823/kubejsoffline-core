@@ -92,8 +92,8 @@ public interface JSONSerializable {
                 jsonArray.add(jsonElementValue);
             } catch (final Throwable e) {
                 LOG.warn("Failed to convert JSONSerializable to JSONElement", e);
-            } finally {
                 if (!skipNulls) {
+                    // If skipNulls is false, we log the error and continue
                     return;
                 }
             }
