@@ -295,7 +295,7 @@ function getGenericDefinitionLogic(type, config) {
         type = config.remapType(type);
     }
     if (type.isRawClass()) {
-        if (exists(type.getDeclaringClass()) && !config.getDefiningParameterizedType()) {
+        if (exists(type.getDeclaringClass())) {
             return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
         }
         return getRawClassName(type, config);
