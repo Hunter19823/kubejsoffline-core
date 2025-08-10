@@ -11,6 +11,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
 import java.util.List;
+import java.util.Optional;
 
 public class WildcardTypeWrapper implements WildcardTypeData {
     protected final CollectionGroup collectionGroup;
@@ -62,7 +63,7 @@ public class WildcardTypeWrapper implements WildcardTypeData {
 
     @Override
     public int hashCode() {
-        return this.index.hashCode();
+        return Optional.ofNullable(this.index).map(TypeOrTypeVariableID::hashCode).orElse(super.hashCode());
     }
 
     @Override

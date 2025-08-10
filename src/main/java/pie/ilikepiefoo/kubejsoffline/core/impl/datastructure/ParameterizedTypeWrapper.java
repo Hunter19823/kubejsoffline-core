@@ -11,6 +11,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
+import java.util.Optional;
 
 public class ParameterizedTypeWrapper implements ParameterizedTypeData {
     protected final CollectionGroup collectionGroup;
@@ -84,7 +85,7 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
 
     @Override
     public int hashCode() {
-        return this.index.hashCode();
+        return Optional.ofNullable(this.index).map(TypeOrTypeVariableID::hashCode).orElse(super.hashCode());
     }
 
     @Override

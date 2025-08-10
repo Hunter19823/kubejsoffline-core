@@ -12,6 +12,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.List;
+import java.util.Optional;
 
 public class TypeVariableWrapper implements TypeVariableData {
     protected final CollectionGroup collectionGroup;
@@ -66,7 +67,7 @@ public class TypeVariableWrapper implements TypeVariableData {
 
     @Override
     public int hashCode() {
-        return this.index.hashCode();
+        return Optional.ofNullable(this.index).map(TypeOrTypeVariableID::hashCode).orElse(super.hashCode());
     }
 
     @Override

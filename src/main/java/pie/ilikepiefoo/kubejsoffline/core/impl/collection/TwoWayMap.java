@@ -1,5 +1,6 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.collection;
 
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.IndexedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.Index;
 import pie.ilikepiefoo.kubejsoffline.core.util.ConcurrentNavigableMapIterator;
 
@@ -121,6 +122,9 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
             return valueToIndexMap.get(value);
         }
         INDEX index = indexFactory.createIndex(indexToValueMap.size());
+        if (value instanceof IndexedData indexedData) {
+            indexedData.setIndex(index);
+        }
         indexToValueMap.put(index, value);
         valueToIndexMap.put(value, index);
         return index;
