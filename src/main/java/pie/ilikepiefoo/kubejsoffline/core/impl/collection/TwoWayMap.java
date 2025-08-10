@@ -149,6 +149,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
     public void clear() {
         indexToValueMap.clear();
         valueToIndexMap.clear();
+        iterator.reset();
     }
 
     public synchronized void toggleLock() {

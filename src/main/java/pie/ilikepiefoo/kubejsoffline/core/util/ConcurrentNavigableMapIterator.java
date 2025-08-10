@@ -48,6 +48,10 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
         if (currentKey == null) {
             return false; // No keys to iterate
         }
+        if (map.isEmpty()) {
+            LOG.info("The {} queue is empty, nothing to process.", name);
+            return false; // If the map is empty, no elements to iterate
+        }
         var finalKey = map.lastKey();
         if (currentKey == null) {
             return false; // No more keys to iterate
@@ -74,6 +78,12 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
             throw new NoSuchElementException("No more elements in the iterator.");
         }
         return remainingValues.pop();
+    }
+
+    public void reset() {
+        remainingValues.clear();
+        currentKey = null;
+        LOG.info("Iterator for {} has been reset.", name);
     }
 
 
