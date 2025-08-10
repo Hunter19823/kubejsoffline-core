@@ -11,6 +11,9 @@ import java.util.StringJoiner;
 public class ReflectionUtils {
 
     public static int hashCode(final Type type) {
+        if (type == null) {
+            return 0;
+        }
         return getGenericDefinition(type).hashCode();
     }
 
