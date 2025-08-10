@@ -7,13 +7,11 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
-import pie.ilikepiefoo.kubejsoffline.core.util.ReflectionUtils;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.List;
-import java.util.Objects;
 
 public class TypeVariableWrapper implements TypeVariableData {
     protected final CollectionGroup collectionGroup;
@@ -68,10 +66,7 @@ public class TypeVariableWrapper implements TypeVariableData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(
-                typeVariable.getName(),
-                ReflectionUtils.hashCode(typeVariable.getBounds())
-        );
+        return typeVariable.hashCode();
     }
 
     @Override

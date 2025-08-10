@@ -6,20 +6,9 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.StringJoiner;
 
 public class ReflectionUtils {
-
-    public static int hashCode(final Type type) {
-        return Optional.ofNullable(type).map(ReflectionUtils::getGenericDefinition).map(Objects::hashCode).orElse();
-    }
-
-    public static int hashCode(Type[] types) {
-        int[] hashes = Arrays.stream(types).mapToInt(ReflectionUtils::hashCode).toArray();
-        return Arrays.hashCode(hashes);
-    }
 
     public static String getGenericDefinition(Type type) {
         return getGenericDefinition(type, new TypeVariableMap(), false);
