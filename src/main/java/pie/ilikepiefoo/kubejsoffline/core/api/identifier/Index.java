@@ -9,9 +9,9 @@ public interface Index extends Comparable<Index>, JSONSerializable {
 
     int getArrayIndex();
 
-    <T extends Index> void swapWith(T other);
-
     void setArrayIndex(int arrayIndex);
+
+    <T extends Index> void swapWith(T other);
 
     Index getSelfWithReference();
 

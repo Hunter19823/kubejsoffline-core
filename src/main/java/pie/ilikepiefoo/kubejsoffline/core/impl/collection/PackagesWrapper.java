@@ -28,11 +28,6 @@ public class PackagesWrapper implements Packages {
     }
 
     @Override
-    public Iterator<PackagePart> iterator() {
-        return data.iterator();
-    }
-
-    @Override
     public synchronized PackageID addPackage(String packageName) {
         if (parts.containsKey(packageName)) {
             return parts.get(packageName);
@@ -91,6 +86,11 @@ public class PackagesWrapper implements Packages {
     public void clear() {
         this.data.clear();
         this.parts.clear();
+    }
+
+    @Override
+    public Iterator<PackagePart> iterator() {
+        return data.iterator();
     }
 
     @Override

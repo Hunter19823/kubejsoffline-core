@@ -27,9 +27,9 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 public class SafeOperations {
+    protected static final ThreadLocal<Set<Type>> TYPES_PROCESSING = ThreadLocal.withInitial(HashSet::new);
     private static final Logger LOG = LogManager.getLogger();
     private static TypeNameMapper mapper;
-    protected static final ThreadLocal<Set<Type>> TYPES_PROCESSING = ThreadLocal.withInitial(HashSet::new);
 
     public static void setTypeMapper(TypeNameMapper mapper) {
         SafeOperations.mapper = mapper;
@@ -217,6 +217,7 @@ public class SafeOperations {
     /**
      * When it comes to serializing the type variable, we only care about the name and bounds.
      * If the type variable is null, we return true, indicating that it is present.
+     *
      * @param type the TypeVariable to check
      * @return true if the TypeVariable is present, false otherwise
      */
@@ -308,6 +309,23 @@ public class SafeOperations {
         return remap;
     }
 
+    // tryGet(Object::toString) -> Optional<String>
+    // tryGet(Method::getFields) -> Optional<Field[]>
+    public static <T> Optional<T> tryGet(final ExceptionalSupplier<T> supplier) {
+        if (null == supplier) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(supplier.get());
+        } catch (final Throwable e) {
+            return Optional.empty();
+        }
+    }
+
+    private static Optional<TypeNameMapper> getRemap() {
+        return Optional.ofNullable(mapper);
+    }
+
     @SafeVarargs
     public static <D> Optional<D> tryGetFirst(final ExceptionalSupplier<D>... suppliers) {
         if (null == suppliers) {
@@ -320,10 +338,6 @@ public class SafeOperations {
             }
         }
         return Optional.empty();
-    }
-
-    private static Optional<TypeNameMapper> getRemap() {
-        return Optional.ofNullable(mapper);
     }
 
     public static String safeRemap(final Field field) {
@@ -407,17 +421,16 @@ public class SafeOperations {
         return name;
     }
 
-    // tryGet(Object::toString) -> Optional<String>
-    // tryGet(Method::getFields) -> Optional<Field[]>
-    public static <T> Optional<T> tryGet(final ExceptionalSupplier<T> supplier) {
-        if (null == supplier) {
-            return Optional.empty();
+    public static <T extends IndexGenerator> List<T> tryIndexDroppingFailures(final List<T> data) {
+        if (null == data || data.isEmpty()) {
+            return List.of();
         }
-        try {
-            return Optional.of(supplier.get());
-        } catch (final Throwable e) {
-            return Optional.empty();
-        }
+        return data
+                .stream()
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
     }
 
     public static <T extends IndexGenerator> Optional<T> tryIndex(final T data) {
@@ -431,18 +444,6 @@ public class SafeOperations {
             LOG.warn("An error occurred while executing the index", e);
             return Optional.empty();
         }
-    }
-
-    public static <T extends IndexGenerator> List<T> tryIndexDroppingFailures(final List<T> data) {
-        if (null == data || data.isEmpty()) {
-            return List.of();
-        }
-        return data
-                .stream()
-                .map(SafeOperations::tryIndex)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList();
     }
 
     public static Type[] getAllNonObjects(Type[] bounds) {

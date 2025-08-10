@@ -99,14 +99,6 @@ public class RawClassWrapper implements RawClassData {
     }
 
     @Override
-    public List<TypeVariableID> getTypeParameters() {
-        if (typeParameters != null) {
-            return typeParameters;
-        }
-        return this.typeParameters = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getTypeParameters())).orElse(List.of());
-    }
-
-    @Override
     public PackageID getPackage() {
         if (packageID != null) {
             return packageID;
@@ -164,11 +156,11 @@ public class RawClassWrapper implements RawClassData {
     }
 
     @Override
-    public List<FieldData> getFields() {
-        if (fields != null) {
-            return fields;
+    public List<TypeVariableID> getTypeParameters() {
+        if (typeParameters != null) {
+            return typeParameters;
         }
-        return this.fields = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of()));
+        return this.typeParameters = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getTypeParameters())).orElse(List.of());
     }
 
     @Override
@@ -177,6 +169,14 @@ public class RawClassWrapper implements RawClassData {
             return constructors;
         }
         return this.constructors = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredConstructors())).orElse(List.of()));
+    }
+
+    @Override
+    public List<FieldData> getFields() {
+        if (fields != null) {
+            return fields;
+        }
+        return this.fields = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of()));
     }
 
     @Override

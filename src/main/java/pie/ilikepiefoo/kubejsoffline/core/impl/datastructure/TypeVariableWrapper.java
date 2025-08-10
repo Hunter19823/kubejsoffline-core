@@ -52,16 +52,16 @@ public class TypeVariableWrapper implements TypeVariableData {
     }
 
     @Override
+    public TypeVariableID getIndex() {
+        return index;
+    }
+
+    @Override
     public synchronized List<TypeOrTypeVariableID> getBounds() {
         if (bounds != null) {
             return bounds;
         }
         return this.bounds = collectionGroup.of(typeVariable.getBounds(), (Type type) -> type == Object.class);
-    }
-
-    @Override
-    public TypeVariableID getIndex() {
-        return index;
     }
 
     @Override

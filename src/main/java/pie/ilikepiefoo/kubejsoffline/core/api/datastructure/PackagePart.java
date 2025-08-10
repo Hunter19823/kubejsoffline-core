@@ -6,10 +6,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 
 public interface PackagePart extends IndexedData<PackageID>, IndexGenerator {
-    String getName();
-
-    PackageID getPrefix();
-
     default String getFullName(Packages packages) {
         if (getPrefix() != null) {
             return packages.getPackage(getPrefix()).getFullName(packages) + "." + getName();
@@ -22,4 +18,8 @@ public interface PackagePart extends IndexedData<PackageID>, IndexGenerator {
         getName();
         getPrefix();
     }
+
+    String getName();
+
+    PackageID getPrefix();
 }

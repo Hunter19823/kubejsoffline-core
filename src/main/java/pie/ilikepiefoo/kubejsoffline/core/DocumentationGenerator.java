@@ -15,6 +15,7 @@ public class DocumentationGenerator {
     public static File generateHtmlPage(File outputFile) {
         return generateHtmlPage(new DefaultReflectionHelper(), new ResourceDocumentationBridge(), null, outputFile);
     }
+
     public static File generateHtmlPage(ReflectionHelper reflectionHelper, DocumentationBridge bridge, TypeNameMapper mapper, File outputFile) {
         DocumentationProvider documentationProvider = new SimpleDocumentationProvider(reflectionHelper, bridge, mapper);
         return documentationProvider.generateDocumentation(outputFile);

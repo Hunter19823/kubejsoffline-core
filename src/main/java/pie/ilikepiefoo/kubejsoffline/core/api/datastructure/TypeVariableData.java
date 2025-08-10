@@ -10,8 +10,6 @@ import java.util.List;
 
 public interface TypeVariableData extends NamedData, TypeData, IndexGenerator {
 
-    List<TypeOrTypeVariableID> getBounds();
-
     @Override
     default boolean isTypeVariable() {
         return true;
@@ -30,4 +28,6 @@ public interface TypeVariableData extends NamedData, TypeData, IndexGenerator {
         getName();
         getBounds();
     }
+
+    List<TypeOrTypeVariableID> getBounds();
 }

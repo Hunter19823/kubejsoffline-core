@@ -24,45 +24,12 @@ public class IdentifierBase implements Index {
     }
 
     @Override
-    public int getArrayIndex() {
-        return arrayIndexSupplier.get();
-    }
-
-    @Override
-    public <T extends Index> void swapWith(T other) {
-        if (other == null) {
-            throw new IllegalArgumentException("Cannot swap with null");
-        }
-        int arrayIndex = this.getArrayIndex();
-        if (other.getArrayIndex() == arrayIndex) {
-            return; // No need to swap with itself
-        }
-        int temp = other.getArrayIndex();
-        other.setArrayIndex(arrayIndex);
-        arrayIndex = temp;
-    }
-
-    @Override
-    public void setArrayIndex(int arrayIndex) {
-        this.arrayIndexSupplier = () -> arrayIndex;
-    }
-
-    @Override
-    public Index getSelfWithReference() {
-        referenceCount.incrementAndGet();
-        return this;
-    }
-
-    @Override
-    public long getReferenceCount() {
-        return referenceCount.get();
-    }
-
-
-    @Override
     public int hashCode() {
         int arrayIndex = getArrayIndex();
         return Integer.hashCode(arrayIndex);
+    }    @Override
+    public int getArrayIndex() {
+        return arrayIndexSupplier.get();
     }
 
     @Override
@@ -83,15 +50,48 @@ public class IdentifierBase implements Index {
             return ((Integer) obj) == getArrayIndex();
         }
         return false;
-    }
-
-    @Override
-    public JsonElement toJSON() {
-        return new JsonPrimitive(getSelfWithReference().getArrayIndex());
+    }    @Override
+    public <T extends Index> void swapWith(T other) {
+        if (other == null) {
+            throw new IllegalArgumentException("Cannot swap with null");
+        }
+        int arrayIndex = this.getArrayIndex();
+        if (other.getArrayIndex() == arrayIndex) {
+            return; // No need to swap with itself
+        }
+        int temp = other.getArrayIndex();
+        other.setArrayIndex(arrayIndex);
+        arrayIndex = temp;
     }
 
     @Override
     public String toString() {
         return "%d".formatted(getArrayIndex());
+    }    @Override
+    public void setArrayIndex(int arrayIndex) {
+        this.arrayIndexSupplier = () -> arrayIndex;
     }
+
+    @Override
+    public JsonElement toJSON() {
+        return new JsonPrimitive(getSelfWithReference().getArrayIndex());
+    }    @Override
+    public Index getSelfWithReference() {
+        referenceCount.incrementAndGet();
+        return this;
+    }
+
+    @Override
+    public long getReferenceCount() {
+        return referenceCount.get();
+    }
+
+
+
+
+
+
+
+
+
 }

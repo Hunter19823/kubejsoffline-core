@@ -8,8 +8,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 
 public interface MethodData extends AnnotatedData, ExecutableData, NamedData, ModifierData, IndexGenerator {
-    TypeOrTypeVariableID getType();
-
     @Override
     default void index() {
         getAnnotations();
@@ -19,4 +17,6 @@ public interface MethodData extends AnnotatedData, ExecutableData, NamedData, Mo
         getExceptions();
         getTypeParameters();
     }
+
+    TypeOrTypeVariableID getType();
 }

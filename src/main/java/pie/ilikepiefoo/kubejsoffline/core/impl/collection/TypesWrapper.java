@@ -128,11 +128,6 @@ public class TypesWrapper implements Types {
     }
 
     @Override
-    public Iterator<TypeData> iterator() {
-        return this.data.iterator();
-    }
-
-    @Override
     public void clear() {
         this.data.clear();
         this.rawTypes.clear();
@@ -140,6 +135,11 @@ public class TypesWrapper implements Types {
         this.wildcardTypes.clear();
         this.typeVariables.clear();
         TypeManager.INSTANCE.clear();
+    }
+
+    @Override
+    public Iterator<TypeData> iterator() {
+        return this.data.iterator();
     }
 
     public void generateAllTypes() {

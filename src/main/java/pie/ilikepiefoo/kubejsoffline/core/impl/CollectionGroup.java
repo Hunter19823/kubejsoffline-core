@@ -75,6 +75,10 @@ public record CollectionGroup(
                 .toList();
     }
 
+    public List<TypeOrTypeVariableID> of(Type[] types) {
+        return this.of(types, (type) -> false);
+    }
+
     public List<TypeOrTypeVariableID> of(Type[] types, Predicate<Type> ignoreType) {
         return Stream
                 .of(types)
@@ -87,10 +91,6 @@ public record CollectionGroup(
 
     public synchronized TypeOrTypeVariableID of(Type type) {
         return TypeManager.INSTANCE.getID(type);
-    }
-
-    public List<TypeOrTypeVariableID> of(Type[] types) {
-        return this.of(types, (type) -> false);
     }
 
     public List<TypeID> ofTypes(Type[] types) {

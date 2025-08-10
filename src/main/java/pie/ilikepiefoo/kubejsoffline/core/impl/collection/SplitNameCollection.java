@@ -24,11 +24,6 @@ public class SplitNameCollection implements Names {
     protected final TwoWayMap<NameID, NamePartIdentifier> data = new TwoWayMap<>(SplitNameCollection.NameIdentifier::new);
     protected Map<String, NameID> parts = new HashMap<>();
 
-    @Override
-    public void toggleLock() {
-        this.data.toggleLock();
-    }
-
     private static int findEndIndexForPart(String name) {
         if (name.length() == 1) {
             return 0; // If the name is a single character, return 0 as the end index.
@@ -117,6 +112,11 @@ public class SplitNameCollection implements Names {
     }
 
     @Override
+    public void toggleLock() {
+        this.data.toggleLock();
+    }
+
+    @Override
     public NavigableMap<NameID, String> getAllNames() {
         return this.data.getIndexToValueMap().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().toString(), (e1, e2) -> e1, // In case of duplicates, keep the first one
                 TreeMap::new));
@@ -138,7 +138,7 @@ public class SplitNameCollection implements Names {
         if (this.parts.containsKey(name)) {
             return this.parts.get(name);
         }
-        var result =  indexName(name);
+        var result = indexName(name);
         if (result == null) {
             throw new IllegalArgumentException("Failed to index name: " + name);
         }
@@ -322,23 +322,6 @@ public class SplitNameCollection implements Names {
         return JSONSerializable.of(this.data.getValues());
     }
 
-    public class NameIdentifier extends IdentifierBase implements NameID {
-        public NameIdentifier(int arrayIndex) {
-            super(arrayIndex);
-        }
-
-        @Override
-        public NameIdentifier getSelfWithReference() {
-            super.getSelfWithReference();
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return data.get(this).toString();
-        }
-    }
-
     public record Either<L extends JSONSerializable, R extends JSONSerializable>(L left, R right) implements JSONSerializable {
 
         public static <A extends JSONSerializable, B extends JSONSerializable> Either<A, B> ofLeft(A left) {
@@ -383,6 +366,23 @@ public class SplitNameCollection implements Names {
         @Override
         public JsonElement toJSON() {
             return new JsonPrimitive(name);
+        }
+    }
+
+    public class NameIdentifier extends IdentifierBase implements NameID {
+        public NameIdentifier(int arrayIndex) {
+            super(arrayIndex);
+        }
+
+        @Override
+        public NameIdentifier getSelfWithReference() {
+            super.getSelfWithReference();
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return data.get(this).toString();
         }
     }
 

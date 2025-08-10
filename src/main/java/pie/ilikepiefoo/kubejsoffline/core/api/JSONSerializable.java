@@ -27,13 +27,16 @@ public interface JSONSerializable {
 
     JsonElement toJSON();
 
+    default <S extends JSONSerializable> void addTo(JsonElement jsonElement, Supplier<S> supplier) {
+        addTo(jsonElement, null, supplier);
+    }
 
-    public default <S extends JSONSerializable> void addTo(JsonElement jsonElement, String key, Supplier<S> supplier) {
+    default <S extends JSONSerializable> void addTo(JsonElement jsonElement, String key, Supplier<S> supplier) {
         Consumer<JsonElement> collectionAdder = jsonElement instanceof JsonObject jsonObject ?
                 (element) -> jsonObject.add(key, element) :
                 jsonElement instanceof JsonArray jsonArray ?
-                jsonArray::add :
-                null;
+                        jsonArray::add :
+                        null;
 
         if (collectionAdder == null) {
             return;
@@ -53,15 +56,15 @@ public interface JSONSerializable {
         }
     }
 
-    public default <S extends JSONSerializable> void addTo(JsonElement jsonElement, Supplier<S> supplier) {
-        addTo(jsonElement, null, supplier);
+    default void addTo(JsonElement jsonElement, String key, JSONSerializable jsonSerializable) {
+        addTo(jsonElement, key, () -> jsonSerializable);
     }
 
-    public default void addTo(JsonElement jsonElement, String key, JSONSerializable jsonSerializable) {
-        addTo(jsonElement, key, (Supplier<JSONSerializable>) () -> jsonSerializable);
+    default <S extends JSONSerializable, I extends Iterable<S>> void addAllTo(JsonElement jsonElement, boolean skipNulls, Supplier<I> jsonSerializableSupplier) {
+        addAllTo(jsonElement, null, skipNulls, jsonSerializableSupplier);
     }
 
-    public default <S extends JSONSerializable, I extends Iterable<S>> void addAllTo(JsonElement jsonElement, String key, boolean skipNulls, Supplier<I> jsonSerializableSupplier) {
+    default <S extends JSONSerializable, I extends Iterable<S>> void addAllTo(JsonElement jsonElement, String key, boolean skipNulls, Supplier<I> jsonSerializableSupplier) {
         // Try to convert the iterable to a json array and add it to the addTo method
         if (jsonSerializableSupplier == null) {
             return;
@@ -105,15 +108,11 @@ public interface JSONSerializable {
         collectionAdder.accept(jsonArray);
     }
 
-    public default <S extends JSONSerializable> void addAllTo(JsonElement jsonElement, String key, boolean skipNulls, Iterable<S> jsonSerializable) {
-        addAllTo(jsonElement, key, skipNulls, () -> jsonSerializable);
-    }
-
-    public default <S extends JSONSerializable, I extends Iterable<S>> void addAllTo(JsonElement jsonElement, boolean skipNulls, Supplier<I> jsonSerializableSupplier) {
-        addAllTo(jsonElement, null, skipNulls, jsonSerializableSupplier);
-    }
-
-    public default <S extends JSONSerializable> void addAllTo(JsonElement jsonElement, boolean skipNulls, Iterable<S> jsonSerializable) {
+    default <S extends JSONSerializable> void addAllTo(JsonElement jsonElement, boolean skipNulls, Iterable<S> jsonSerializable) {
         addAllTo(jsonElement, null, skipNulls, jsonSerializable);
+    }
+
+    default <S extends JSONSerializable> void addAllTo(JsonElement jsonElement, String key, boolean skipNulls, Iterable<S> jsonSerializable) {
+        addAllTo(jsonElement, key, skipNulls, () -> jsonSerializable);
     }
 }

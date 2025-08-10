@@ -14,13 +14,23 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
         this.arrayDepth = 0;
     }
 
+    public ArrayIdentifier(ArrayBasedIndex index, int arrayDepth) {
+        this(index::getArrayIndex, arrayDepth + index.getArrayDepth());
+    }
+
     public ArrayIdentifier(Supplier<Integer> arrayIndexSupplier, int arrayDepth) {
         super(arrayIndexSupplier);
         this.arrayDepth = arrayDepth;
     }
 
-    public ArrayIdentifier(ArrayBasedIndex index, int arrayDepth) {
-        this(index::getArrayIndex, arrayDepth + index.getArrayDepth());
+    @Override
+    public int hashCode() {
+        return super.hashCode() ^ arrayDepth;
+    }
+
+    @Override
+    public String toString() {
+        return "%d%s%s".formatted(getArrayIndex(), "[".repeat(getArrayDepth()), "]".repeat(getArrayDepth()));
     }
 
     @Override
@@ -43,15 +53,5 @@ public class ArrayIdentifier extends IdentifierBase implements ArrayBasedIndex {
     public ArrayIdentifier getSelfWithReference() {
         super.getSelfWithReference();
         return this;
-    }
-
-    @Override
-    public String toString() {
-        return "%d%s%s".formatted(getArrayIndex(), "[".repeat(getArrayDepth()), "]".repeat(getArrayDepth()));
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode() ^ arrayDepth;
     }
 }

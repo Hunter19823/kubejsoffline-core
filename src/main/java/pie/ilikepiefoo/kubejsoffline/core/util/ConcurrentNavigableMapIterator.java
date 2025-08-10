@@ -10,7 +10,7 @@ import java.util.NoSuchElementException;
 import java.util.Stack;
 
 public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterable<V> {
-    private final static Logger LOG  = LogManager.getLogger();
+    private final static Logger LOG = LogManager.getLogger();
     private final NavigableMap<K, V> map;
     private final Stack<V> remainingValues = new Stack<>();
     private final String name;
@@ -23,6 +23,14 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
     }
 
     /**
+     * Returns an iterator over elements of type {@code T}.
+     *
+     * @return an Iterator.
+     */
+    @Override
+    public Iterator<V> iterator() {
+        return this;
+    }    /**
      * Returns {@code true} if the iteration has more elements.
      * (In other words, returns {@code true} if {@link #next} would
      * return an element rather than throwing an exception.)
@@ -68,13 +76,5 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
         return remainingValues.pop();
     }
 
-    /**
-     * Returns an iterator over elements of type {@code T}.
-     *
-     * @return an Iterator.
-     */
-    @Override
-    public Iterator<V> iterator() {
-        return this;
-    }
+
 }

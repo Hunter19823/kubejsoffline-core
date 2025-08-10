@@ -45,14 +45,6 @@ public class AnnotationWrapper implements AnnotationData {
     }
 
     @Override
-    public TypeID getAnnotationType() {
-        if (annotationType != null) {
-            return annotationType;
-        }
-        return annotationType = collectionGroup.of(annotation.annotationType()).asType();
-    }
-
-    @Override
     public String getAnnotationValue() {
         var value = annotation.toString();
         // Substring from first and last parenthesis.
@@ -62,6 +54,14 @@ public class AnnotationWrapper implements AnnotationData {
             return value.substring(start + 1, end);
         }
         return value;
+    }
+
+    @Override
+    public TypeID getAnnotationType() {
+        if (annotationType != null) {
+            return annotationType;
+        }
+        return annotationType = collectionGroup.of(annotation.annotationType()).asType();
     }
 
     @Override

@@ -7,12 +7,12 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 
 public interface FieldData extends ModifierData, AnnotatedData, NamedData, IndexGenerator {
-    TypeOrTypeVariableID getType();
-
     @Override
     default void index() {
         getAnnotations();
         getName();
         getType();
     }
+
+    TypeOrTypeVariableID getType();
 }

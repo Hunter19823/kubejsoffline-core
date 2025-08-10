@@ -36,11 +36,6 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
             return new Builder(name, type);
         }
 
-        public Builder setData(Supplier<JsonElement> data) {
-            this.data = data;
-            return this;
-        }
-
         public static Builder from(String name, Object object) {
             if (object == null) {
                 throw new NullPointerException("Object cannot be null");
@@ -66,6 +61,11 @@ public record SimpleBinding(String getName, Type getType, Set<String> getScopes,
                 }
                 return null;
             });
+        }
+
+        public Builder setData(Supplier<JsonElement> data) {
+            this.data = data;
+            return this;
         }
 
         public static Builder from(String name, Class<? extends Enum<?>> enumClass) {

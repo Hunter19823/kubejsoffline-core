@@ -6,12 +6,12 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 
 public interface AnnotationData extends IndexedData<AnnotationID>, IndexGenerator {
-    TypeID getAnnotationType();
-
     String getAnnotationValue();
 
     @Override
     default void index() {
         getAnnotationType();
     }
+
+    TypeID getAnnotationType();
 }

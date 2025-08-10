@@ -8,13 +8,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import java.util.List;
 
 public interface ParameterizedTypeData extends TypeData, IndexGenerator {
-    TypeID getRawType();
-
-    List<TypeOrTypeVariableID> getActualTypeArguments();
-
-    TypeID getOwnerType();
-
-
     @Override
     default boolean isParameterizedType() {
         return true;
@@ -31,5 +24,11 @@ public interface ParameterizedTypeData extends TypeData, IndexGenerator {
         getActualTypeArguments();
         getOwnerType();
     }
+
+    TypeID getRawType();
+
+    List<TypeOrTypeVariableID> getActualTypeArguments();
+
+    TypeID getOwnerType();
 
 }

@@ -13,27 +13,6 @@ import java.util.List;
 
 
 public interface RawClassData extends AnnotatedData, NamedData, ModifierData, TypeData, IndexGenerator {
-    List<TypeVariableID> getTypeParameters();
-
-    PackageID getPackage();
-
-    TypeID getSuperClass();
-
-    List<TypeID> getInterfaces();
-
-    List<TypeID> getInnerClasses();
-
-    TypeID getEnclosingClass();
-
-    TypeID getDeclaringClass();
-
-    List<FieldData> getFields();
-
-    List<ConstructorData> getConstructors();
-
-    List<MethodData> getMethods();
-
-
     @Override
     default boolean isRawType() {
         return true;
@@ -59,4 +38,24 @@ public interface RawClassData extends AnnotatedData, NamedData, ModifierData, Ty
         getFields();
         getMethods();
     }
+
+    PackageID getPackage();
+
+    TypeID getSuperClass();
+
+    List<TypeID> getInterfaces();
+
+    List<TypeID> getInnerClasses();
+
+    TypeID getEnclosingClass();
+
+    TypeID getDeclaringClass();
+
+    List<TypeVariableID> getTypeParameters();
+
+    List<ConstructorData> getConstructors();
+
+    List<FieldData> getFields();
+
+    List<MethodData> getMethods();
 }

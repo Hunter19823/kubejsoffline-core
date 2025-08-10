@@ -13,7 +13,6 @@ import java.util.TreeMap;
 public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
     protected final NavigableMap<INDEX, VALUE> indexToValueMap = new TreeMap<>();
     protected final Map<VALUE, INDEX> valueToIndexMap = new HashMap<>();
-    protected IndexFactory<INDEX> indexFactory;
     protected final ConcurrentNavigableMapIterator<INDEX, VALUE> iterator = new ConcurrentNavigableMapIterator<>(
             indexToValueMap,
             StackWalker
@@ -28,10 +27,11 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
                     )
                     .getClassName()
                     .replace(
-                            this.getClass().getPackageName()+".",
+                            this.getClass().getPackageName() + ".",
                             ""
                     )
     );
+    protected IndexFactory<INDEX> indexFactory;
     protected boolean locked = false;
 
     public TwoWayMap(IndexFactory<INDEX> indexFactory) {
@@ -85,6 +85,14 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
         }
     }
 
+    public synchronized void put(INDEX index, VALUE value) {
+        if (locked) {
+            throw new IllegalStateException("Cannot modify TwoWayMap while it is locked");
+        }
+        indexToValueMap.put(index, value);
+        valueToIndexMap.put(value, index);
+    }
+
     public Collection<INDEX> getIndexes() {
         return indexToValueMap.keySet();
     }
@@ -116,14 +124,6 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
         indexToValueMap.put(index, value);
         valueToIndexMap.put(value, index);
         return index;
-    }
-
-    public synchronized void put(INDEX index, VALUE value) {
-        if (locked) {
-            throw new IllegalStateException("Cannot modify TwoWayMap while it is locked");
-        }
-        indexToValueMap.put(index, value);
-        valueToIndexMap.put(value, index);
     }
 
     public boolean contains(VALUE value) {

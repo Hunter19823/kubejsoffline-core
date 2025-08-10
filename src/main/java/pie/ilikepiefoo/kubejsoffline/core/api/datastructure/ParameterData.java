@@ -9,12 +9,12 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 
 public interface ParameterData extends AnnotatedData, NamedData, ModifierData, IndexedData<ParameterID>, IndexGenerator {
-    TypeOrTypeVariableID getType();
-
     @Override
     default void index() {
         getAnnotations();
         getType();
         getName();
     }
+
+    TypeOrTypeVariableID getType();
 }

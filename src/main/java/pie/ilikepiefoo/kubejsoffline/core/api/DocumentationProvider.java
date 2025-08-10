@@ -30,26 +30,6 @@ public interface DocumentationProvider {
     Logger LOG = LogManager.getLogger();
 
     /**
-     * Gets the bindings provider for this provider.
-     *
-     * @return The bindings provider for this provider.
-     */
-    @Nonnull
-    default BindingsProvider getBindingsProvider() {
-        return BindingsProvider.of();
-    }
-
-    /**
-     * Gets the type wrapper provider for this provider.
-     *
-     * @return The type wrapper provider for this provider.
-     */
-    @Nonnull
-    default TypeWrapperProvider getTypeWrapperProvider() {
-        return TypeWrapperProvider.of();
-    }
-
-    /**
      * Generates the HTML page for the documentation.
      *
      * @param outputFile The output file to write the documentation to.
@@ -92,19 +72,19 @@ public interface DocumentationProvider {
                 .forEach((binding) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(binding.getType())));
         StreamSupport
                 .stream(getTypeWrapperProvider().getTypeWrappers().spliterator(), true)
-                        .forEach((wrapper) -> {
-                            SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(wrapper.getWrappedType()));
-                            long supportedTypes = SafeOperations.tryGet(wrapper::getSupportedTypes)
-                                    .stream()
-                                    .parallel()
-                                    .flatMap((types) -> Arrays.stream(types.toArray(Type[]::new)))
-                                    .map((type) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(type)))
-                                    .filter(Optional::isPresent)
-                                    .count();
-                            if (supportedTypes == 0) {
-                                LOG.info("Type wrapper {} has no supported types!", wrapper.getWrappedType());
-                            }
-                        });
+                .forEach((wrapper) -> {
+                    SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(wrapper.getWrappedType()));
+                    long supportedTypes = SafeOperations.tryGet(wrapper::getSupportedTypes)
+                            .stream()
+                            .parallel()
+                            .flatMap((types) -> Arrays.stream(types.toArray(Type[]::new)))
+                            .map((type) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(type)))
+                            .filter(Optional::isPresent)
+                            .count();
+                    if (supportedTypes == 0) {
+                        LOG.info("Type wrapper {} has no supported types!", wrapper.getWrappedType());
+                    }
+                });
 
         Arrays.stream(reflectionHelper.getEventClasses()).parallel().forEach((clazz) -> SafeOperations.tryGet(() -> TypeManager.INSTANCE.getID(clazz)));
 
@@ -218,5 +198,25 @@ public interface DocumentationProvider {
     @Nullable
     default TypeNameMapper getTypeNameMapper() {
         return null;
+    }
+
+    /**
+     * Gets the bindings provider for this provider.
+     *
+     * @return The bindings provider for this provider.
+     */
+    @Nonnull
+    default BindingsProvider getBindingsProvider() {
+        return BindingsProvider.of();
+    }
+
+    /**
+     * Gets the type wrapper provider for this provider.
+     *
+     * @return The type wrapper provider for this provider.
+     */
+    @Nonnull
+    default TypeWrapperProvider getTypeWrapperProvider() {
+        return TypeWrapperProvider.of();
     }
 }
