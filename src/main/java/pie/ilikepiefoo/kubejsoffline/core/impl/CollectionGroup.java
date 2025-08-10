@@ -80,13 +80,23 @@ public record CollectionGroup(
     }
 
     public List<TypeOrTypeVariableID> of(Type[] types, Predicate<Type> ignoreType) {
+        return getLoadedTypes(types, ignoreType)
+                .stream()
+                .map(this::of)
+                .toList();
+    }
+
+    public List<Type> getLoadedTypes(Type[] types, Predicate<Type> ignoreType) {
         return Stream
                 .of(types)
                 .filter(Objects::nonNull)
                 .filter(type -> !SafeOperations.isTypeNotLoaded(type))
                 .filter(ignoreType.negate())
-                .map(this::of)
                 .toList();
+    }
+
+    public List<Type> getLoadedTypes(Type[] types) {
+        return getLoadedTypes(types, (type) -> false);
     }
 
     public synchronized TypeOrTypeVariableID of(Type type) {

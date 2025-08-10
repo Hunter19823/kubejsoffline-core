@@ -19,7 +19,6 @@ import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 public class RawClassWrapper implements RawClassData {
@@ -190,7 +189,7 @@ public class RawClassWrapper implements RawClassData {
 
     @Override
     public int hashCode() {
-        return Optional.ofNullable(this.index).map(TypeOrTypeVariableID::hashCode).orElse(super.hashCode());
+        return this.clazz.hashCode();
     }
 
     @Override
