@@ -469,6 +469,7 @@ function getRawClassSignature(type, outputSpan, config) {
     if (config.getAppendPackageName() && type.package() && typeof type.package() === 'string' && type.package().length > 0) {
         outputSpan.append(span(type.package()));
         outputSpan.append(span('.'));
+        config = config.setAppendPackageName(false);
     }
 
     outputSpan.append(createLink(span(name), config.getLinkableID(type.id())));
@@ -582,15 +583,6 @@ function getWildcardSignature(type, outputSpan, config) {
  * @returns {HTMLElement} the span element containing the signature
  */
 function getParameterizedTypeSignature(type, outputSpan, config) {
-    const rawTypeName = createLinkableSignature(
-        type.getRawType(),
-        config
-            .setAppendPackageName(config.getAppendPackageName() && !(type.package().length > 0) && !exists(type.getOwnerType()))
-            .setDefiningParameterizedType(true)
-            .disableEnclosingClass()
-            .setOverrideID(type.id())
-            .setTypeVariableMap(type.getTypeVariableMap())
-    );
     const ownerType = type.getOwnerType();
     if (exists(ownerType) && !config.getDefiningParameterizedType()) {
         const ownerPrefix = createLinkableSignature(
@@ -604,6 +596,14 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
         outputSpan.append(span('$'));
         config = config.setAppendPackageName(false);
     }
+    const rawTypeName = createLinkableSignature(
+        type.getRawType(),
+        config
+            .setDefiningParameterizedType(true)
+            .disableEnclosingClass()
+            .setOverrideID(type.id())
+            .setTypeVariableMap(type.getTypeVariableMap())
+    );
     outputSpan.append(rawTypeName);
     const actualTypes = type.getTypeVariables();
     if (actualTypes.length === 0) {
