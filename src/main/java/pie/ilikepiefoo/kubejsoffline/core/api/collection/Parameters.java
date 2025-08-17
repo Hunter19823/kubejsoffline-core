@@ -6,7 +6,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 
 import java.util.NavigableMap;
 
-public interface Parameters extends JSONSerializable, Iterable<ParameterData>, Lockable {
+public interface Parameters extends JSONSerializable, Iterable<ParameterData>, Lockable, TwoWayMapHolder<ParameterID, ParameterData> {
     NavigableMap<ParameterID, ParameterData> getAllParameters();
 
     ParameterID addParameter(ParameterData data);

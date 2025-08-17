@@ -6,7 +6,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
 
 import java.util.NavigableMap;
 
-public interface Annotations extends JSONSerializable, Iterable<AnnotationData>, Lockable {
+public interface Annotations extends JSONSerializable, Iterable<AnnotationData>, Lockable, TwoWayMapHolder<AnnotationID, AnnotationData> {
     NavigableMap<AnnotationID, AnnotationData> getAllAnnotations();
 
     boolean contains(AnnotationData annotation);

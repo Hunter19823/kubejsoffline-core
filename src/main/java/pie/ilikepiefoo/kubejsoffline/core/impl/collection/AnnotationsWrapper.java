@@ -51,6 +51,11 @@ public class AnnotationsWrapper implements Annotations {
         return JSONSerializable.of(this.data.getValues());
     }
 
+    @Override
+    public TwoWayMap<AnnotationID, AnnotationData> getTwoWayMap() {
+        return data;
+    }
+
     public static class AnnotationIdentifier extends IdentifierBase implements AnnotationID {
         public AnnotationIdentifier(int arrayIndex) {
             super(arrayIndex);

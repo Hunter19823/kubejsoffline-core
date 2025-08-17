@@ -197,6 +197,11 @@ public class TypesWrapper implements Types {
         return json;
     }
 
+    @Override
+    public TwoWayMap<TypeOrTypeVariableID, TypeData> getTwoWayMap() {
+        return data;
+    }
+
     public static class TypeIdentifier extends ArrayIdentifier implements TypeID {
 
         public TypeIdentifier(int arrayIndex) {

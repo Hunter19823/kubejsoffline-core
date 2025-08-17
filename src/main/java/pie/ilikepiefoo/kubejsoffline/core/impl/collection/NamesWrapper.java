@@ -52,6 +52,11 @@ public class NamesWrapper implements Names {
         return json;
     }
 
+    @Override
+    public TwoWayMap<NameID, String> getTwoWayMap() {
+        return data;
+    }
+
     public static class NameIdentifier extends IdentifierBase implements NameID {
         public NameIdentifier(int arrayIndex) {
             super(arrayIndex);

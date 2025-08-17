@@ -322,6 +322,11 @@ public class SplitNameCollection implements Names {
         return JSONSerializable.of(this.data.getValues());
     }
 
+    @Override
+    public TwoWayMap<NameID, String> getTwoWayMap() {
+        return null;
+    }
+
     public record Either<L extends JSONSerializable, R extends JSONSerializable>(L left, R right) implements JSONSerializable {
 
         public static <A extends JSONSerializable, B extends JSONSerializable> Either<A, B> ofLeft(A left) {

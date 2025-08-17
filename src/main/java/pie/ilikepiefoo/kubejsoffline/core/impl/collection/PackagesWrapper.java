@@ -98,6 +98,11 @@ public class PackagesWrapper implements Packages {
         return JSONSerializable.of(this.data.getValues());
     }
 
+    @Override
+    public TwoWayMap<PackageID, PackagePart> getTwoWayMap() {
+        return data;
+    }
+
     public static class PackageIdentifier extends IdentifierBase implements PackageID {
         public PackageIdentifier(int arrayIndex) {
             super(arrayIndex);

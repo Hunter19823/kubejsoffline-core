@@ -60,6 +60,11 @@ public class ParametersWrapper implements Parameters {
         return JSONSerializable.of(this.data.getValues());
     }
 
+    @Override
+    public TwoWayMap<ParameterID, ParameterData> getTwoWayMap() {
+        return data;
+    }
+
     public static class ParameterIdentifier extends IdentifierBase implements ParameterID {
         public ParameterIdentifier(int arrayIndex) {
             super(arrayIndex);
