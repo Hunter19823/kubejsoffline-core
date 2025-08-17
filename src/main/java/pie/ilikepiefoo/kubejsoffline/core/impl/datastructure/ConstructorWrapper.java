@@ -57,7 +57,7 @@ public class ConstructorWrapper implements ConstructorData {
         if (annotations != null) {
             return annotations;
         }
-        return this.annotations = collectionGroup.of(constructor.getAnnotations());
+        return this.annotations = SafeOperations.tryGet(constructor::getAnnotations).map(collectionGroup::of).orElse(List.of());
     }
 
     @Override

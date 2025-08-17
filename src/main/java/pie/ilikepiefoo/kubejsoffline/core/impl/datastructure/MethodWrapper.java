@@ -79,7 +79,7 @@ public class MethodWrapper implements MethodData {
         if (annotations != null) {
             return annotations;
         }
-        return this.annotations = collectionGroup.of(method.getAnnotations());
+        return this.annotations = SafeOperations.tryGet(method::getAnnotations).map(collectionGroup::of).orElse(List.of());
     }
 
     @Override

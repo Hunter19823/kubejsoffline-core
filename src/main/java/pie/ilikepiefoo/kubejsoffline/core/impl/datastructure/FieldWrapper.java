@@ -64,7 +64,7 @@ public class FieldWrapper implements FieldData {
         if (annotations != null) {
             return annotations;
         }
-        return this.annotations = collectionGroup.of(field.getAnnotations());
+        return this.annotations = SafeOperations.tryGet(field::getAnnotations).map(collectionGroup::of).orElse(List.of());
     }
 
     @Override

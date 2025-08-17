@@ -9,6 +9,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
+import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Parameter;
@@ -84,7 +85,7 @@ public class ParameterWrapper implements ParameterData {
         if (annotations != null) {
             return annotations;
         }
-        return annotations = collectionGroup.of(parameter.getAnnotations());
+        return annotations = SafeOperations.tryGet(parameter::getAnnotations).map(collectionGroup::of).orElse(List.of());
     }
 
     @Override

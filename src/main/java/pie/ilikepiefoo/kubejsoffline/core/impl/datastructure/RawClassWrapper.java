@@ -90,7 +90,7 @@ public class RawClassWrapper implements RawClassData {
         if (annotations != null) {
             return annotations;
         }
-        return this.annotations = collectionGroup.of(clazz.getAnnotations());
+        return this.annotations = SafeOperations.tryGet(clazz::getAnnotations).map(collectionGroup::of).orElse(List.of());
     }
 
     @Override
