@@ -142,34 +142,6 @@ public class TypesWrapper implements Types {
         return this.data.iterator();
     }
 
-    public void generateAllTypes() {
-        int count = 0;
-        int maxIterations = 100;
-        TypeOrTypeVariableID currentType = this.data.getFirstIndex();
-        TypeOrTypeVariableID lastType = this.data.getLastIndex();
-        while (currentType != lastType && count < maxIterations) {
-            LOG.info("Pre-Generating all types from {} to {}", currentType, lastType);
-            for (var typeData : this.data.getValuesBetween(currentType, lastType).toArray(TypeData[]::new)) {
-                try {
-                    typeData.toJSON(); // Ensure the type data is initialized
-                } catch (final Throwable e) {
-                    LOG.error("Failed to initialize type data: {}", typeData, e);
-                }
-            }
-            currentType = lastType;
-            lastType = this.data.getLastIndex();
-            count++;
-        }
-        if (count >= maxIterations) {
-            LOG.warn("Reached maximum iterations while generating all types. Some types may not be fully initialized.");
-        } else {
-            LOG.info("Successfully Pre-generated all types from {} to {}", this.data.getFirstIndex(), lastType);
-        }
-        if ((lastType.getArrayIndex() + 1) != data.size()) {
-            LOG.warn("Type generation count mismatch: expected {}, got {}", data.size(), lastType.getArrayIndex());
-        }
-    }
-
     @Override
     public JsonElement toJSON() {
         var json = new JsonArray();
