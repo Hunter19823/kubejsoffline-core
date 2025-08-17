@@ -45,7 +45,7 @@ public class TypeManager {
             throw new UnsupportedOperationException("Type " + type + " is not fully loaded");
         }
         if (cache.containsKey(type)) {
-            return cache.get(type);
+            return cache.get(type).getSelfWithReference();
         }
         int arrayDepth = 0;
         var currentType = type;
@@ -93,7 +93,7 @@ public class TypeManager {
     }
 
     private TypeOrTypeVariableID cache(Type type, TypeData data) {
-        var id = collectionGroup.types().addType(data);
+        var id = collectionGroup.types().addType(data).getSelfWithReference();
         cache.put(type, id);
         data.setIndex(id);
         return id;

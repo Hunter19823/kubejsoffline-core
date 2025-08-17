@@ -119,7 +119,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
             throw new IllegalStateException("Cannot modify TwoWayMap while it is locked");
         }
         if (valueToIndexMap.containsKey(value)) {
-            return valueToIndexMap.get(value);
+            return (INDEX) valueToIndexMap.get(value).getSelfWithReference();
         }
         INDEX index = indexFactory.createIndex(indexToValueMap.size());
         if (value instanceof IndexedData indexedData) {
@@ -143,7 +143,7 @@ public class TwoWayMap<INDEX extends Index, VALUE> implements Iterable<VALUE> {
     }
 
     public INDEX get(VALUE value) {
-        return valueToIndexMap.get(value);
+        return (INDEX) valueToIndexMap.get(value).getSelfWithReference();
     }
 
     public VALUE get(INDEX index) {
