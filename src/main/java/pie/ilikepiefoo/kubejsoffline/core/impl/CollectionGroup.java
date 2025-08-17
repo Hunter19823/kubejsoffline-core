@@ -11,9 +11,13 @@ import pie.ilikepiefoo.kubejsoffline.core.api.collection.Names;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Packages;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Parameters;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Types;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.AnnotationData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.MethodData;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.PackagePart;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterData;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
@@ -40,10 +44,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 public record CollectionGroup(
@@ -232,10 +238,41 @@ public record CollectionGroup(
         for (var pkg : packages) {
             pkg.index();
         }
+        types.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<TypeData>) CollectionGroup::getWeight).reversed());
+        annotations.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<AnnotationData>) CollectionGroup::getWeight).reversed());
+        parameters.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<ParameterData>) CollectionGroup::getWeight).reversed());
+        packages.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<PackagePart>) CollectionGroup::getWeight).reversed());
+        names.getTwoWayMap().reorganize(Comparator.comparing(String::length).thenComparing(Comparator.naturalOrder()));
         types.toggleLock();
         annotations.toggleLock();
         parameters.toggleLock();
         packages.toggleLock();
+    }
+
+    public static long getWeight(TypeData type) {
+        long weight = type.getIndex().getReferenceCount();
+        if (type.isRawType()) {
+            weight += 100000000L;
+        } else if (type.isParameterizedType()) {
+            weight += 10000000L;
+        } else if (type.isTypeVariable()) {
+            weight += 1000000L;
+        } else if (type.isWildcardType()) {
+            weight += 100000L;
+        }
+        return weight;
+    }
+
+    public static long getWeight(AnnotationData annotation) {
+        return annotation.getAnnotationType().getReferenceCount();
+    }
+
+    public static long getWeight(ParameterData parameter) {
+        return parameter.getIndex().getReferenceCount();
+    }
+
+    public static long getWeight(PackagePart pkg) {
+        return pkg.getIndex().getReferenceCount();
     }
 
     @Override
