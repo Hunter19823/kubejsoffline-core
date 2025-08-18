@@ -11,7 +11,8 @@ function getMethod(methodData, typeVariableMap = {}) {
     }
 
     let output = {};
-    output.data = methodData;
+
+    output.data = decodeMethod(methodData);
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -53,6 +54,40 @@ function getMethod(methodData, typeVariableMap = {}) {
     }
 
     output.getHrefLink = output.hrefLink;
+
+    return output;
+}
+
+function decodeMethod(objectString) {
+    if (typeof objectString === "object") {
+        return objectString; // Already decoded
+    }
+    if (typeof objectString !== "string") {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    // Format: "nameId,modifiers(optional),returnTypeId,annotationIds(optional),parameterIds(optional),typeVariableIds(optional),exceptionIds(optional)"
+    let keys = [
+        PROPERTY.METHOD_NAME,
+        PROPERTY.METHOD_MODIFIERS,
+        PROPERTY.METHOD_RETURN_TYPE,
+        PROPERTY.ANNOTATIONS,
+        PROPERTY.PARAMETERS,
+        PROPERTY.TYPE_VARIABLES,
+        PROPERTY.EXCEPTIONS
+    ];
+    let values = objectString.split(",");
+    if (values.length !== keys.length) {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let output = {};
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let value = values[i].trim();
+        var decodedValue = decodePart(value, null);
+        if (decodedValue !== null) {
+            output[key] = decodedValue;
+        }
+    }
 
     return output;
 }

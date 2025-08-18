@@ -13,7 +13,7 @@ function getParameter(parameterID, typeVariableMap = {}) {
     const paramData = getParameterData(parameterID);
 
     let output = {};
-    output.data = paramData;
+    output.data = decodeParameter(paramData);
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -29,6 +29,37 @@ function getParameter(parameterID, typeVariableMap = {}) {
 
     output.getId = output.id;
 
+
+    return output;
+}
+
+
+function decodeParameter(objectString) {
+    if (typeof objectString === "object") {
+        return objectString; // Already decoded
+    }
+    if (typeof objectString !== "string") {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let keys = [
+        PROPERTY.PARAMETER_NAME,
+        PROPERTY.PARAMETER_TYPE,
+        PROPERTY.MODIFIERS,
+        PROPERTY.ANNOTATIONS
+    ];
+    let values = objectString.split(",");
+    if (values.length !== keys.length) {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let output = {};
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let value = values[i].trim();
+        var decodedValue = decodePart(value, null);
+        if (decodedValue !== null) {
+            output[key] = decodedValue;
+        }
+    }
 
     return output;
 }

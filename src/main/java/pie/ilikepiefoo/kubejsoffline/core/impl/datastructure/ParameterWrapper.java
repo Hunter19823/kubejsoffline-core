@@ -1,7 +1,7 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
@@ -10,7 +10,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
@@ -45,18 +44,23 @@ public class ParameterWrapper implements ParameterData {
 
     @Override
     public JsonElement toJSON() {
-        var json = new JsonObject();
-        json.add(JSONProperty.PARAMETER_NAME.jsName, getName().toJSON());
-        json.add(JSONProperty.PARAMETER_TYPE.jsName, getType().toJSON());
+//        var json = new JsonObject();
+//        json.add(JSONProperty.PARAMETER_NAME.jsName, getName().toJSON());
+//        json.add(JSONProperty.PARAMETER_TYPE.jsName, getType().toJSON());
+//
+//        if (getModifiers() != 0) {
+//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
+//        }
+//        if (!getAnnotations().isEmpty()) {
+//            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
+//        }
 
-        if (getModifiers() != 0) {
-            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-        }
-        if (!getAnnotations().isEmpty()) {
-            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
-        }
-
-        return json;
+        return compressObject(
+                getName().toJSON(),
+                getType().toJSON(),
+                getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
+                JSONSerializable.of(getAnnotations())
+        );
     }
 
     @Override

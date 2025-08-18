@@ -3,10 +3,12 @@ package pie.ilikepiefoo.kubejsoffline.core.api;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
+import java.util.StringJoiner;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -114,5 +116,57 @@ public interface JSONSerializable {
 
     default <S extends JSONSerializable> void addAllTo(JsonElement jsonElement, String key, boolean skipNulls, Iterable<S> jsonSerializable) {
         addAllTo(jsonElement, key, skipNulls, () -> jsonSerializable);
+    }
+
+    default JsonElement compressObject(JsonElement... jsonElements) {
+        if (jsonElements == null) {
+            throw new IllegalArgumentException("jsonElements cannot be null");
+        }
+        StringJoiner joiner = new StringJoiner(",");
+        for (JsonElement jsonElement : jsonElements) {
+            if (jsonElement == null) {
+                joiner.add("");
+                continue;
+            }
+            if (jsonElement.isJsonNull()) {
+                joiner.add("");
+                continue;
+            }
+            if (jsonElement.isJsonPrimitive()) {
+                JsonPrimitive primitive = jsonElement.getAsJsonPrimitive();
+                if (primitive.isString()) {
+                    throw new IllegalArgumentException("String values cannot be compressed, use a different method to handle strings.");
+                } else if (primitive.isNumber()) {
+                    joiner.add(primitive.getAsNumber().toString());
+                } else if (primitive.isBoolean()) {
+                    if (primitive.getAsBoolean()) {
+                        joiner.add("T");
+                    } else {
+                        joiner.add("F");
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unsupported JsonPrimitive type: " + primitive.getClass().getName());
+                }
+            } else if (jsonElement.isJsonArray()) {
+                // For objects and arrays, we just add the string representation
+                // Convert jsonArray to array of JsonElements
+                JsonArray jsonArray = jsonElement.getAsJsonArray();
+                if (jsonArray.isEmpty()) {
+                    joiner.add("");
+                    continue;
+                }
+                StringJoiner arrayJoiner = new StringJoiner("|", "[", "");
+                for (JsonElement element : jsonArray) {
+                    arrayJoiner.add(compressObject(element).getAsString());
+                }
+                joiner.add(arrayJoiner.toString());
+            } else {
+                throw new IllegalArgumentException("Unsupported JsonElement type: " + jsonElement.getClass().getName());
+            }
+        }
+        if (joiner.length() == 0) {
+            return new JsonPrimitive("");
+        }
+        return new JsonPrimitive(joiner.toString());
     }
 }

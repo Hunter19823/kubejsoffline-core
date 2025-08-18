@@ -1,7 +1,7 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
@@ -10,7 +10,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
@@ -31,20 +30,27 @@ public class ConstructorWrapper implements ConstructorData {
 
     @Override
     public JsonElement toJSON() {
-        var json = new JsonObject();
-        if (getModifiers() != 0) {
-            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-        }
-        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
-        // Throw an exception if the type parameters or parameters cannot be loaded.
-        if (!getTypeParameters().isEmpty()) {
-            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
-        }
-        if (!getParameters().isEmpty()) {
-            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
-        }
-        return json;
+//        var json = new JsonObject();
+//        if (getModifiers() != 0) {
+//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
+//        }
+//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
+//        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
+//        // Throw an exception if the type parameters or parameters cannot be loaded.
+//        if (!getTypeParameters().isEmpty()) {
+//            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
+//        }
+//        if (!getParameters().isEmpty()) {
+//            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
+//        }
+
+        return compressObject(
+                getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
+                JSONSerializable.of(getAnnotations()),
+                JSONSerializable.of(getExceptions()),
+                JSONSerializable.of(getTypeParameters()),
+                JSONSerializable.of(getParameters())
+        );
     }
 
     @Override

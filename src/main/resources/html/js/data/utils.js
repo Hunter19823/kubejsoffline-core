@@ -75,3 +75,52 @@ function doesObjectInclude(object, value, seen=new Set()) {
     }
     return false;
 }
+
+
+
+
+function decodePart(part, objectDecoder = null) {
+    if (typeof part !== "string") {
+        throw new Error("Invalid part data: " + part);
+    }
+    // If the part is empty, return null
+    if (part.trim() === "") {
+        return null;
+    }
+    // Format
+    // by default assume integer.
+    // If it starts with a [ then it is an array.
+    // If it starts with a { then it is an object.
+    // If it is equal to T then it is a boolean (true)
+    // If it is equal to F then it is a boolean (false)
+    if (part === "T") {
+        return true;
+    }
+    if (part === "F") {
+        return false;
+    }
+    if (part.startsWith("[")) {
+        // Remove the brackets
+        part = part.slice(1);
+        // Split by comma
+        return part.split("|").map((p) => {
+            return decodePart(p.trim());
+        });
+    } else if (part.startsWith("{")) {
+        // Remove the curly braces
+        part = part.slice(1);
+        // Call the object decoder if provided
+        if (objectDecoder && typeof objectDecoder === "function") {
+            return objectDecoder(atob(part));
+        }
+        // Otherwise throw an error
+        throw new Error("Object decoder not provided for part: " + part);
+    } else {
+        // Otherwise assume it's an integer
+        let num = parseInt(part, 10);
+        if (isNaN(num)) {
+            throw new Error("Invalid number: " + part);
+        }
+        return num;
+    }
+}

@@ -1,7 +1,7 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.MethodData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
@@ -12,7 +12,6 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -36,21 +35,30 @@ public class MethodWrapper implements MethodData {
 
     @Override
     public JsonElement toJSON() {
-        var json = new JsonObject();
-        json.add(JSONProperty.METHOD_NAME.jsName, getName().toJSON());
-        if (getModifiers() != 0) {
-            json.addProperty(JSONProperty.MODIFIERS.jsName, method.getModifiers());
-        }
-        json.add(JSONProperty.METHOD_RETURN_TYPE.jsName, getType().toJSON());
-        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-        if (!getParameters().isEmpty()) {
-            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
-        }
-        if (!getTypeParameters().isEmpty()) {
-            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
-        }
-        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
-        return json;
+//        var json = new JsonObject();
+//        json.add(JSONProperty.METHOD_NAME.jsName, getName().toJSON());
+//        if (getModifiers() != 0) {
+//            json.addProperty(JSONProperty.MODIFIERS.jsName, method.getModifiers());
+//        }
+//        json.add(JSONProperty.METHOD_RETURN_TYPE.jsName, getType().toJSON());
+//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
+//        if (!getParameters().isEmpty()) {
+//            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
+//        }
+//        if (!getTypeParameters().isEmpty()) {
+//            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
+//        }
+//        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
+//
+        return compressObject(
+                getName().toJSON(),
+                getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
+                getType().toJSON(),
+                JSONSerializable.of(getAnnotations()),
+                JSONSerializable.of(getParameters()),
+                JSONSerializable.of(getTypeParameters()),
+                JSONSerializable.of(getExceptions())
+        );
     }
 
     @Override

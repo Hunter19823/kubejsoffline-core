@@ -1,14 +1,14 @@
 package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
-import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -28,14 +28,20 @@ public class FieldWrapper implements FieldData {
 
     @Override
     public JsonElement toJSON() {
-        JsonObject json = new JsonObject();
-        json.add(JSONProperty.FIELD_NAME.jsName, getName().toJSON());
-        json.add(JSONProperty.FIELD_TYPE.jsName, getType().toJSON());
-        if (getModifiers() != 0) {
-            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-        }
-        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-        return json;
+//        JsonObject json = new JsonObject();
+//        json.add(JSONProperty.FIELD_NAME.jsName, getName().toJSON());
+//        json.add(JSONProperty.FIELD_TYPE.jsName, getType().toJSON());
+//        if (getModifiers() != 0) {
+//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
+//        }
+//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
+
+        return compressObject(
+                getName().toJSON(),
+                getType().toJSON(),
+                getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
+                JSONSerializable.of(getAnnotations())
+        );
     }
 
     @Override

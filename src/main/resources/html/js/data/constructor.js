@@ -10,7 +10,7 @@ function getConstructor(constructorData, typeVariableMap = {}) {
         throw new Error("Invalid constructor data: " + constructorData);
     }
     let output = {};
-    output.data = constructorData;
+    output.data = decodeConstructor(constructorData);
 
     output = setModifiers(output);
     output = setAnnotations(output);
@@ -47,6 +47,37 @@ function getConstructor(constructorData, typeVariableMap = {}) {
     }
 
     output.getHrefLink = output.hrefLink;
+
+    return output;
+}
+
+function decodeConstructor(objectString) {
+    if (typeof objectString === "object") {
+        return objectString; // Already decoded
+    }
+    if (typeof objectString !== "string") {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let keys = [
+        PROPERTY.MODIFIERS,
+        PROPERTY.ANNOTATIONS,
+        PROPERTY.EXCEPTIONS,
+        PROPERTY.TYPE_VARIABLES,
+        PROPERTY.PARAMETERS
+    ];
+    let values = objectString.split(",");
+    if (values.length !== keys.length) {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let output = {};
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let value = values[i].trim();
+        var decodedValue = decodePart(value, null);
+        if (decodedValue !== null) {
+            output[key] = decodedValue;
+        }
+    }
 
     return output;
 }

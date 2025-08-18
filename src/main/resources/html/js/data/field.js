@@ -11,7 +11,7 @@ function getField(fieldData, typeVariableMap = {}) {
     }
 
     let output = {};
-    output.data = fieldData;
+    output.data = decodeField(fieldData);
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -43,6 +43,36 @@ function getField(fieldData, typeVariableMap = {}) {
     }
 
     output.getHrefLink = output.hrefLink;
+
+    return output;
+}
+
+function decodeField(objectString) {
+    if (typeof objectString === "object") {
+        return objectString; // Already decoded
+    }
+    if (typeof objectString !== "string") {
+        throw new Error("Invalid field structure: " + objectString);
+    }
+    let keys = [
+        PROPERTY.FIELD_NAME,
+        PROPERTY.FIELD_TYPE,
+        PROPERTY.MODIFIERS,
+        PROPERTY.ANNOTATIONS
+    ];
+    let values = objectString.split(",");
+    if (values.length !== keys.length) {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let output = {};
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let value = values[i].trim();
+        var decodedValue = decodePart(value, null);
+        if (decodedValue !== null) {
+            output[key] = decodedValue;
+        }
+    }
 
     return output;
 }
