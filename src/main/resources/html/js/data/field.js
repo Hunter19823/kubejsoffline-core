@@ -3,15 +3,24 @@
  *
  * @param fieldData The blob of field data
  * @param typeVariableMap The type variable map to use for this field.
+ * @param sourceClassId The class ID of the class declaring this field.
+ * @param sourceFieldId The index of the field within the declaring class's field list.
  * @returns {Field}
  */
-function getField(fieldData, typeVariableMap = {}) {
+function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId) {
     if (!exists(fieldData)) {
         throw new Error("Invalid field data: " + fieldData);
     }
 
+    if (!exists(sourceClassId)) {
+        throw new Error("Declaring class ID must be provided for field.");
+    }
+
     let output = {};
     output.data = decodeField(fieldData);
+
+    output.data._declaringClass = sourceClassId;
+    output.data._declaringField = sourceFieldId;
 
     output = setBasicName(output);
     output = setRemapType(output);
@@ -19,6 +28,7 @@ function getField(fieldData, typeVariableMap = {}) {
     output = setAnnotations(output);
     output = setDataIndex(output);
     output = setDeclaringClass(output);
+    output = setDeclaringField(output);
     output = setTypeVariableMap(output);
     output.withTypeVariableMap(typeVariableMap);
 

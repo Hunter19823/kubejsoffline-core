@@ -298,6 +298,42 @@
  * @public
  */
 /**
+ * @typedef DeclaringMethodHolder
+ * @method declaringMethod - Retrieves the index of the method that declares this object.
+ * @method getDeclaringMethod - Retrieves the index of the method that declares this object. (Alias for declaringMethod)
+ * @method getDeclaringMethodWrapped - Retrieves the wrapped form of a declaring method.
+ * @property {function(): int} declaringMethod - Retrieves the index of the method that declares this object.
+ * @property {function(): int} getDeclaringMethod - Retrieves the index of the method that declares this object. (Alias for declaringMethod)
+ * @property {function(): Method} getDeclaringMethodWrapped - Retrieves the wrapped form of a declaring method.
+ * @public
+ */
+/**
+ * @typedef DeclaringConstructorHolder
+ * @method declaringConstructor - Retrieves the index of the constructor that declares this object.
+ * @method getDeclaringConstructor - Retrieves the index of the constructor that declares this object. (Alias for declaringConstructor)
+ * @method getDeclaringConstructorWrapped - Retrieves the wrapped form of a declaring constructor.
+ * @property {function(): int} declaringConstructor - Retrieves the index of the constructor that declares this object.
+ * @property {function(): int} getDeclaringConstructor - Retrieves the index of the constructor that declares this object. (Alias for declaringConstructor)
+ * @property {function(): Constructor} getDeclaringConstructorWrapped - Retrieves the wrapped form of a declaring constructor.
+ * @public
+ */
+/**
+ * @typedef DeclaringParameterHolder
+ * @method declaringParameter - Retrieves the index of the parameter that declares this object.
+ * @method getDeclaringParameter - Retrieves the index of the parameter that declares this object. (Alias for declaringParameter)
+ * @property {function(): int} declaringParameter - Retrieves the index of the parameter that declares this object.
+ * @property {function(): int} getDeclaringParameter - Retrieves the index of the parameter that declares this object. (Alias for declaringParameter)
+ * @public
+ */
+/**
+ * @typedef DeclaringFieldHolder
+ * @method declaringField - Retrieves the index of the field that declares this object.
+ * @method getDeclaringField - Retrieves the index of the field that declares this object. (Alias for declaringField)
+ * @property {function(): int} declaringField - Retrieves the index of the field that declares this object.
+ * @property {function(): int} getDeclaringField - Retrieves the index of the field that declares this object. (Alias for declaringField)
+ * @public
+ */
+/**
  * @typedef EnclosingClassHolder
  * @method getEnclosingClass - Retrieves the enclosing class of the object.
  * @method isInnerClass - Checks if the object is an inner class.
@@ -490,6 +526,10 @@
  * ModifiersHolder &
  * AnnotationsHolder &
  * DataIndexHolder &
+ * DeclaringClassHolder &
+ * DeclaringMethodHolder &
+ * DeclaringConstructorHolder &
+ * DeclaringParameterHolder &
  * TypeVariableMapHolder &
  * IdHolder<ParameterDefintion>
  * } Parameter
@@ -518,6 +558,7 @@
  * ParametersHolder &
  * DataIndexHolder &
  * DeclaringClassHolder &
+ * DeclaringConstructorHolder &
  * TypeVariableMapHolder &
  * TypeVariablesHolder &
  * IdHolder<Constructor> &
@@ -538,6 +579,7 @@
  * AnnotationsHolder &
  * DataIndexHolder &
  * DeclaringClassHolder &
+ * DeclaringFieldHolder &
  * TypeVariablesHolder &
  * TypeVariableMapHolder &
  * IdHolder<FieldDefinition> &
@@ -561,6 +603,7 @@
  * ParametersHolder &
  * DataIndexHolder &
  * DeclaringClassHolder &
+ * DeclaringMethodHolder &
  * TypeVariablesHolder &
  * IdHolder<MethodDefinition> &
  * HyperLinkable &
@@ -709,17 +752,32 @@ function setModifiers(target) {
  * Sets the parameters function on the provided object.
  * The parameters function retrieves the parameters of the object.
  * @template {CompressedDataHolder} T The source object type.
+ * @param {TypeIdentifier} sourceClassId - The id of the class that contains the method/constructor.
+ * @param {int|null} sourceMethodId - The id of the method that contains the parameters, or null if not applicable.
+ * @param {int|null} sourceConstructorId - The id of the constructor that contains the parameters, or null if not applicable.
  * @param {T} target - The object to set the parameters for.
  * @returns {T & ParametersHolder} The same object with the parameters function added.
  */
-function setParameters(target) {
+function setParameters(target, sourceClassId, sourceMethodId=null, sourceConstructorId=null) {
+
+    target.getWrappedParameterHolder = function(sourceMethodId, sourceConstructorId) {
+        if (exists(sourceConstructorId)) {
+            return target.getDeclaringConstructorWrapped();
+        }
+        if (exists(sourceMethodId)) {
+            return target.getDeclaringMethodWrapped();
+        }
+        throw new Error("No source method or constructor id provided for parameter holder.");
+    }
+
     /**
      * Converts a parameter to a Parameter object.
      * @param {ParameterIdentifier} parameter - The parameter to convert.
+     * @param {int} index - The index of the parameter.
      * @returns {Parameter} The converted parameter.
      */
-    function mapParameter(parameter) {
-        return getParameter(parameter, target.getTypeVariableMap());
+    function mapParameter(parameter, index) {
+        return getParameter(parameter, target.getWrappedParameterHolder(sourceMethodId, sourceConstructorId).getTypeVariableMap(), sourceClassId, sourceMethodId, sourceConstructorId, index);
     }
 
     /**
@@ -910,7 +968,11 @@ function setDeclaringClass(target) {
      * @returns {int} The index of the object that declares this object.
      */
     target.declaringClass = function () {
-        return target.data._declaringClass;
+        let declaring = target.data._declaringClass;
+        if (!exists(declaring)) {
+            return -1;
+        }
+        return declaring;
     }
 
     /**
@@ -927,11 +989,11 @@ function setDeclaringClass(target) {
     target.getDeclaringClassWrapped = function () {
         const declaringClassIndex = target.declaringClass();
         if (declaringClassIndex === -1) {
-            return null;
+            throw new Error(`This object does not have a declaring class. Object data index: ${target.getDataIndex()}`);
         }
         let result = getClass(declaringClassIndex);
         if (result === null) {
-            return null;
+            throw new Error(`Declaring class with index ${declaringClassIndex} not found for object with data index ${target.getDataIndex()}`);
         }
         result.withTypeVariableMap(target.getTypeVariableMap());
         return result;
@@ -940,6 +1002,163 @@ function setDeclaringClass(target) {
     return target;
 }
 
+/**
+ * Sets the declaring method on the provided object.
+ * The declaring method retrieves the index of the method that declares this object.
+ * @template {CompressedDataHolder} T The source object type.
+ * @param {T} target - The object to set the declaring method for.
+ * @returns {T & DeclaringMethodHolder} The same object with the declaring method added.
+ */
+function setDeclaringMethod(target) {
+    /**
+     * Retrieves the index of the method that declares this object.
+     *
+     * @returns {int} The index of the method that declares this object.
+     */
+    target.declaringMethod = function () {
+        let declaring = target.data._declaringMethod;
+        if (!exists(declaring)) {
+            return -1;
+        }
+        return declaring;
+    }
+
+    /**
+     * Retrieves the index of the method that declares this object.
+     *
+     * @returns {int} The index of the method that declares this object.
+     */
+    target.getDeclaringMethod = target.declaringMethod;
+
+    /**
+     * Retrieves the wrapped form of a declaring method.
+     * @returns {Method|null} The wrapped declaring method, or null if not found.
+     */
+    target.getDeclaringMethodWrapped = function () {
+        const declaringMethodIndex = target.declaringMethod();
+        if (declaringMethodIndex === -1) {
+            return null;
+        }
+        let result = getClass(target.getDeclaringClass()).getMethods()[declaringMethodIndex];
+        if (result === null) {
+            throw new Error(`Declaring method with index ${declaringMethodIndex} not found for object with data index ${target.getDataIndex()}`);
+        }
+        result.withTypeVariableMap(target.getTypeVariableMap());
+        return result;
+    }
+
+    return target;
+}
+
+/**
+ * Sets the declaring constructor on the provided object.
+ * The declaring constructor retrieves the index of the constructor that declared this object.
+ * @template {CompressedDataHolder} T The source object type.
+ * @param {T} target - The object to set the declaring constructor for.
+ * @returns {T & DeclaringConstructorHolder} The same object with the declaring constructor added.
+ */
+function setDeclaringConstructor(target) {
+    /**
+     * Retrieves the index of the constructor that declares this object.
+     *
+     * @return {int} The index of the constructor that declares this object.
+     */
+    target.declaringConstructor = function () {
+        let declaring = target.data._declaringConstructor;
+        if (!exists(declaring)) {
+            return -1;
+        }
+        return declaring;
+    }
+
+    /**
+     * Retrieves the index of the constructor that declares this object.
+     *
+     * @return {int} The index of the constructor that declares this object.
+     */
+    target.getDeclaringConstructor = target.declaringConstructor;
+
+    /**
+     * Retrieves the wrapped form of a declaring constructor.
+     * @returns {Constructor|null} The wrapped declaring constructor, or null if not found.
+     */
+    target.getDeclaringConstructorWrapped = function () {
+        const declaringConstructorIndex = target.declaringConstructor();
+        if (declaringConstructorIndex === -1) {
+            return null;
+        }
+        let result = getClass(target.getDeclaringClass()).getConstructors()[declaringConstructorIndex];
+        if (result === null) {
+            throw new Error(`Declaring constructor with index ${declaringConstructorIndex} not found for object with data index ${target.getDataIndex()}`);
+        }
+        result.withTypeVariableMap(target.getTypeVariableMap());
+        return result;
+    }
+
+    return target;
+}
+
+/**
+ * Sets the declaring parameter on the provided object.
+ * The declaring parameter retrieves the index of the parameter that declared this object.
+ * @template {CompressedDataHolder} T The source object type.
+ * @param {T} target - The object to set the declaring parameter for.
+ * @returns {T & DeclaringParameterHolder} The same object with the declaring parameter added.
+ */
+function setDeclaringParameter(target) {
+    /**
+     * Retrieves the index of the parameter that declares this object.
+     *
+     * @return {int} The index of the parameter that declares this object.
+     */
+    target.declaringParameter = function () {
+        let declaring = target.data._declaringParameter;
+        if (!exists(declaring)) {
+            return -1;
+        }
+        return declaring;
+    }
+
+    /**
+     * Retrieves the index of the parameter that declares this object.
+     *
+     * @return {int} The index of the parameter that declares this object.
+     */
+    target.getDeclaringParameter = target.declaringParameter;
+
+    return target;
+}
+
+/**
+ * Sets the declaring field on the provided object.
+ * The declaring field retrieves the index of the field that declared this object.
+ * @template {CompressedDataHolder} T The source object type.
+ * @param {T} target - The object to set the declaring field for.
+ * @returns {T & DeclaringFieldHolder} The same object with the declaring field added.
+ */
+function setDeclaringField(target) {
+    /**
+     * Retrieves the index of the field that declares this object.
+     *
+     * @return {int} The index of the field that declares this object.
+     */
+    target.declaringField = function () {
+        let declaring = target.data._declaringField;
+        if (!exists(declaring)) {
+            return -1;
+        }
+        return declaring;
+    }
+
+    /**
+     * Retrieves the index of the field that declares this object.
+     *
+     * @return {int} The index of the field that declares this object.
+     */
+    target.getDeclaringField = target.declaringField;
+
+    return target;
+}
 
 /**
  * Sets the getExceptions function on the provided object.

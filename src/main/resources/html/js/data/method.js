@@ -3,24 +3,32 @@
  *
  * @param methodData The blob of method data
  * @param typeVariableMap The type variable map to use for this method.
+ * @param sourceClassId The class ID of the class declaring this method.
+ * @param sourceMethodId The index of the method within the declaring class's method list.
  * @returns {Method}
  */
-function getMethod(methodData, typeVariableMap = {}) {
+function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethodId) {
     if (!exists(methodData)) {
         throw new Error("Invalid method data: " + methodData);
+    }
+    if (!exists(sourceClassId)) {
+        throw new Error("Declaring class ID must be provided for method.");
     }
 
     let output = {};
 
     output.data = decodeMethod(methodData);
+    output.data._declaringClass = sourceClassId;
+    output.data._declaringMethod = sourceMethodId;
 
     output = setBasicName(output);
     output = setRemapType(output);
     output = setModifiers(output);
     output = setAnnotations(output);
-    output = setParameters(output);
+    output = setParameters(output, sourceClassId, sourceMethodId, null);
     output = setDataIndex(output);
     output = setDeclaringClass(output);
+    output = setDeclaringMethod(output);
     output = setTypeVariables(output);
     output = setTypeVariableMap(output);
     output.withTypeVariableMap(typeVariableMap);

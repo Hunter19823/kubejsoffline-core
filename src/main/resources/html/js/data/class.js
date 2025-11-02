@@ -7,14 +7,12 @@
 function getClass(id) {
     let output = {};
     if (!exists(id)) {
-        console.error("Invalid class id: " + id);
-        return null;
+        throw new Error("Invalid class id: " + id);
     }
     switch (typeof (id)) {
         case "number":
             if (!exists(getTypeData(id))) {
-                console.error("Invalid class data: " + id);
-                return null;
+                throw new Error(`Invalid class data: ${id}`);
             }
             output.data = getTypeData(id);
             break;
@@ -46,8 +44,7 @@ function getClass(id) {
             // Check if the string matches the java qualified type name regex
             if (!id.match(/([a-zA-Z_$][a-zA-Z\d_$]*\.)*[a-zA-Z_$][a-zA-Z\d_$]*/)) {
                 // Class does not match a valid java qualified type name, so return null
-                console.error("Invalid class id/search: " + id);
-                return null;
+                throw new Error(`Invalid class id/search: ${id}`);
             }
             const subject = findClassByName(id);
             if (exists(subject)) {
@@ -55,12 +52,11 @@ function getClass(id) {
             }
             return subject;
         default:
-            console.error("Unsupported class type provided to getClass: " + id + " (" + typeof (id) + ")");
-            return null;
+            throw new Error(`Unsupported class type provided to getClass: ${id} (${typeof (id)})`);
     }
 
     if (!exists(output.data)) {
-        console.error("Invalid class data: ", id, typeof (id));
+        throw new Error(`Invalid class data: ${id} (${typeof (id)})`);
     }
 
 
@@ -180,7 +176,7 @@ function getClass(id) {
         function addFields(data) {
             if (exists(data.data[PROPERTY.FIELDS])) {
                 for (let i = 0; i < data.data[PROPERTY.FIELDS].length; i++) {
-                    fields.push(getField(data.data[PROPERTY.FIELDS][i], output.getTypeVariableMap()));
+                    fields.push(getField(data.data[PROPERTY.FIELDS][i], output.getTypeVariableMap(), data.getId(), i));
                 }
             }
         }
@@ -216,7 +212,7 @@ function getClass(id) {
         function addMethods(data) {
             if (exists(data.data[PROPERTY.METHODS])) {
                 for (let i = 0; i < data.data[PROPERTY.METHODS].length; i++) {
-                    methods.push(getMethod(data.data[PROPERTY.METHODS][i], output.getTypeVariableMap()));
+                    methods.push(getMethod(data.data[PROPERTY.METHODS][i], output.getTypeVariableMap(), data.getId(), i));
                 }
             }
         }
@@ -244,7 +240,7 @@ function getClass(id) {
         const constructors = [];
         if (exists(this.data[PROPERTY.CONSTRUCTORS])) {
             for (let i = 0; i < this.data[PROPERTY.CONSTRUCTORS].length; i++) {
-                constructors.push(getConstructor(this.data[PROPERTY.CONSTRUCTORS][i], output.getTypeVariableMap()));
+                constructors.push(getConstructor(this.data[PROPERTY.CONSTRUCTORS][i], output.getTypeVariableMap(), this.getId(), i));
             }
         }
 

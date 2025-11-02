@@ -609,29 +609,45 @@ function loadSearchResults() {
 
     let results = _last_filter.getResults();
 
-    createClassTable(
-        "Matching Classes",
-        'class-table',
-        results.classes
-    )
+    try {
+        createClassTable(
+            "Matching Classes",
+            'class-table',
+            results.classes
+        )
+    } catch (e) {
+        console.error("Error creating class table:", e);
+    }
 
-    createPagedTable("Matching Fields", 'field-table', results.fields, (table, fieldData) => {
-        addFieldToTable(table, fieldData, fieldData.type());
-    }, 'Link', 'Declared In', 'Field Signature', 'Declaration Class')
-        ?.sortableByField((a) => a)
-        ?.create();
+    try {
+        createPagedTable("Matching Fields", 'field-table', results.fields, (table, fieldData) => {
+            addFieldToTable(table, fieldData, fieldData.type());
+        }, 'Link', 'Declared In', 'Field Signature', 'Declaration Class')
+            ?.sortableByField((a) => a)
+            ?.create();
+    } catch (e) {
+        console.error("Error creating field table:", e);
+    }
 
-    createPagedTable("Matching Methods", 'method-table', results.methods, (table, methodData) => {
-        addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
-    }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
-        ?.sortableByMethod((a) => a)
-        ?.create();
+    try {
+        createPagedTable("Matching Methods", 'method-table', results.methods, (table, methodData) => {
+            addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
+        }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
+            ?.sortableByMethod((a) => a)
+            ?.create();
+    } catch (e) {
+        console.error("Error creating method table:", e);
+    }
 
-    createPagedTable("Matching Parameters", 'parameter-table', results.parameters, (table, methodData) => {
-        addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
-    }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
-        ?.sortableByMethod((a) => a)
-        ?.create();
+    try {
+        createPagedTable("Matching Parameters", 'parameter-table', results.parameters, (table, methodData) => {
+            addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
+        }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
+            ?.sortableByMethod((a) => a)
+            ?.create();
+    } catch (e) {
+        console.error("Error creating parameter table:", e);
+    }
 }
 
 function createSearchBar() {

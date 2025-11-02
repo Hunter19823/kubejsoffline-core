@@ -179,35 +179,6 @@ async function optimizeDataSearch() {
             DATA._type_variables.push(i);
         } else {
             DATA._raw_types.push(i);
-            const typeData = subject.data;
-            // Set declaring class on all fields, methods, and constructors
-            if (exists(typeData[PROPERTY.FIELDS])) {
-                typeData[PROPERTY.FIELDS].forEach((field) => {
-                    field._declaringClass = i;
-                });
-            }
-            if (exists(typeData[PROPERTY.METHODS])) {
-                typeData[PROPERTY.METHODS].forEach((method) => {
-                    method._declaringClass = i;
-                    // Assign the declaring class to the parameters
-                    if (exists(method[PROPERTY.PARAMETERS])) {
-                        method[PROPERTY.PARAMETERS].forEach((parameter) => {
-                            parameter._declaringClass = i;
-                        });
-                    }
-                });
-            }
-            if (exists(typeData[PROPERTY.CONSTRUCTORS])) {
-                typeData[PROPERTY.CONSTRUCTORS].forEach((constructor) => {
-                    constructor._declaringClass = i;
-                    // Assign the declaring class to the parameters
-                    if (exists(constructor[PROPERTY.PARAMETERS])) {
-                        constructor[PROPERTY.PARAMETERS].forEach((parameter) => {
-                            parameter._declaringClass = i;
-                        });
-                    }
-                });
-            }
         }
     }
     await Promise.all(indexPromises);

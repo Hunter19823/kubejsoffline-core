@@ -3,20 +3,28 @@
  *
  * @param {Object} constructorData The blob of constructor data
  * @param {TypeVariableMap} typeVariableMap The type variable map to use for this constructor.
+ * @param {TypeIdentifier} sourceClassId The class ID of the class declaring this constructor.
+ * @param {int} sourceConstructorId The index of the constructor within the declaring class's constructor list.
  * @returns {Constructor}
  */
-function getConstructor(constructorData, typeVariableMap = {}) {
+function getConstructor(constructorData, typeVariableMap = {}, sourceClassId, sourceConstructorId) {
     if (!exists(constructorData)) {
         throw new Error("Invalid constructor data: " + constructorData);
     }
+    if (!exists(sourceClassId)) {
+        throw new Error("Declaring class ID must be provided for constructor.");
+    }
     let output = {};
     output.data = decodeConstructor(constructorData);
+    output.data._declaringClass = sourceClassId;
+    output.data._declaringConstructor = sourceConstructorId;
 
     output = setModifiers(output);
     output = setAnnotations(output);
-    output = setParameters(output);
     output = setDataIndex(output);
     output = setDeclaringClass(output);
+    output = setDeclaringConstructor(output);
+    output = setParameters(output, sourceClassId, null, sourceConstructorId);
     output = setTypeVariables(output);
     output = setTypeVariableMap(output);
     output.withTypeVariableMap(typeVariableMap);

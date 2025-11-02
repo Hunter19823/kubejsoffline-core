@@ -13,13 +13,16 @@ function getAnnotation(annotationData) {
         throw new Error("Invalid annotation type for annotation: " + annotationData);
     }
     let output = {};
-    output.data = getAnnotationData(annotationData);
+    output.data = decodeAnnotation(getAnnotationData(annotationData));
 
     output = setRemapType(output);
     output = setDataIndex(output);
 
     output.string = function () {
         if (exists(this.data[PROPERTY.ANNOTATION_STRING])) {
+            if (typeof this.data[PROPERTY.ANNOTATION_STRING] === "number") {
+                return getNameData(this.data[PROPERTY.ANNOTATION_STRING]);
+            }
             return (this.data[PROPERTY.ANNOTATION_STRING]);
         } else {
             return "";
@@ -27,6 +30,36 @@ function getAnnotation(annotationData) {
     }
 
     output.getString = output.string;
+
+    return output;
+}
+
+
+
+function decodeAnnotation(objectString) {
+    if (typeof objectString === "object") {
+        return objectString; // Already decoded
+    }
+    if (typeof objectString !== "string") {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let keys = [
+        PROPERTY.ANNOTATION_TYPE,
+        PROPERTY.ANNOTATION_STRING
+    ];
+    let values = objectString.split(",");
+    if (values.length !== keys.length) {
+        throw new Error("Invalid method structure: " + objectString);
+    }
+    let output = {};
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let value = values[i].trim();
+        var decodedValue = decodePart(value, null);
+        if (decodedValue !== null) {
+            output[key] = decodedValue;
+        }
+    }
 
     return output;
 }

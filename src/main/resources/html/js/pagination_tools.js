@@ -746,7 +746,11 @@ PageableSortableTable = class {
         let before = this.table_body.id;
         this.table_body.id = this.table_id;
         for (let i = 0; i < data.length; i++) {
-            this.rowAction(this.table_body, data[i]);
+            try {
+                this.rowAction(this.table_body, data[i]);
+            } catch (e) {
+                console.error("Error adding row to table ", this.table_id, " for data: ", data[i], e);
+            }
         }
         this.table_body.id = before;
 
