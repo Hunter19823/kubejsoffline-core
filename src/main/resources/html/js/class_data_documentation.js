@@ -229,6 +229,7 @@
  * @method getType - Retrieves the type of the object. (Alias for type)
  * @property {function(): TypeIdentifier} type - Retrieves the type of the object.
  * @property {function(): TypeIdentifier} getType - Retrieves the type of the object. (Alias for type)
+ * @property {function(): JavaType} getTypeWrapped - Retrieves the wrapped form of the type.
  * @public
  */
 /**
@@ -713,6 +714,17 @@ function setRemapType(target) {
      */
     target.getType = target.type;
 
+    /**
+     * Retrieves the wrapped form of the type with the type variables remapped.
+     *
+     * @returns {JavaType} The wrapped form of the type.
+     */
+    target.getTypeWrapped = function() {
+        let result = getClass(target.type());
+        result.withTypeVariableMap(target.getTypeVariableMap());
+        return result;
+    }
+
     return target;
 }
 
@@ -900,6 +912,11 @@ function setTypeVariables(target) {
      */
     target.getTypeVariables = function () {
         return getAsArray(target.data[PROPERTY.TYPE_VARIABLES]);
+    }
+
+    target.getTypeVariablesMapped = function () {
+        const typeVariableMap = target.getTypeVariableMap();
+        return target.getTypeVariables().map(tv => typeVariableMap[tv] ?? tv);
     }
 
     return target;

@@ -59,13 +59,21 @@ function getConstructor(constructorData, typeVariableMap = {}, sourceClassId, so
     output.toString = function () {
         let parentName = getClass(this.getDeclaringClass()).toString();
         let modifier = MODIFIER.toString(this.getModifiers());
+        let typeVars = this.getTypeVariablesMapped().map((typeVar) => {
+            return typeVar.toString();
+        }).join(", ");
         let parameterList = this.parameters().map((param) => {
             return param.toString();
         }).join(", ");
-        if (exists(modifier) && modifier.length > 0) {
-            modifier += " ";
-        }
-        return `${modifier}${parentName}(${parameterList})`;
+        let args = [
+            modifier,
+            exists(typeVars) && typeVars.length > 0 ? `<${typeVars}>` : "",
+            `${parentName}(${parameterList})`
+        ];
+        return args
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+            .join(" ");
     }
 
     return output;

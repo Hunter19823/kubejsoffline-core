@@ -87,7 +87,7 @@ function loadRawClass(data) {
     }
     let classNameTag = document.createElement('h3');
     document.body.append(classNameTag);
-    classNameTag.append(createFullSignature([data.id(), data.getArrayDepth()], data.getTypeVariableMap()));
+    classNameTag.append(createFullSignature(data));
 
     try {
         createRelatedClassTable(data);

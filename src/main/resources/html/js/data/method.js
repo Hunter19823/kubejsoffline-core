@@ -49,7 +49,7 @@ function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethod
             return param.id();
         }).join(",");
         // Generate a unique HTML ID for this method
-        return `${getClass(this.getType()).getReferenceName(this.getTypeVariableMap())} ${this.getName()}(${params})`;
+        return `${getClass(this.getTypeWrapped()).getReferenceName(this.getTypeVariableMap())} ${this.getName()}(${params})`;
 
     }
 
@@ -64,17 +64,20 @@ function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethod
     output.getHrefLink = output.hrefLink;
 
     output.toString = function () {
-        let returnType = getClass(this.type()).toString();
+        let returnType = this.getTypeWrapped().toString();
         let modifier = MODIFIER.toString(this.getModifiers());
-        let typeVariables = this.getTypeVariables().map((tv) => tv.toString());
+        let typeVariables = this.getTypeVariablesMapped().map((v) => getClass(v)).map((tv) => tv.toString());
         let params = this.parameters().map((param) => param.toString()).join(", ");
-        if (exists(modifier) && modifier.length > 0) {
-            modifier += " ";
-        }
-        if (typeVariables.length > 0) {
-            return `${modifier} <${typeVariables.join(", ")}> ${returnType} ${this.name()}(${params})`;
-        }
-        return `${modifier}${returnType} ${this.name()}(${params})`;
+        let args = [
+            modifier,
+            typeVariables.length > 0 ? `<${typeVariables.join(", ")}>` : "",
+            returnType,
+            `${this.name()}(${params})`
+        ];
+        return args
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+            .join(" ");
     }
 
     return output;

@@ -49,18 +49,24 @@ function getParameter(parameterID, typeVariableMap = {}, sourceClassId, sourceMe
     output.withTypeVariableMap(typeVariableMap);
 
     output.id = function () {
-        return getClass(this.getType()).getReferenceName(this.getTypeVariableMap());
+        return this.getTypeWrapped().getReferenceName(this.getTypeVariableMap());
     }
 
     output.getId = output.id;
 
     output.toString = function () {
-        let typeName = getClass(this.getType()).toString();
+        let typeName = this.getTypeWrapped().toString();
         let modifier = MODIFIER.toString(this.getModifiers());
-        if (exists(modifier) && modifier.length > 0) {
-            modifier += " ";
-        }
-        return `${modifier}${typeName} ${this.name()}`;
+        let args = [
+            modifier,
+            typeName,
+            this.name()
+        ];
+
+        return args
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+            .join(" ");
     }
 
 

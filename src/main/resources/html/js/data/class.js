@@ -17,18 +17,14 @@ function getClass(id) {
             output.data = getTypeData(id);
             break;
         case "object":
-            if (exists(id._id)) {
-                output.data = getTypeData(id._id);
-            } else if (exists(id.data) && exists(id.data._id)) {
-                output.data = getTypeData(id.data._id);
-            } else if (Array.isArray(id) && id.length === 2) {
+            if (Array.isArray(id) && id.length === 2) {
                 // If it's an array, then assume it's an array of a class.
                 // the first index is the array type, the depth is the second index,
                 output.data = getTypeData(id[0]);
                 output.data._id = id[0];
                 output._array_depth = id[1];
             } else {
-                throw new Error("Invalid class object: " + id);
+                return id; // Assume it's already a wrapped class
             }
             break;
         case "string":
@@ -376,6 +372,9 @@ function getClass(id) {
         if (!exists(this._type_variable_map_base)) {
             this._type_variable_map_base = createTypeVariableMap(output.id());
         }
+        if (exists(this._type_variable_map)) {
+            return this._type_variable_map;
+        }
         this._type_variable_map = structuredClone(this._type_variable_map_base);
         let parameterizedType = output;
         let i = 0;
@@ -601,7 +600,7 @@ function getClass(id) {
     }
 
     output.toString = function () {
-        return this.getSimpleName();
+        return getGenericDefinitionWithoutPackage(this.id(), this.getTypeVariableMap(), true) + "[]".repeat(this.getArrayDepth());
     }
 
     return output;

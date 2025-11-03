@@ -72,7 +72,7 @@ function dataFilter() {
         const MATCHER = attributeMatcher(attribute, query, exact, includes);
 
         return (field) => {
-            return MATCHER(getClass(field.type()));
+            return MATCHER(field.getTypeWrapped());
         }
     }
 
@@ -92,7 +92,7 @@ function dataFilter() {
          * @returns {boolean}
          */
         return (method) => {
-            return MATCHER(getClass(method.type()));
+            return MATCHER(method.getTypeWrapped());
         }
     }
 
@@ -109,7 +109,7 @@ function dataFilter() {
 
         return (parameter) => {
             try {
-                return MATCHER(getClass(parameter.type()));
+                return MATCHER(parameter.getTypeWrapped());
             } catch(e) {
                 console.error(`Error matching parameter type attribute: ${attribute} with query: ${query}. Parameter Type: ${parameter.type()}`, e);
                 return false;
@@ -621,7 +621,7 @@ function loadSearchResults() {
 
     try {
         createPagedTable("Matching Fields", 'field-table', results.fields, (table, fieldData) => {
-            addFieldToTable(table, fieldData, fieldData.type());
+            addFieldToTable(table, fieldData);
         }, 'Link', 'Declared In', 'Field Signature', 'Declaration Class')
             ?.sortableByField((a) => a)
             ?.create();

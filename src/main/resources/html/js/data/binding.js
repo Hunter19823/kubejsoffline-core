@@ -12,6 +12,10 @@ function getBinding([name, type, data]) {
     output._name = name;
     output._type = type;
     output._id = `${name}-${getClass(type).id()}`;
+
+    output = setRemapType(output);
+    output = setTypeVariableMap(output);
+
     output.getName = function () {
         return output._name;
     }
@@ -27,6 +31,7 @@ function getBinding([name, type, data]) {
     output.getId = function () {
         return output._id;
     }
+
     output.id = output.getId;
     return output;
 }

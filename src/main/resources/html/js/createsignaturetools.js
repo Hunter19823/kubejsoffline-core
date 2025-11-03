@@ -80,7 +80,7 @@ function createMethodSignature(method) {
     let name = span(method.name());
     appendAnnotationToolTip(name, method.annotations());
     out.append(span(MODIFIER.toString(method.modifiers()) + " "));
-    out.append(createShortLink(method.type(), method.getTypeVariableMap()));
+    out.append(createShortLink(method.getTypeWrapped()));
     out.append(' ');
     out.append(name);
     out.append('(');
@@ -101,7 +101,7 @@ function createMethodSignature(method) {
  */
 function createParameterSignature(parameter) {
     let output = span();
-    output.append(createShortLink(parameter.getType(), parameter.getTypeVariableMap()));
+    output.append(createShortLink(parameter.getTypeWrapped()));
     output.append(' ');
     output.append(appendAnnotationToolTip(span(parameter.getName()), parameter.getAnnotations()));
     return output;
@@ -117,7 +117,8 @@ function createFieldSignature(field) {
     let name = span(field.getName());
     appendAnnotationToolTip(name, field.getAnnotations());
     out.append(span(MODIFIER.toString(field.getModifiers()) + " "));
-    out.append(createShortLink(field.getType(), field.getTypeVariableMap()));
+    let type = field.getTypeWrapped();
+    out.append(createShortLink(type));
     out.append(' ');
     out.append(name);
     return out;
@@ -152,7 +153,7 @@ function createConstructorSignature(constructor) {
     out.append('(');
     for (let i = 0; i < parameters.length; i++) {
         param = parameters[i];
-        out.appendChild(createShortLink(param.type(), param.getTypeVariableMap()));
+        out.appendChild(createShortLink(param.getTypeWrapped()));
         name = span(param.name());
         appendAnnotationToolTip(name, param.annotations());
         out.append(' ');
@@ -173,7 +174,7 @@ function createConstructorSignature(constructor) {
  */
 function createAnnotationSignature(annotation) {
     let out = document.createElement('span');
-    let type = getClass(annotation.type());
+    let type = getClass(annotation.getTypeWrapped());
     let annotation_string = `@${type.getFullyQualifiedName()}(${annotation.string()})`;
     out.append(annotation_string);
     return out;
@@ -207,7 +208,7 @@ function appendAttributesToClassTableRow(row, table_id, clazz) {
 
 
 function appendAttributesToBindingTableRow(row, table_id, binding) {
-    let clazz = getClass(binding.getType());
+    let clazz = binding.getTypeWrapped();
     row.setAttribute('mod', clazz.modifiers());
     row.setAttribute('name', binding.getName());
     row.setAttribute('type', binding.getType());
@@ -221,7 +222,7 @@ function appendAttributesToBindingTableRow(row, table_id, binding) {
 function appendAttributesToMethodTableRow(row, table_id, class_id, method) {
     row.setAttribute('mod', method.modifiers());
     row.setAttribute('name', method.name());
-    row.setAttribute('type', method.type());
+    row.setAttribute('type', method.getType());
     row.setAttribute('declared-in', class_id);
     row.setAttribute('parameters', method.parameters().length);
     row.setAttribute('row-type', 'method');
@@ -234,7 +235,7 @@ function appendAttributesToMethodTableRow(row, table_id, class_id, method) {
 function appendAttributesToFieldTableRow(row, table_id, field) {
     row.setAttribute('mod', field.modifiers());
     row.setAttribute('name', field.name());
-    row.setAttribute('type', field.type());
+    row.setAttribute('type', field.getType());
     row.setAttribute('declared-in', field.getDeclaringClass());
     row.setAttribute('row-type', 'field');
     row.setAttribute('dataIndex', field.dataIndex());

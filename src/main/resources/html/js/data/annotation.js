@@ -17,6 +17,7 @@ function getAnnotation(annotationData) {
 
     output = setRemapType(output);
     output = setDataIndex(output);
+    output = setTypeVariableMap(output);
 
     output.string = function () {
         if (exists(this.data[PROPERTY.ANNOTATION_STRING])) {

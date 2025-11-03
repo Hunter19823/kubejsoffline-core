@@ -34,14 +34,14 @@ function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId)
 
     output.toKubeJSStaticReference = function () {
         let parent = getClass(this.getDeclaringClass());
-        return `// KJSODocs: ${getClass(this.type()).hrefLink()}\n$${parent.simplename(this.getTypeVariableMap()).toUpperCase()}.${this.name()};`;
+        return `// KJSODocs: ${this.getTypeWrapped().hrefLink()}\n$${parent.simplename(this.getTypeVariableMap()).toUpperCase()}.${this.name()};`;
     }
 
     output.toKubeJSCode = output.toKubeJSStaticReference;
 
     output.id = function () {
         // Generate a unique HTML ID for this field
-        return getClass(this.getType()).getReferenceName(this.getTypeVariableMap()) + "." + this.getName();
+        return getClass(this.getTypeWrapped()).getReferenceName(this.getTypeVariableMap()) + "." + this.getName();
     }
 
     output.getId = output.id;
@@ -55,12 +55,18 @@ function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId)
     output.getHrefLink = output.hrefLink;
 
     output.toString = function () {
-        let returnType = getClass(this.getType()).toString();
+        let returnType = this.getTypeWrapped().toString();
         let modifier = MODIFIER.toString(getModifiers());
-        if (exists(modifier) && modifier.length > 0) {
-            modifier += " ";
-        }
-        return `${modifier}${returnType} ${this.name()}`;
+        let args = [
+            modifier,
+            returnType,
+            this.name()
+        ];
+
+        return args
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+            .join(" ");
     }
 
     return output;

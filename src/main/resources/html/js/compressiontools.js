@@ -4,6 +4,7 @@ function cachedFunction(func) {
     return function (...args) {
         const key = JSON.stringify(args);
         if (!(key in cache)) {
+            console.log(`Cache miss for key: ${key}`);
             cache[key] = func(...args);
         }
         return cache[key];
@@ -200,6 +201,16 @@ function getGenericDefinition(type, typeVariableMap, includeGenerics = true) {
     );
 }
 
+function getGenericDefinitionWithoutPackage(type, typeVariableMap, includeGenerics = true) {
+    return cachedGenericDefinition(type,
+        new name_parameters()
+            .setTypeVariableMap(typeVariableMap)
+            .setDefiningTypeVariable(false)
+            .setAppendPackageName(false)
+            .setIncludeGenerics(includeGenerics)
+    );
+}
+
 function getGenericName(type, typeVariableMap, includeGenerics = true) {
     return cachedGenericDefinition(type,
         new name_parameters()
@@ -229,9 +240,10 @@ function getParameterizedName(type, config) {
     const rawTypeName = cachedGenericDefinition(type.getRawType(), config.setAppendPackageName(config.getAppendPackageName() && !exists(type.getOwnerType())).disableEnclosingName(true));
     const ownerType = type.getOwnerType();
     const ownerPrefix = (exists(ownerType) && (!config.getDefiningParameterizedType()) ? cachedGenericDefinition(ownerType, config.disableEnclosingName(true)) + "$" : "");
-    const actualTypes = type.getTypeVariables();
+    const actualTypes = type.getTypeVariablesMapped();
     const genericArguments = getGenerics(actualTypes, config.disableEnclosingName(true));
 
+    console.log(`Parameterized name components for type ID: ${type.id()} - Owner Prefix: "${ownerPrefix}", Raw Type Name: "${rawTypeName}", Generic Arguments: "${genericArguments}". Config: `, config, `. Result: "${ownerPrefix + rawTypeName + genericArguments}"`);
     return ownerPrefix + rawTypeName + genericArguments;
 }
 
@@ -286,13 +298,13 @@ function getRawClassName(type, config) {
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
     if (type.isTypeVariable()) {
+        type = config.remapType(type);
         if (config.getDefiningTypeVariable(type.id())) {
             if (!exists(type.data._name_cache)) {
                 type.data._name_cache = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
             }
             return type.data._name_cache;
         }
-        type = config.remapType(type);
     }
     if (type.isRawClass()) {
         if (exists(type.getDeclaringClass())) {
@@ -635,11 +647,11 @@ function createLinkableSignature(type, config) {
     type.withTypeVariableMap(config.getTypeVariableMap())
     const outputSpan = document.createElement('span');
     if (type.isTypeVariable()) {
+        type = config.remapType(type);
         if (config.getDefiningTypeVariable(type.id())) {
             outputSpan.append(createLink(span(type.name()), config.getLinkableID(type.id())));
             return outputSpan;
         }
-        type = config.remapType(type);
     }
     if (type.isRawClass()) {
         return getRawClassSignature(type, outputSpan, config);
@@ -757,8 +769,8 @@ signature_parameters = class {
 
     remapType(type) {
         if (typeof type === 'number') {
-            if (exists(getTypeVariables()[type])) {
-                return getClass(getTypeVariables()[type]);
+            if (exists(this.typeVariableMap[type])) {
+                return getClass(this.typeVariableMap[type]);
             } else {
                 return getClass(type);
             }

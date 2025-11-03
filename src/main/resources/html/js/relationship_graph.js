@@ -77,25 +77,25 @@ async function indexClass(target) {
     );
     markRelationship(
         target,
-        classType.constructors(true).flatMap((constructorData) => constructorData.getParameters().map((parameterData) => parameterData.getType())),
+        classType.constructors(true).flatMap((constructorData) => constructorData.getParameters().map((parameterData) => parameterData.getTypeWrapped())),
         [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.fields(true).map((fieldData) => fieldData.getType()),
+        classType.fields(true).map((fieldData) => fieldData.getTypeWrapped()),
         [RELATIONSHIP.FIELD_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.methods(true).map((methodData) => methodData.getType()),
+        classType.methods(true).map((methodData) => methodData.getTypeWrapped()),
         [RELATIONSHIP.METHOD_RETURN_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.methods(true).flatMap((methodData) => methodData.getParameters().map((parameterData) => parameterData.getType())),
+        classType.methods(true).flatMap((methodData) => methodData.getParameters().map((parameterData) => parameterData.getTypeWrapped())),
         [RELATIONSHIP.METHOD_PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
