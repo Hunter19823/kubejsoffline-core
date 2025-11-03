@@ -80,6 +80,72 @@ function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethod
             .join(" ");
     }
 
+    /**
+     * This method checks if another method is equal to this one.
+     * Two methods are considered equal if they have the same name,
+     * compatible return types, and compatible parameters.
+     * @param otherMethod The other method to compare against.
+     * @returns {boolean} True if the methods are equal, false otherwise.
+     */
+    output.areMethodsEqual = function(otherMethod) {
+        if (this.getName() !== otherMethod.getName()) {
+            return false;
+        }
+        let thisReturnType = this.getTypeWrapped();
+        let otherReturnType = otherMethod.getTypeWrapped();
+        // If this is compatible with other, return true
+        let compatibleReturn = thisReturnType.isTypeCompatibleWith(otherReturnType) || otherReturnType.isTypeCompatibleWith(thisReturnType);
+        if (!compatibleReturn) {
+            return false;
+        }
+        let thisParams = this.parameters();
+        let otherParams = otherMethod.parameters();
+        if (thisParams.length !== otherParams.length) {
+            return false;
+        }
+        for (let i = 0; i < thisParams.length; i++) {
+            let thisParamType = thisParams[i].getTypeWrapped();
+            let otherParamType = otherParams[i].getTypeWrapped();
+            let compatibleParam = thisParamType.isTypeCompatibleWith(otherParamType) || otherParamType.isTypeCompatibleWith(thisParamType);
+            if (!compatibleParam) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This method checks if another method has a higher specificity than this one.
+     * A method is considered more specific if its return type and parameter types
+     * are subtypes of the corresponding types in the other method, but not vice versa.
+     * @param otherMethod The other method to compare against.
+     * @returns {boolean} True if this method is more specific, false otherwise.
+     */
+    output.isMoreSpecificThan = function(otherMethod) {
+        let thisReturnType = this.getTypeWrapped();
+        let otherReturnType = otherMethod.getTypeWrapped();
+        let thisParams = this.parameters();
+        let otherParams = otherMethod.parameters();
+        if (thisParams.length !== otherParams.length) {
+            return false;
+        }
+        let isThisReturnTypeCompatible = thisReturnType.isTypeCompatibleWith(otherReturnType);
+        let isOtherReturnTypeCompatible = otherReturnType.isTypeCompatibleWith(thisReturnType);
+        if (!(isThisReturnTypeCompatible && !isOtherReturnTypeCompatible)) {
+            return false;
+        }
+        for (let i = 0; i < thisParams.length; i++) {
+            let thisParamType = thisParams[i].getTypeWrapped();
+            let otherParamType = otherParams[i].getTypeWrapped();
+            let thisParamMoreSpecific = thisParamType.isTypeCompatibleWith(otherParamType);
+            let otherParamMoreSpecific = otherParamType.isTypeCompatibleWith(thisParamType);
+            if (!(thisParamMoreSpecific && !otherParamMoreSpecific)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     return output;
 }
 

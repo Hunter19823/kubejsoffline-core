@@ -143,6 +143,25 @@ function addBindingToTableFunction() {
 }
 
 /**
+ * Creates a TableRowAdder for TypeVariable mappings.
+ * @return {TableDataAdder<[string, string]>} A function that adds type variable mappings to tables.
+ */
+function addTypeVariableMappingToTableFunction() {
+    return /** @type {TableDataAdder<[string, string]>} */ ((table, [name, mapping]) => {
+        try {
+            let row = addRow(
+                table,
+                span(name),
+                span(mapping)
+            );
+            appendAttributesToTypeVariableMapTableRow(row, table.id, name, mapping)
+        } catch (e) {
+            console.error(`Failed to create entry for `, table.id, " Type Variable Mapping: ", name, " Error: ", e);
+        }
+    });
+}
+
+/**
  * Creates a table of methods for a class.
  * @param target {JavaType} The class id to create the method table for.
  */
@@ -162,7 +181,15 @@ function createMethodTable(target) {
         //     return false;
         // }
         return true;
-    });
+    })
+    // Filter methods to only include the most specific overloads
+    // methods = methods.filter((method) => {
+    //     return !methods.find((otherMethod) => {
+    //         if (method.areMethodsEqual(otherMethod) && otherMethod.isMoreSpecificThan(method)) {
+    //             return true;
+    //         }
+    //     });
+    // });
     if (methods.length === 0) {
         return;
     }
@@ -325,4 +352,28 @@ function createBindingsTable(title, scope, table_id, bindings) {
         ?.sortableByName()
         ?.create();
 
+}
+
+function createTypeVariableMappingTable(target) {
+    let typeVariableMap = target.getTypeVariableMap();
+    console.log(`Creating type variable mapping table for ${target.toString()}: `, typeVariableMap);
+    if (typeVariableMap.length === 0) {
+        return;
+    }
+    createPagedTable(
+        'Type Variable Mappings',
+        'type-variable-mappings',
+        Object.entries(typeVariableMap).map(
+            ([key, value], index) => [
+                getClass(key).toString(),
+                getClass(value).toString()
+            ]
+        ),
+        addTypeVariableMappingToTableFunction(),
+        "Type Variable Name",
+        "Mapped To"
+    )
+        ?.addDefaultOptionPair(PageableSortableTable.SORTABLE_BY_NAME)
+        ?.sortableByName()
+        ?.create();
 }

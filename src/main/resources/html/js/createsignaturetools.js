@@ -37,13 +37,27 @@ function createLink(element, id, rawId = null, focus = null) {
     return element;
 }
 
+function addStringTooltip(tag, type) {
+    tag.classList.add('tooltip');
+    let tooltip = document.createElement('div');
+    tooltip.classList.add('tooltiptext');
+    tooltip.appendChild(span(type.toString()));
+    // Remove the existing tooltip if it exists
+    const existingTooltip = tag.querySelector('.tooltiptext');
+    if (existingTooltip) {
+        existingTooltip.parentNode.removeChild(existingTooltip);
+    }
+    tag.appendChild(tooltip);
+    return tag;
+}
+
 function createShortLink(id, typeVariableMap = {}) {
     const target = getClass(id);
     target.withTypeVariableMap(typeVariableMap);
     const shortSignature = createLinkableSignature(
         id,
         new signature_parameters()
-            .setTypeVariableMap(target.getTypeVariableMap())
+            .setTypeVariableMap(typeVariableMap)
             .setAppendPackageName(false)
             .setDefiningTypeVariable(false),
     );
@@ -57,16 +71,13 @@ function createShortLink(id, typeVariableMap = {}) {
 }
 
 function createFullSignature(id, typeVariableMap = {}) {
-    const target = getClass(id);
-    target.withTypeVariableMap(typeVariableMap);
-    const fullSignature = createLinkableSignature(
+    return createLinkableSignature(
         id,
         new signature_parameters()
-            .setTypeVariableMap(target.getTypeVariableMap())
+            .setTypeVariableMap(typeVariableMap)
             .setAppendPackageName(true)
             .setDefiningTypeVariable(false)
     );
-    return fullSignature;
 }
 
 /**
@@ -262,6 +273,12 @@ function appendAttributesToRelationshipToTableRow(row, class_id, relationshipNam
 
     row.id = clazz.id();
     addLinkToTableRow(row, class_id);
+}
+
+function appendAttributesToTypeVariableMapTableRow(row, table_id, typeVariableName, mappedTypeVariable) {
+    row.setAttribute('name', typeVariableName);
+    row.setAttribute('mapped-type', mappedTypeVariable);
+    row.setAttribute('row-type', 'type-variable-map');
 }
 
 function handleClickLink(element) {

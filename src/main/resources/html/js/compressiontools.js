@@ -78,7 +78,9 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
 
 /**
  * Creates a TypeVariableMap from a given class.
- * @param type {number} the id of the type
+ * @param type {TypeIdentifier} the id of the type
+ * @param existingMap {TypeVariableMap} The existing map to add to (optional)
+ * @returns {TypeVariableMap} the created TypeVariableMap
  */
 function createTypeVariableMap(type, existingMap = {}) {
     let nonRawType = getClass(type);
@@ -93,6 +95,19 @@ function createTypeVariableMap(type, existingMap = {}) {
                     existingMap[rawType.getTypeVariables()[i]] = nonRawType.getTypeVariables()[i];
                 }
             }
+        }
+        let parameterizedType = nonRawType;
+        let i = 0;
+        while (exists(parameterizedType.getOwnerType()) && i <= 100) {
+            parameterizedType = getClass(parameterizedType.getOwnerType());
+            let map = parameterizedType.getTypeVariableMap();
+            for (let [key, value] of Object.entries(map)) {
+                existingMap[key] = value;
+            }
+            i++;
+        }
+        if (i > 100) {
+            console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
         }
         return existingMap;
     }
@@ -249,11 +264,10 @@ function getWildcardName(type, config) {
     const name = "?";
     const lowerBounds = type.getLowerBound();
     if (lowerBounds.length !== 0) {
-
         return name + joiner(
             lowerBounds,
             " & ",
-            (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, bound)),
+            (bound) => cachedGenericDefinition(bound, config),
             " super "
         );
     }
@@ -262,7 +276,7 @@ function getWildcardName(type, config) {
         return name + joiner(
             upperBounds,
             " & ",
-            (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, bound)),
+            (bound) => cachedGenericDefinition(bound, config),
             " extends "
         );
     }
@@ -295,14 +309,10 @@ function getRawClassName(type, config) {
 
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
+    type.withTypeVariableMap(config.getTypeVariableMap())
     if (type.isTypeVariable()) {
         type = config.remapType(type);
-        if (config.getDefiningTypeVariable(type.id())) {
-            if (!exists(type.data._name_cache)) {
-                type.data._name_cache = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
-            }
-            return type.data._name_cache;
-        }
+        type.withTypeVariableMap(config.getTypeVariableMap());
     }
     if (type.isRawClass()) {
         if (exists(type.getDeclaringClass())) {
@@ -497,8 +507,7 @@ function getRawClassSignature(type, outputSpan, config) {
             ", ",
             (actualType) => createLinkableSignature(
                 actualType,
-                config
-                    .setDefiningTypeVariable(true, actualType),
+                config,
             ),
             span("<"),
             span(">")
@@ -560,7 +569,7 @@ function getWildcardSignature(type, outputSpan, config) {
                 " & ",
                 (bound) => createLinkableSignature(
                     bound,
-                    config.setDefiningTypeVariable(true, bound)
+                    config
                 ),
                 span(" super ")
             )
@@ -575,7 +584,7 @@ function getWildcardSignature(type, outputSpan, config) {
                 " & ",
                 (bound) => createLinkableSignature(
                     bound,
-                    config.setDefiningTypeVariable(true, bound),
+                    config,
                 ),
                 span(" extends ")
             )
@@ -600,7 +609,6 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             config
                 .setDefiningParameterizedType(false)
                 .setOverrideID(type.id())
-                .setTypeVariableMap(type.getTypeVariableMap())
         );
         outputSpan.append(ownerPrefix);
         outputSpan.append(span('$'));
@@ -612,10 +620,9 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             .setDefiningParameterizedType(true)
             .disableEnclosingClass()
             .setOverrideID(type.id())
-            .setTypeVariableMap(type.getTypeVariableMap())
     );
     outputSpan.append(rawTypeName);
-    const actualTypes = type.getTypeVariables();
+    const actualTypes = type.getTypeVariablesMapped();
     if (actualTypes.length === 0) {
         return outputSpan;
     }
@@ -625,7 +632,7 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             ", ",
             (actualType) => createLinkableSignature(
                 actualType,
-                config.setDefiningTypeVariable(true, actualType)
+                config
             ),
             span("<"),
             span(">")
@@ -646,10 +653,7 @@ function createLinkableSignature(type, config) {
     const outputSpan = document.createElement('span');
     if (type.isTypeVariable()) {
         type = config.remapType(type);
-        if (config.getDefiningTypeVariable(type.id())) {
-            outputSpan.append(createLink(span(type.name()), config.getLinkableID(type.id())));
-            return outputSpan;
-        }
+        type.withTypeVariableMap(config.getTypeVariableMap());
     }
     if (type.isRawClass()) {
         return getRawClassSignature(type, outputSpan, config);

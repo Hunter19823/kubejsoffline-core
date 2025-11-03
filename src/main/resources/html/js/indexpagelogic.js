@@ -8,18 +8,22 @@ function loadClass(id) {
     }
     wipePage();
     if (data.isWildcard()) {
+        console.log(`Loading wildcard ${data.id()} (${data.toString()})`);
         loadWildcard(data);
         return;
     }
     if (data.isTypeVariable()) {
+        console.log(`Loading type variable ${data.id()} (${data.toString()})`);
         loadTypeVariable(data);
         return;
     }
     if (data.isParameterizedType()) {
+        console.log(`Loading parameterized type ${data.id()} (${data.toString()})`);
         loadParameterizedType(data);
         return;
     }
     if (data.isRawClass()) {
+        console.log(`Loading raw class ${data.id()} (${data.toString()})`);
         loadRawClass(data);
         return;
     }
@@ -68,26 +72,58 @@ function loadTypeVariable(typeVariable) {
 }
 
 function loadParameterizedType(parameterizedType) {
-    // Because a parameterized Type is just a raw type with type variables replaced, we can just load the raw type
-    // with a fake parameterized type.
-    let rawType = getClass(parameterizedType.getRawType());
-    // let typeVariableMap = {};
-    // let actualTypeArguments = parameterizedType.getTypeVariables();
-    // let typeVariables = rawType.getTypeVariables();
-    // for (let i = 0; i < typeVariables.length; i++) {
-    //     typeVariableMap[typeVariables[i]] = actualTypeArguments[i];
-    // }
-    rawType.withTypeVariableMap(parameterizedType.getTypeVariableMap());
-    loadRawClass(rawType);
+    let classNameTag = document.createElement('h3');
+    document.body.append(classNameTag);
+    classNameTag.append(createFullSignature(parameterizedType));
+
+    try {
+        createTypeVariableMappingTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create type variable mapping table.", e, parameterizedType);
+    }
+
+    try {
+        createRelatedClassTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create related class table.", e, parameterizedType);
+    }
+
+    try {
+        createConstructorTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create constructor table.", e, parameterizedType);
+    }
+    try {
+        createFieldTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create field table.", e, parameterizedType);
+    }
+    try {
+        createMethodTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create method table.", e, parameterizedType);
+    }
+    try {
+        createRelationshipTable(parameterizedType);
+    } catch (e) {
+        console.error("Failed to create relationship table.", e, parameterizedType);
+    }
 }
 
 function loadRawClass(data) {
     if (!exists(data)) {
         throw new Error("No class data found for data: " + data);
     }
+    console.log(`Loading Class ${data.id()} (${data.toString()})`);
     let classNameTag = document.createElement('h3');
     document.body.append(classNameTag);
     classNameTag.append(createFullSignature(data));
+
+    try {
+        createTypeVariableMappingTable(data);
+    } catch (e) {
+        console.error("Failed to create type variable mapping table.", e);
+    }
 
     try {
         createRelatedClassTable(data);

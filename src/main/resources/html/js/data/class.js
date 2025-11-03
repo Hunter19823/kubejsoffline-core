@@ -372,38 +372,7 @@ function getClass(id) {
         if (!exists(this._type_variable_map_base)) {
             this._type_variable_map_base = createTypeVariableMap(output.id());
         }
-        if (exists(this._type_variable_map)) {
-            return this._type_variable_map;
-        }
-        this._type_variable_map = structuredClone(this._type_variable_map_base);
-        let parameterizedType = output;
-        let i = 0;
-        while (exists(parameterizedType.getOwnerType()) && i <= 100) {
-            parameterizedType = getClass(parameterizedType.getOwnerType());
-            output.withTypeVariableMap(parameterizedType.getTypeVariableMap());
-            i++;
-        }
-        if (i > 100) {
-            console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
-        }
-        return this._type_variable_map;
-    }
-
-    // Override the withTypeVariableMap to also update the type variable map base
-    /**
-     * Merges the provided type variable map into the object's type variable map.
-     *
-     * @param map {TypeVariableMap} The type variable map to merge.
-     * @return {TypeVariableMap} The merged type variable map.
-     */
-    output.withTypeVariableMap = function (map) {
-        if (!exists(this._type_variable_map)) {
-            this._type_variable_map = {};
-        }
-        for (const key in map) {
-            this._type_variable_map[key] = map[key];
-        }
-        return this._type_variable_map;
+        return structuredClone(this._type_variable_map_base);
     }
 
     /**
@@ -511,6 +480,16 @@ function getClass(id) {
         });
         this.data._cachedInheritedClasses = classes;
         return classes;
+    }
+
+    output.isTypeCompatibleWith = function(otherClass) {
+        let isCompatible = false;
+        this._follow_inheritance((data, index) => {
+            if (index === otherClass.id()) {
+                isCompatible = true;
+            }
+        });
+        return isCompatible;
     }
 
     output._follow_inheritance = function (action) {
