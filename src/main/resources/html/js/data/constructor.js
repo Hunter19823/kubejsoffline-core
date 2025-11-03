@@ -56,6 +56,18 @@ function getConstructor(constructorData, typeVariableMap = {}, sourceClassId, so
 
     output.getHrefLink = output.hrefLink;
 
+    output.toString = function () {
+        let parentName = getClass(this.getDeclaringClass()).toString();
+        let modifier = MODIFIER.toString(this.getModifiers());
+        let parameterList = this.parameters().map((param) => {
+            return param.toString();
+        }).join(", ");
+        if (exists(modifier) && modifier.length > 0) {
+            modifier += " ";
+        }
+        return `${modifier}${parentName}(${parameterList})`;
+    }
+
     return output;
 }
 
@@ -80,6 +92,9 @@ function decodeConstructor(objectString) {
     let output = {};
     for (let i = 0; i < keys.length; i++) {
         let key = keys[i];
+        if (!exists(key)) {
+            throw new Error(`Invalid annotation key at index ${i}: ${key}`);
+        }
         let value = values[i].trim();
         var decodedValue = decodePart(value, null);
         if (decodedValue !== null) {

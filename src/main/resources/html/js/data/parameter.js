@@ -54,6 +54,15 @@ function getParameter(parameterID, typeVariableMap = {}, sourceClassId, sourceMe
 
     output.getId = output.id;
 
+    output.toString = function () {
+        let typeName = getClass(this.getType()).toString();
+        let modifier = MODIFIER.toString(this.getModifiers());
+        if (exists(modifier) && modifier.length > 0) {
+            modifier += " ";
+        }
+        return `${modifier}${typeName} ${this.name()}`;
+    }
+
 
     return output;
 }
@@ -79,14 +88,13 @@ function decodeParameter(objectString) {
     let output = {};
     for (let i = 0; i < keys.length; i++) {
         let key = keys[i];
+        if (!exists(key)) {
+            throw new Error(`Invalid annotation key at index ${i}: ${key}`);
+        }
         let value = values[i].trim();
         let decodedValue = decodePart(value, null);
         if (decodedValue !== null) {
             output[key] = decodedValue;
-        } else {
-            if (PROPERTY.MODIFIERS === key) {
-                output[key] = 0; // Default modifiers to 0
-            }
         }
     }
 

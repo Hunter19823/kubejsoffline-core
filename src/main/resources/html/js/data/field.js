@@ -54,6 +54,15 @@ function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId)
 
     output.getHrefLink = output.hrefLink;
 
+    output.toString = function () {
+        let returnType = getClass(this.getType()).toString();
+        let modifier = MODIFIER.toString(getModifiers());
+        if (exists(modifier) && modifier.length > 0) {
+            modifier += " ";
+        }
+        return `${modifier}${returnType} ${this.name()}`;
+    }
+
     return output;
 }
 
@@ -77,6 +86,9 @@ function decodeField(objectString) {
     let output = {};
     for (let i = 0; i < keys.length; i++) {
         let key = keys[i];
+        if (!exists(key)) {
+            throw new Error(`Invalid annotation key at index ${i}: ${key}`);
+        }
         let value = values[i].trim();
         var decodedValue = decodePart(value, null);
         if (decodedValue !== null) {

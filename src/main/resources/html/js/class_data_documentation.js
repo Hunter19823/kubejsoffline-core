@@ -786,7 +786,11 @@ function setParameters(target, sourceClassId, sourceMethodId=null, sourceConstru
      * @returns {Parameter[]} The parameters of the object.
      */
     target.parameters = function () {
-        return getAsArray(target.data[PROPERTY.PARAMETERS]).map(mapParameter);
+        if (target.data._parameter_cache !== undefined) {
+            return target.data._parameter_cache;
+        }
+        target.data._parameter_cache = getAsArray(target.data[PROPERTY.PARAMETERS]).map(mapParameter);
+        return target.data._parameter_cache;
     }
 
     /**
@@ -823,7 +827,11 @@ function setAnnotations(target) {
      * @returns {Annotation[]} The annotations of the object.
      */
     target.annotations = function () {
-        return getAsArray(target.data[PROPERTY.ANNOTATIONS]).map(mapAnnotation);
+        if (target.data._annotation_cache !== undefined) {
+            return target.data._annotation_cache;
+        }
+        target.data._annotation_cache = getAsArray(target.data[PROPERTY.ANNOTATIONS]).map(mapAnnotation);
+        return target.data._annotation_cache;
     }
 
     /**
@@ -850,10 +858,7 @@ function setTypeVariableMap(target) {
      * @returns {TypeVariableMap} The type variable map of the object.
      */
     target.getTypeVariableMap = function () {
-        if (!exists(target._type_variable_map)) {
-            target._type_variable_map = {}
-        }
-        return target._type_variable_map;
+        return {};
     }
 
     /**
@@ -863,15 +868,18 @@ function setTypeVariableMap(target) {
      * @return {TypeVariableMap} The merged type variable map.
      */
     target.withTypeVariableMap = function (map) {
-        if (!exists(target._type_variable_map)) {
-            target.getTypeVariableMap();
+        if (!exists(map) || Object.keys(map).length === 0) {
+            return target.getTypeVariableMap();
         }
-        if (exists(map)) {
+        let originalGetTypeVariableMap = target.getTypeVariableMap;
+        target.getTypeVariableMap = function () {
+            let typeVariableMap = originalGetTypeVariableMap();
             for (const [key, value] of Object.entries(map)) {
-                target._type_variable_map[key] = value;
+                typeVariableMap[key] = value;
             }
+            return typeVariableMap;
         }
-        return target._type_variable_map;
+        return target.getTypeVariableMap();
     }
 
     return target;

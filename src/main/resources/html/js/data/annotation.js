@@ -31,6 +31,10 @@ function getAnnotation(annotationData) {
 
     output.getString = output.string;
 
+    output.toString = function () {
+        return `@${this.getString()}`;
+    }
+
     return output;
 }
 
@@ -54,6 +58,9 @@ function decodeAnnotation(objectString) {
     let output = {};
     for (let i = 0; i < keys.length; i++) {
         let key = keys[i];
+        if (!exists(key)) {
+            throw new Error(`Invalid annotation key at index ${i}: ${key}`);
+        }
         let value = values[i].trim();
         var decodedValue = decodePart(value, null);
         if (decodedValue !== null) {

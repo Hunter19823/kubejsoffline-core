@@ -63,6 +63,20 @@ function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethod
 
     output.getHrefLink = output.hrefLink;
 
+    output.toString = function () {
+        let returnType = getClass(this.type()).toString();
+        let modifier = MODIFIER.toString(this.getModifiers());
+        let typeVariables = this.getTypeVariables().map((tv) => tv.toString());
+        let params = this.parameters().map((param) => param.toString()).join(", ");
+        if (exists(modifier) && modifier.length > 0) {
+            modifier += " ";
+        }
+        if (typeVariables.length > 0) {
+            return `${modifier} <${typeVariables.join(", ")}> ${returnType} ${this.name()}(${params})`;
+        }
+        return `${modifier}${returnType} ${this.name()}(${params})`;
+    }
+
     return output;
 }
 
@@ -76,7 +90,7 @@ function decodeMethod(objectString) {
     // Format: "nameId,modifiers(optional),returnTypeId,annotationIds(optional),parameterIds(optional),typeVariableIds(optional),exceptionIds(optional)"
     let keys = [
         PROPERTY.METHOD_NAME,
-        PROPERTY.METHOD_MODIFIERS,
+        PROPERTY.MODIFIERS,
         PROPERTY.METHOD_RETURN_TYPE,
         PROPERTY.ANNOTATIONS,
         PROPERTY.PARAMETERS,
@@ -90,6 +104,9 @@ function decodeMethod(objectString) {
     let output = {};
     for (let i = 0; i < keys.length; i++) {
         let key = keys[i];
+        if (!exists(key)) {
+            throw new Error(`Invalid annotation key at index ${i}: ${key}`);
+        }
         let value = values[i].trim();
         var decodedValue = decodePart(value, null);
         if (decodedValue !== null) {

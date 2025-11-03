@@ -171,6 +171,12 @@ function getClass(id) {
      * @returns {Field[]} an array of fields
      */
     output.fields = function (shallow = false) {
+        if (shallow && exists(this.data._shallow_field_cache)) {
+            return this.data._shallow_field_cache;
+        }
+        if (!shallow && exists(this.data._field_cache)) {
+            return this.data._field_cache;
+        }
         const fields = [];
 
         function addFields(data) {
@@ -196,6 +202,12 @@ function getClass(id) {
             fields[i].data._dataIndex = i;
         }
 
+        if (shallow) {
+            this.data._shallow_field_cache = fields;
+        } else {
+            this.data._field_cache = fields;
+        }
+
         return fields;
     }
 
@@ -207,6 +219,12 @@ function getClass(id) {
      * @returns {Method[]}
      */
     output.methods = function (shallow = false) {
+        if (shallow && exists(this.data._shallow_method_cache)) {
+            return this.data._shallow_method_cache;
+        }
+        if (!shallow && exists(this.data._method_cache)) {
+            return this.data._method_cache;
+        }
         const methods = [];
 
         function addMethods(data) {
@@ -231,12 +249,21 @@ function getClass(id) {
             methods[i].data._dataIndex = i;
         }
 
+        if (shallow) {
+            this.data._shallow_method_cache = methods;
+        }else {
+            this.data._method_cache = methods;
+        }
+
         return methods;
     }
 
     output.getMethods = output.methods;
 
     output.constructors = function () {
+        if (exists(this.data._constructor_cache)) {
+            return this.data._constructor_cache;
+        }
         const constructors = [];
         if (exists(this.data[PROPERTY.CONSTRUCTORS])) {
             for (let i = 0; i < this.data[PROPERTY.CONSTRUCTORS].length; i++) {
@@ -252,6 +279,7 @@ function getClass(id) {
             constructors[i].data._dataIndex = i;
         }
 
+        this.data._constructor_cache = constructors;
         return constructors;
     }
 
@@ -345,18 +373,36 @@ function getClass(id) {
 
     // Override the type variable map getter to create a new one if it doesn't exist
     output.getTypeVariableMap = function () {
+        if (!exists(this._type_variable_map_base)) {
+            this._type_variable_map_base = createTypeVariableMap(output.id());
+        }
+        this._type_variable_map = structuredClone(this._type_variable_map_base);
+        let parameterizedType = output;
+        let i = 0;
+        while (exists(parameterizedType.getOwnerType()) && i <= 100) {
+            parameterizedType = getClass(parameterizedType.getOwnerType());
+            output.withTypeVariableMap(parameterizedType.getTypeVariableMap());
+            i++;
+        }
+        if (i > 100) {
+            console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
+        }
+        return this._type_variable_map;
+    }
+
+    // Override the withTypeVariableMap to also update the type variable map base
+    /**
+     * Merges the provided type variable map into the object's type variable map.
+     *
+     * @param map {TypeVariableMap} The type variable map to merge.
+     * @return {TypeVariableMap} The merged type variable map.
+     */
+    output.withTypeVariableMap = function (map) {
         if (!exists(this._type_variable_map)) {
-            this._type_variable_map = createTypeVariableMap(output.id());
-            let parameterizedType = output;
-            let i = 0;
-            while (exists(parameterizedType.getOwnerType()) && i <= 100) {
-                parameterizedType = getClass(parameterizedType.getOwnerType());
-                output.withTypeVariableMap(parameterizedType.getTypeVariableMap());
-                i++;
-            }
-            if (i > 100) {
-                console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
-            }
+            this._type_variable_map = {};
+        }
+        for (const key in map) {
+            this._type_variable_map[key] = map[key];
         }
         return this._type_variable_map;
     }
@@ -552,6 +598,10 @@ function getClass(id) {
 
     output.hasDependency = function(id) {
         return doesObjectInclude(output.data, id);
+    }
+
+    output.toString = function () {
+        return this.getSimpleName();
     }
 
     return output;
