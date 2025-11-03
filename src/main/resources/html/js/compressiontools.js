@@ -242,7 +242,6 @@ function getParameterizedName(type, config) {
     const actualTypes = type.getTypeVariablesMapped();
     const genericArguments = getGenerics(actualTypes, config.disableEnclosingName(true));
 
-    console.log(`Parameterized name components for type ID: ${type.id()} - Owner Prefix: "${ownerPrefix}", Raw Type Name: "${rawTypeName}", Generic Arguments: "${genericArguments}". Config: `, config, `. Result: "${ownerPrefix + rawTypeName + genericArguments}"`);
     return ownerPrefix + rawTypeName + genericArguments;
 }
 
