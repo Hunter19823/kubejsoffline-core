@@ -4,7 +4,6 @@ function cachedFunction(func) {
     return function (...args) {
         const key = JSON.stringify(args);
         if (!(key in cache)) {
-            console.log(`Cache miss for key: ${key}`);
             cache[key] = func(...args);
         }
         return cache[key];
