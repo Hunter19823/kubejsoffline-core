@@ -76,6 +76,17 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
 
 }
 
+function removeCircularTypeVariables(typeVariableMap) {
+    // Remove any entries that equal their own key
+    for (let [key, value] of Object.entries(typeVariableMap)) {
+        // noinspection EqualityComparisonWithCoercionJS
+        if (key == value) {
+            delete typeVariableMap[key];
+        }
+    }
+    return typeVariableMap;
+}
+
 /**
  * Creates a TypeVariableMap from a given class.
  * @param type {TypeIdentifier} the id of the type
@@ -83,77 +94,7 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
  * @returns {TypeVariableMap} the created TypeVariableMap
  */
 function createTypeVariableMap(type, existingMap = {}) {
-    let nonRawType = getClass(type);
-    if (!nonRawType.isRawClass()) {
-        if (!nonRawType.isParameterizedType()) {
-            return existingMap;
-        }
-        let rawType = getClass(nonRawType.getRawType());
-        if (rawType.isRawClass() && nonRawType.getTypeVariables().length === rawType.getTypeVariables().length) {
-            for (let i = 0; i < rawType.getTypeVariables().length; i++) {
-                if (!exists(existingMap[rawType.getTypeVariables()[i]])) {
-                    existingMap[rawType.getTypeVariables()[i]] = nonRawType.getTypeVariables()[i];
-                }
-            }
-        }
-        let parameterizedType = nonRawType;
-        let i = 0;
-        while (exists(parameterizedType.getOwnerType()) && i <= 100) {
-            parameterizedType = getClass(parameterizedType.getOwnerType());
-            let map = parameterizedType.getTypeVariableMap();
-            for (let [key, value] of Object.entries(map)) {
-                existingMap[key] = value;
-            }
-            i++;
-        }
-        if (i > 100) {
-            console.warn("Infinite loop detected while creating type variable map for class: " + output.fullyQualifiedName());
-        }
-        return existingMap;
-    }
-    const typeVariableMap = existingMap;
-    // Treat like a stack
-    const unprocessedTypes = [type];
-    while (unprocessedTypes.length > 0) {
-        const currentType = unprocessedTypes.pop();
-        if (currentType === null) {
-            console.error("Current Type is null! Invalid state has been reached.");
-            throw new Error("Invalid state has been reached.");
-        }
-        const currentClass = getClass(currentType);
-        if (!currentClass.isRawClass()) {
-            console.error("Current Type is not a raw class! Invalid state has been reached.");
-            throw new Error("Invalid state has been reached.");
-        }
-        if (currentClass.superclass() !== null) {
-            const superClassId = currentClass.superclass();
-            const superClass = getClass(superClassId);
-            if (superClass.isRawClass()) {
-                unprocessedTypes.push(superClassId);
-            } else {
-                if (superClass.isParameterizedType()) {
-                    unprocessedTypes.push(superClass.getRawType());
-                    remapTypeVariables(typeVariableMap, superClassId);
-                }
-            }
-        }
-        const interfaces = currentClass.getInterfaces();
-        for (let i = 0; i < interfaces.length; i++) {
-            const interfaceId = interfaces[i];
-            const interfaceClass = getClass(interfaceId);
-            if (interfaceClass.isRawClass()) {
-                unprocessedTypes.push(interfaceId);
-            } else {
-                if (interfaceClass.isParameterizedType()) {
-                    unprocessedTypes.push(interfaceClass.getRawType());
-                    remapTypeVariables(typeVariableMap, interfaceId);
-                }
-            }
-        }
-
-    }
-
-    return typeVariableMap;
+    return computeExhaustiveMapping(type);
 }
 
 function remapTypeVariables(typeVariableMap, parameterizedType) {
@@ -205,6 +146,151 @@ function remapTypeVariables(typeVariableMap, parameterizedType) {
         }
 }
 
+
+function computeConsolidatedMapping(id) {
+    let type = getClass(id);
+    let mapping = {};
+    if (!type.isRawClass()) {
+        return mapping;
+    }
+    // type.getTypeVariables().forEach((typeVariableId) => {
+    //     mapping[typeVariableId] = typeVariableId;
+    // });
+    let superType = type.getSuperClass();
+    extractSuperMapping(superType, mapping);
+
+    type.getInterfaces().forEach((interfaceId) => {
+        extractSuperMapping(interfaceId, mapping);
+    });
+
+    let superMapping = exists(superType) ? computeConsolidatedMapping(superType) : {};
+    let interfaceMappings = [];
+
+    type.getInterfaces().forEach((interfaceId) => {
+        interfaceMappings.push(computeConsolidatedMapping(interfaceId));
+    });
+
+    let areAllInterfacesEmpty = interfaceMappings.filter(
+        (mapping) => !isMapEmpty(mapping)
+    ).length === 0;
+    if (isMapEmpty(superMapping) && areAllInterfacesEmpty) {
+        return mapping;
+    }
+
+    // putAll(mapping, superMapping);
+    //
+    // interfaceMappings.forEach((interfaceMapping) => {
+    //     putAll(mapping, interfaceMapping);
+    // });
+
+    let merged = transformMapping(superMapping, mapping);
+    interfaceMappings.forEach((interfaceMapping) => {
+        putAll(merged, transformMapping(interfaceMapping, mapping));
+    });
+
+    putAll(merged, mapping);
+
+
+    return merged;
+}
+
+function isMapEmpty(map) {
+    return Object.keys(map).length === 0;
+}
+
+function putAll(targetMap, sourceMap) {
+    for (let [key, value] of Object.entries(sourceMap)) {
+        targetMap[key] = value;
+    }
+}
+
+function transformMapping(typeVariableMap, overrideMap) {
+    if (isMapEmpty(typeVariableMap)) {
+        return typeVariableMap;
+    }
+    let result = {};
+    for (let [key, value] of Object.entries(typeVariableMap)) {
+        if (exists(overrideMap[value])) {
+            result[key] = overrideMap[value];
+        }else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
+function extractSuperMapping(id, typeVariableMap) {
+    if (!exists(typeVariableMap)) {
+        throw new Error("Type Variable Map must be provided to extract super mapping.");
+    }
+    if (!exists(id)) {
+        return;
+    }
+    let type = getClass(id);
+    if (!type.isParameterizedType()) {
+        return;
+    }
+    if (!exists(type.getRawType())) {
+        throw new Error("Raw Type must exist for parameterized type to extract super mapping.");
+    }
+    let rawType = getClass(type.getRawType());
+    let rawTypeVariables = rawType.getTypeVariables();
+    let actualTypes = type.getTypeVariables();
+
+    if (rawTypeVariables.length !== actualTypes.length) {
+        throw new Error("Raw Type Variables and Actual Types length mismatch when extracting super mapping.");
+    }
+
+    for (let i = 0; i < rawTypeVariables.length; i++) {
+        if (!exists(typeVariableMap[rawTypeVariables[i]])) {
+            typeVariableMap[rawTypeVariables[i]] = actualTypes[i];
+        }
+    }
+}
+
+function computeExhaustiveMapping(id) {
+    let type = getClass(id);
+    let mapping = {};
+    if (type.isWildcard()) {
+        return mapping;
+    }
+    if (type.isTypeVariable()) {
+        mapping[type.id()] = type.id();
+        return mapping;
+    }
+    if (type.isParameterizedType()) {
+        let rawType = getClass(type.getRawType());
+        let ownerType = type.getOwnerType();
+        let rawTypeVariables = rawType.getTypeVariables();
+        let actualTypes = type.getTypeVariables();
+        if (rawTypeVariables.length !== actualTypes.length) {
+            throw new Error("Raw Type Variables and Actual Types length mismatch when computing exhaustive mapping.");
+        }
+        let rawMapping = computeExhaustiveMapping(type.getRawType());
+        let ownerMapping = exists(ownerType) ? computeExhaustiveMapping(ownerType) : {};
+        putAll(mapping, rawMapping);
+        putAll(mapping, ownerMapping);
+        for (let i = 0; i < rawTypeVariables.length; i++) {
+            mapping[rawTypeVariables[i]] = actualTypes[i];
+        }
+        return mapping;
+    }
+    if (!type.isRawClass()) {
+        throw new Error("Type must be a raw class, parameterized type, type variable, or wildcard to compute exhaustive mapping.");
+    }
+    let superType = type.getSuperClass();
+    let interfaces = type.getInterfaces();
+    let superMapping = exists(superType) ? computeExhaustiveMapping(superType) : {};
+    let interfaceMappings = interfaces.map((interfaceId) => computeExhaustiveMapping(interfaceId));
+
+    putAll(mapping, superMapping);
+    interfaceMappings.forEach((interfaceMapping) => {
+        putAll(mapping, interfaceMapping);
+    });
+
+    return mapping;
+}
+
 function getGenericDefinition(type, typeVariableMap, includeGenerics = true) {
     return cachedGenericDefinition(type,
         new name_parameters()
@@ -254,7 +340,7 @@ function getParameterizedName(type, config) {
     const rawTypeName = cachedGenericDefinition(type.getRawType(), config.setAppendPackageName(config.getAppendPackageName() && !exists(type.getOwnerType())).disableEnclosingName(true));
     const ownerType = type.getOwnerType();
     const ownerPrefix = (exists(ownerType) && (!config.getDefiningParameterizedType()) ? cachedGenericDefinition(ownerType, config.disableEnclosingName(true)) + "$" : "");
-    const actualTypes = type.getTypeVariablesMapped();
+    const actualTypes = type.getTypeVariables();
     const genericArguments = getGenerics(actualTypes, config.disableEnclosingName(true));
 
     return ownerPrefix + rawTypeName + genericArguments;
@@ -310,14 +396,10 @@ function getRawClassName(type, config) {
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
     type.withTypeVariableMap(config.getTypeVariableMap())
-    if (type.isTypeVariable()) {
-        type = config.remapType(type);
-        type.withTypeVariableMap(config.getTypeVariableMap());
-    }
     if (type.isRawClass()) {
-        if (exists(type.getDeclaringClass())) {
-            return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
-        }
+        // if (exists(type.getDeclaringClass())) {
+        //     return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
+        // }
         return getRawClassName(type, config);
     }
     if (type.isTypeVariable()) {
@@ -622,7 +704,7 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             .setOverrideID(type.id())
     );
     outputSpan.append(rawTypeName);
-    const actualTypes = type.getTypeVariablesMapped();
+    const actualTypes = type.getTypeVariables();
     if (actualTypes.length === 0) {
         return outputSpan;
     }
@@ -632,7 +714,7 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             ", ",
             (actualType) => createLinkableSignature(
                 actualType,
-                config
+                config.setDefiningTypeVariable(true, actualType)
             ),
             span("<"),
             span(">")
@@ -651,10 +733,6 @@ function createLinkableSignature(type, config) {
     type = getClass(type);
     type.withTypeVariableMap(config.getTypeVariableMap())
     const outputSpan = document.createElement('span');
-    if (type.isTypeVariable()) {
-        type = config.remapType(type);
-        type.withTypeVariableMap(config.getTypeVariableMap());
-    }
     if (type.isRawClass()) {
         return getRawClassSignature(type, outputSpan, config);
     }

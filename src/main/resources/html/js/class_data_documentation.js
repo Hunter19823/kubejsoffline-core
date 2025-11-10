@@ -704,7 +704,14 @@ function setRemapType(target) {
         if (!exists(target.getTypeVariableMap)) {
             return type;
         }
-        return target.getTypeVariableMap()[type] ?? type;
+        let typeMap = target.getTypeVariableMap();
+        let seen = new Set();
+        let remappedType = type;
+        while (exists(typeMap[remappedType]) && !seen.has(remappedType)) {
+            seen.add(remappedType);
+            remappedType = typeMap[remappedType];
+        }
+        return remappedType;
     }
 
     /**
@@ -889,9 +896,9 @@ function setTypeVariableMap(target) {
             for (const [key, value] of Object.entries(map)) {
                 typeVariableMap[key] = value;
             }
-            return typeVariableMap;
+            return removeCircularTypeVariables(typeVariableMap);
         }
-        return target.getTypeVariableMap();
+        return removeCircularTypeVariables(target.getTypeVariableMap());
     }
 
     return target;
