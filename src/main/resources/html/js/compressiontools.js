@@ -395,11 +395,16 @@ function getRawClassName(type, config) {
 
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
-    type.withTypeVariableMap(config.getTypeVariableMap())
+    if (type.isTypeVariable()) {
+        let newType = config.remapType(type);
+        if (newType.id() !== type.id()) {
+            return getGenericDefinitionLogic(newType, config);
+        }
+    }
     if (type.isRawClass()) {
-        // if (exists(type.getDeclaringClass())) {
-        //     return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
-        // }
+        if (exists(type.getDeclaringClass())) {
+            return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
+        }
         return getRawClassName(type, config);
     }
     if (type.isTypeVariable()) {
@@ -504,8 +509,8 @@ name_parameters = class {
 
     remapType(type) {
         if (typeof type === 'number') {
-            if (exists(getTypeVariables()[type])) {
-                return getClass(getTypeVariables()[type]);
+            if (exists(this.typeVariableMap[type])) {
+                return getClass(this.typeVariableMap[type]);
             } else {
                 return getClass(type);
             }
@@ -609,7 +614,7 @@ function getRawClassSignature(type, outputSpan, config) {
  */
 function getTypeVariableSignature(type, outputSpan, config) {
     const typeVariableName = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME]);
-    if (config.getDefiningTypeVariable(type.id())) {
+    if (config.getDefiningTypeVariable(type.id()) || config.getDefiningParameterizedType()) {
         outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
         return outputSpan;
     }
@@ -685,6 +690,10 @@ function getWildcardSignature(type, outputSpan, config) {
  */
 function getParameterizedTypeSignature(type, outputSpan, config) {
     const ownerType = type.getOwnerType();
+    const actualTypes = type.getTypeVariables();
+    for (let i = 0; i < actualTypes.length; i++) {
+        config = config.setDefiningTypeVariable(true, actualTypes[i]);
+    }
     if (exists(ownerType) && !config.getDefiningParameterizedType()) {
         const ownerPrefix = createLinkableSignature(
             ownerType,
@@ -704,7 +713,6 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
             .setOverrideID(type.id())
     );
     outputSpan.append(rawTypeName);
-    const actualTypes = type.getTypeVariables();
     if (actualTypes.length === 0) {
         return outputSpan;
     }
@@ -731,7 +739,12 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
  */
 function createLinkableSignature(type, config) {
     type = getClass(type);
-    type.withTypeVariableMap(config.getTypeVariableMap())
+    if (type.isTypeVariable()) {
+        let newType = config.remapType(type);
+        if (newType.id() !== type.id()) {
+            return createLinkableSignature(newType, config);
+        }
+    }
     const outputSpan = document.createElement('span');
     if (type.isRawClass()) {
         return getRawClassSignature(type, outputSpan, config);
