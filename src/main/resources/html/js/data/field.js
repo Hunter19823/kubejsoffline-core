@@ -1,15 +1,15 @@
 /**
  * Returns a field wrapper object with the given field data.
  *
- * @param fieldData The blob of field data
+ * @param fieldID The field ID
  * @param typeVariableMap The type variable map to use for this field.
  * @param sourceClassId The class ID of the class declaring this field.
  * @param sourceFieldId The index of the field within the declaring class's field list.
  * @returns {Field}
  */
-function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId) {
-    if (!exists(fieldData)) {
-        throw new Error("Invalid field data: " + fieldData);
+function getField(fieldID, typeVariableMap = {}, sourceClassId, sourceFieldId) {
+    if (!exists(fieldID)) {
+        throw new Error("Invalid field id: " + fieldID);
     }
 
     if (!exists(sourceClassId)) {
@@ -17,7 +17,7 @@ function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId)
     }
 
     let output = {};
-    output.data = decodeField(fieldData);
+    output.data = decodeField(getFieldData(fieldID));
 
     output.data._declaringClass = sourceClassId;
     output.data._declaringField = sourceFieldId;

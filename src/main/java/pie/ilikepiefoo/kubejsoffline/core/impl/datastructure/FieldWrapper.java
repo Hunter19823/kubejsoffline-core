@@ -4,7 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.IndexedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.FieldID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
@@ -19,11 +21,23 @@ public class FieldWrapper implements FieldData {
     protected TypeOrTypeVariableID type;
     protected NameID name;
     protected List<AnnotationID> annotations;
+    protected FieldID fieldID;
 
 
     public FieldWrapper(CollectionGroup collectionGroup, Field field) {
         this.collectionGroup = collectionGroup;
         this.field = field;
+    }
+
+    @Override
+    public FieldID getIndex() {
+        return fieldID;
+    }
+
+    @Override
+    public IndexedData<FieldID> setIndex(FieldID index) {
+        this.fieldID = index;
+        return this;
     }
 
     @Override
@@ -85,6 +99,9 @@ public class FieldWrapper implements FieldData {
         }
         if (this == obj) {
             return true;
+        }
+        if (!(obj instanceof FieldWrapper)) {
+            return false;
         }
         return this.hashCode() == obj.hashCode();
     }

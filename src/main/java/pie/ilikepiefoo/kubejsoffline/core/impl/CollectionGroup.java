@@ -7,6 +7,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Annotations;
+import pie.ilikepiefoo.kubejsoffline.core.api.collection.Constructors;
+import pie.ilikepiefoo.kubejsoffline.core.api.collection.Fields;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Methods;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Names;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Packages;
@@ -20,6 +22,8 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.PackagePart;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ConstructorID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.FieldID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
@@ -28,6 +32,8 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.AnnotationsWrapper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.collection.ConstructorsWrapper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.collection.FieldsWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.MethodsWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.NamesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.PackagesWrapper;
@@ -60,6 +66,8 @@ public record CollectionGroup(
         Types types,
         Parameters parameters,
         Methods methods,
+        Fields fields,
+        Constructors constructors,
         Packages packages,
         Names names,
         Annotations annotations) implements JSONSerializable {
@@ -67,7 +75,7 @@ public record CollectionGroup(
     public static final CollectionGroup INSTANCE = new CollectionGroup();
 
     public CollectionGroup() {
-        this(new TypesWrapper(), new ParametersWrapper(), new MethodsWrapper(), new PackagesWrapper(), new NamesWrapper(), new AnnotationsWrapper());
+        this(new TypesWrapper(), new ParametersWrapper(), new MethodsWrapper(), new FieldsWrapper(), new ConstructorsWrapper(), new PackagesWrapper(), new NamesWrapper(), new AnnotationsWrapper());
     }
 
     public List<AnnotationID> of(Annotation[] annotations) {
@@ -177,8 +185,8 @@ public record CollectionGroup(
         return packages().addPackage(pack.getName());
     }
 
-    public List<FieldData> of(Field[] fields) {
-        LinkedList<FieldData> fieldList = new LinkedList<>();
+    public List<FieldID> of(Field[] fields) {
+        LinkedList<FieldID> fieldList = new LinkedList<>();
         for (Field field : fields) {
             if (field == null) {
                 continue;
@@ -186,13 +194,13 @@ public record CollectionGroup(
             if (!SafeOperations.isFieldPresent(field)) {
                 continue;
             }
-            fieldList.add(new FieldWrapper(this, field));
+            fieldList.add(fields().addField(new FieldWrapper(this, field)));
         }
         return fieldList;
     }
 
-    public List<ConstructorData> of(Constructor<?>[] constructors) {
-        LinkedList<ConstructorData> constructorList = new LinkedList<>();
+    public List<ConstructorID> of(Constructor<?>[] constructors) {
+        LinkedList<ConstructorID> constructorList = new LinkedList<>();
         for (Constructor<?> constructor : constructors) {
             if (constructor == null) {
                 continue;
@@ -200,7 +208,7 @@ public record CollectionGroup(
             if (!SafeOperations.isConstructorPresent(constructor)) {
                 continue;
             }
-            constructorList.add(new ConstructorWrapper(this, constructor));
+            constructorList.add(constructors().addConstructor(new ConstructorWrapper(this, constructor)));
         }
         return constructorList;
     }
@@ -209,6 +217,9 @@ public record CollectionGroup(
     public void clear() {
         types().clear();
         parameters().clear();
+        methods().clear();
+        fields().clear();
+        constructors().clear();
         packages().clear();
         names().clear();
         annotations().clear();
@@ -221,6 +232,12 @@ public record CollectionGroup(
         for (var method : methods) {
             method.index();
         }
+        for (var field : fields) {
+            field.index();
+        }
+        for (var constructor : constructors) {
+            constructor.index();
+        }
         for (var annotation : annotations) {
             annotation.index();
         }
@@ -231,6 +248,12 @@ public record CollectionGroup(
             type.index();
             for (var method : methods) {
                 method.index();
+            }
+            for (var field : fields) {
+                field.index();
+            }
+            for (var constructor : constructors) {
+                constructor.index();
             }
             for (var annotation : annotations) {
                 annotation.index();
@@ -245,6 +268,8 @@ public record CollectionGroup(
         types.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<TypeData>) CollectionGroup::getWeight).reversed());
         annotations.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<AnnotationData>) CollectionGroup::getWeight).reversed());
         methods.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<MethodData>) CollectionGroup::getWeight).reversed());
+        fields.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<FieldData>) CollectionGroup::getWeight).reversed());
+        constructors.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<ConstructorData>) CollectionGroup::getWeight).reversed());
         parameters.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<ParameterData>) CollectionGroup::getWeight).reversed());
         packages.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<PackagePart>) CollectionGroup::getWeight).reversed());
         names.getTwoWayMap().reorganize(Comparator.comparing(String::length).thenComparing(Comparator.naturalOrder()));
@@ -252,6 +277,8 @@ public record CollectionGroup(
         annotations.toggleLock();
         parameters.toggleLock();
         methods.toggleLock();
+        fields.toggleLock();
+        constructors.toggleLock();
         packages.toggleLock();
     }
 
@@ -285,12 +312,22 @@ public record CollectionGroup(
         return method.getIndex().getReferenceCount();
     }
 
+    public static long getWeight(FieldData field) {
+        return field.getIndex().getReferenceCount();
+    }
+
+    public static long getWeight(ConstructorData constructor) {
+        return constructor.getIndex().getReferenceCount();
+    }
+
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
         json.add("types", types().toJSON());
         json.add("parameters", parameters().toJSON());
         json.add("methods", methods().toJSON());
+        json.add("fields", fields().toJSON());
+        json.add("constructors", constructors().toJSON());
         json.add("packages", packages().toJSON());
         json.add("names", names().toJSON());
         json.add("annotations", annotations().toJSON());

@@ -4,7 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.IndexedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ConstructorID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
@@ -22,10 +24,22 @@ public class ConstructorWrapper implements ConstructorData {
     protected List<TypeVariableID> typeParameters;
     protected List<TypeID> exceptions;
     protected List<ParameterID> parameters;
+    protected ConstructorID constructorID;
 
     public ConstructorWrapper(CollectionGroup collectionGroup, Constructor<?> constructor) {
         this.collectionGroup = collectionGroup;
         this.constructor = constructor;
+    }
+
+    @Override
+    public ConstructorID getIndex() {
+        return constructorID;
+    }
+
+    @Override
+    public IndexedData<ConstructorID> setIndex(ConstructorID index) {
+        this.constructorID = index;
+        return this;
     }
 
     @Override
@@ -102,6 +116,9 @@ public class ConstructorWrapper implements ConstructorData {
         }
         if (this == obj) {
             return true;
+        }
+        if (!(obj instanceof ConstructorWrapper)) {
+            return false;
         }
         return this.hashCode() == obj.hashCode();
     }

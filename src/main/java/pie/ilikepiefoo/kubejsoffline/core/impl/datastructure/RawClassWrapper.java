@@ -2,10 +2,10 @@ package pie.ilikepiefoo.kubejsoffline.core.impl.datastructure;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
-import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.RawClassData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ConstructorID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.FieldID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
@@ -33,8 +33,8 @@ public class RawClassWrapper implements RawClassData {
     protected List<TypeID> innerClasses;
     protected TypeID enclosingClass;
     protected TypeID declaringClass;
-    protected List<FieldData> fields;
-    protected List<ConstructorData> constructors;
+    protected List<FieldID> fields;
+    protected List<ConstructorID> constructors;
     protected List<MethodID> methods;
     protected TypeID index;
 
@@ -164,19 +164,19 @@ public class RawClassWrapper implements RawClassData {
     }
 
     @Override
-    public List<ConstructorData> getConstructors() {
+    public List<ConstructorID> getConstructors() {
         if (constructors != null) {
             return constructors;
         }
-        return this.constructors = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredConstructors())).orElse(List.of()));
+        return this.constructors = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredConstructors())).orElse(List.of());
     }
 
     @Override
-    public List<FieldData> getFields() {
+    public List<FieldID> getFields() {
         if (fields != null) {
             return fields;
         }
-        return this.fields = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of()));
+        return this.fields = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredFields())).orElse(List.of());
     }
 
     @Override

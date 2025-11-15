@@ -79,6 +79,9 @@ const PROPERTY = new Props();
 const DATA = {
     types: [],
     parameters: [],
+    methods: [],
+    constructors: [],
+    fields: [],
     packages: [],
     names: [],
     annotations: []
