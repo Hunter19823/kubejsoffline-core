@@ -5,6 +5,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.ModifierDat
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.NamedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.IndexGenerator;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
@@ -57,5 +58,5 @@ public interface RawClassData extends AnnotatedData, NamedData, ModifierData, Ty
 
     List<FieldData> getFields();
 
-    List<MethodData> getMethods();
+    List<MethodID> getMethods();
 }

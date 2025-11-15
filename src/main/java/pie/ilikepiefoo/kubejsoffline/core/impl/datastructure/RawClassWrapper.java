@@ -4,9 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ConstructorData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.FieldData;
-import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.MethodData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.RawClassData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
@@ -35,7 +35,7 @@ public class RawClassWrapper implements RawClassData {
     protected TypeID declaringClass;
     protected List<FieldData> fields;
     protected List<ConstructorData> constructors;
-    protected List<MethodData> methods;
+    protected List<MethodID> methods;
     protected TypeID index;
 
     public RawClassWrapper(CollectionGroup group, Class<?> clazz) {
@@ -180,11 +180,11 @@ public class RawClassWrapper implements RawClassData {
     }
 
     @Override
-    public List<MethodData> getMethods() {
+    public List<MethodID> getMethods() {
         if (methods != null) {
             return methods;
         }
-        return this.methods = SafeOperations.tryIndexDroppingFailures(SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredMethods())).orElse(List.of()));
+        return this.methods = SafeOperations.tryGet(() -> collectionGroup.of(clazz.getDeclaredMethods())).orElse(List.of());
     }
 
     @Override

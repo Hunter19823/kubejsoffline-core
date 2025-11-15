@@ -226,7 +226,7 @@ function getClass(id) {
         function addMethods(data) {
             if (exists(data.data[PROPERTY.METHODS])) {
                 for (let i = 0; i < data.data[PROPERTY.METHODS].length; i++) {
-                    methods.push(getMethod(data.data[PROPERTY.METHODS][i], output.getTypeVariableMap(), data.getId(), i));
+                    methods.push(getMethod(getMethodData(data.data[PROPERTY.METHODS][i]), output.getTypeVariableMap(), data.getId(), i));
                 }
             }
         }

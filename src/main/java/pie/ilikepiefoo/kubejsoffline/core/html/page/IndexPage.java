@@ -32,6 +32,7 @@ public class IndexPage extends HTMLFile {
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/annotation.js", documentationBridge).setClass("data-holding-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/package.js", documentationBridge).setClass("data-holding-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/parameter.js", documentationBridge).setClass("data-holding-script"));
+        this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/method.js", documentationBridge).setClass("data-holding-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/text.js", documentationBridge).setClass("data-holding-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/compressed/type.js", documentationBridge).setClass("data-holding-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/data/annotation.js", documentationBridge).setClass("data-holding-script"));

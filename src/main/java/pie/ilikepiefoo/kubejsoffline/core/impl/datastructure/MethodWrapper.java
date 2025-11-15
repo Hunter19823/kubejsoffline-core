@@ -4,7 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.MethodData;
+import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.IndexedData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
@@ -16,6 +18,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Objects;
 
 public class MethodWrapper implements MethodData {
     protected final CollectionGroup collectionGroup;
@@ -26,11 +29,23 @@ public class MethodWrapper implements MethodData {
     protected List<ParameterID> parameters;
     protected TypeOrTypeVariableID type;
     protected NameID name;
+    protected MethodID methodID;
 
 
     public MethodWrapper(CollectionGroup collectionGroup, Method method) {
         this.collectionGroup = collectionGroup;
         this.method = method;
+    }
+
+    @Override
+    public MethodID getIndex() {
+        return methodID;
+    }
+
+    @Override
+    public IndexedData<MethodID> setIndex(MethodID index) {
+        this.methodID = index;
+        return this;
     }
 
     @Override
@@ -116,7 +131,15 @@ public class MethodWrapper implements MethodData {
 
     @Override
     public int hashCode() {
-        return this.method.hashCode();
+        return Objects.hash(
+                getName(),
+                getModifiers(),
+                getType(),
+                getAnnotations(),
+                getParameters(),
+                getTypeParameters(),
+                getExceptions()
+        );
     }
 
     @Override
@@ -126,6 +149,9 @@ public class MethodWrapper implements MethodData {
         }
         if (this == obj) {
             return true;
+        }
+        if (!(obj instanceof MethodWrapper other)) {
+            return false;
         }
         return this.hashCode() == obj.hashCode();
     }

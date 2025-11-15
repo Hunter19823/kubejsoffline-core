@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import pie.ilikepiefoo.kubejsoffline.core.api.JSONSerializable;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Annotations;
+import pie.ilikepiefoo.kubejsoffline.core.api.collection.Methods;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Names;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Packages;
 import pie.ilikepiefoo.kubejsoffline.core.api.collection.Parameters;
@@ -19,6 +20,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.PackagePart;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.ParameterData;
 import pie.ilikepiefoo.kubejsoffline.core.api.datastructure.property.TypeData;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.AnnotationID;
+import pie.ilikepiefoo.kubejsoffline.core.api.identifier.MethodID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.NameID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.PackageID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.ParameterID;
@@ -26,6 +28,7 @@ import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeOrTypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.api.identifier.TypeVariableID;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.AnnotationsWrapper;
+import pie.ilikepiefoo.kubejsoffline.core.impl.collection.MethodsWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.NamesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.PackagesWrapper;
 import pie.ilikepiefoo.kubejsoffline.core.impl.collection.ParametersWrapper;
@@ -44,6 +47,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,6 +59,7 @@ import java.util.stream.Stream;
 public record CollectionGroup(
         Types types,
         Parameters parameters,
+        Methods methods,
         Packages packages,
         Names names,
         Annotations annotations) implements JSONSerializable {
@@ -62,7 +67,7 @@ public record CollectionGroup(
     public static final CollectionGroup INSTANCE = new CollectionGroup();
 
     public CollectionGroup() {
-        this(new TypesWrapper(), new ParametersWrapper(), new PackagesWrapper(), new NamesWrapper(), new AnnotationsWrapper());
+        this(new TypesWrapper(), new ParametersWrapper(), new MethodsWrapper(), new PackagesWrapper(), new NamesWrapper(), new AnnotationsWrapper());
     }
 
     public List<AnnotationID> of(Annotation[] annotations) {
@@ -78,6 +83,13 @@ public record CollectionGroup(
                 .requireNonNull(SafeOperations.safelyGetParametersAndTypes(parameters, genericTypes))
                 .stream()
                 .map((pair) -> parameters().addParameter(new ParameterWrapper(this, pair.left(), pair.right())))
+                .toList();
+    }
+
+    public List<MethodID> of(Method[] methods) {
+        return Arrays.stream(methods)
+                .filter(SafeOperations::isMethodPresent)
+                .map((method) -> methods().addMethod(new MethodWrapper(this, method)))
                 .toList();
     }
 
@@ -179,20 +191,6 @@ public record CollectionGroup(
         return fieldList;
     }
 
-    public List<MethodData> of(Method[] methods) {
-        LinkedList<MethodData> methodList = new LinkedList<>();
-        for (Method method : methods) {
-            if (method == null) {
-                continue;
-            }
-            if (!SafeOperations.isMethodPresent(method)) {
-                continue;
-            }
-            methodList.add(new MethodWrapper(this, method));
-        }
-        return methodList;
-    }
-
     public List<ConstructorData> of(Constructor<?>[] constructors) {
         LinkedList<ConstructorData> constructorList = new LinkedList<>();
         for (Constructor<?> constructor : constructors) {
@@ -220,6 +218,9 @@ public record CollectionGroup(
         for (var type : types) {
             type.index();
         }
+        for (var method : methods) {
+            method.index();
+        }
         for (var annotation : annotations) {
             annotation.index();
         }
@@ -228,6 +229,9 @@ public record CollectionGroup(
         }
         for (var type : types) {
             type.index();
+            for (var method : methods) {
+                method.index();
+            }
             for (var annotation : annotations) {
                 annotation.index();
             }
@@ -240,12 +244,14 @@ public record CollectionGroup(
         }
         types.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<TypeData>) CollectionGroup::getWeight).reversed());
         annotations.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<AnnotationData>) CollectionGroup::getWeight).reversed());
+        methods.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<MethodData>) CollectionGroup::getWeight).reversed());
         parameters.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<ParameterData>) CollectionGroup::getWeight).reversed());
         packages.getTwoWayMap().reorganize(Comparator.comparingLong((ToLongFunction<PackagePart>) CollectionGroup::getWeight).reversed());
         names.getTwoWayMap().reorganize(Comparator.comparing(String::length).thenComparing(Comparator.naturalOrder()));
         types.toggleLock();
         annotations.toggleLock();
         parameters.toggleLock();
+        methods.toggleLock();
         packages.toggleLock();
     }
 
@@ -275,11 +281,16 @@ public record CollectionGroup(
         return pkg.getIndex().getReferenceCount();
     }
 
+    public static long getWeight(MethodData method) {
+        return method.getIndex().getReferenceCount();
+    }
+
     @Override
     public JsonElement toJSON() {
         var json = new JsonObject();
         json.add("types", types().toJSON());
         json.add("parameters", parameters().toJSON());
+        json.add("methods", methods().toJSON());
         json.add("packages", packages().toJSON());
         json.add("names", names().toJSON());
         json.add("annotations", annotations().toJSON());
