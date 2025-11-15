@@ -11,7 +11,7 @@ function addFieldToTableFunction() {
                 span(MODIFIER.toString(field.modifiers())),
                 createFullSignature(field.getTypeWrapped(), field.getTypeVariableMap()),
                 span(field.getName()),
-                createFullSignature(field.getDeclaringClass())
+                createFullSignature(field.getDeclaringClass(), field.getTypeVariableMap())
             );
             appendAttributesToFieldTableRow(row, table.id, field);
         } catch (e) {
@@ -53,7 +53,7 @@ function addMethodToTableFunction() {
                 table,
                 createMethodSignature(method),
                 span(MODIFIER.toString(method.getModifiers())),
-                createFullSignature(method.getTypeWrapped()),
+                createFullSignature(method.getTypeWrapped(), method.getTypeVariableMap()),
                 span(method.name()),
                 createParametersSignature(method),
                 createTypeVariableSignature(method),
