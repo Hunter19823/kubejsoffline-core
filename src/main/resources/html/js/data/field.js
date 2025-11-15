@@ -56,7 +56,7 @@ function getField(fieldData, typeVariableMap = {}, sourceClassId, sourceFieldId)
 
     output.toString = function () {
         let returnType = this.getTypeWrapped().toString();
-        let modifier = MODIFIER.toString(getModifiers());
+        let modifier = MODIFIER.toString(this.getModifiers());
         let args = [
             modifier,
             returnType,

@@ -9,7 +9,7 @@ function addFieldToTableFunction() {
                 table,
                 createFieldSignature(field),
                 span(MODIFIER.toString(field.modifiers())),
-                createFullSignature(field.getTypeWrapped()),
+                createFullSignature(field.getTypeWrapped(), field.getTypeVariableMap()),
                 span(field.getName()),
                 createFullSignature(field.getDeclaringClass())
             );
@@ -33,7 +33,7 @@ function addConstructorToTableFunction() {
                 span(MODIFIER.toString(constructor.modifiers())),
                 createParametersSignature(constructor),
                 createTypeVariableSignature(constructor),
-                createFullSignature(constructor.getDeclaringClass())
+                createFullSignature(constructor.getDeclaringClass(), constructor.getTypeVariableMap())
             );
             appendAttributesToConstructorTableRow(row, table.id, constructor);
         } catch (e) {
@@ -57,7 +57,7 @@ function addMethodToTableFunction() {
                 span(method.name()),
                 createParametersSignature(method),
                 createTypeVariableSignature(method),
-                createFullSignature(method.getDeclaringClass())
+                createFullSignature(method.getDeclaringClass(), method.getTypeVariableMap())
             );
             appendAttributesToMethodTableRow(row, table.id, method.getDeclaringClass(), method);
         } catch (e) {
@@ -132,7 +132,7 @@ function addBindingToTableFunction() {
             let row = addRow(
                 table,
                 span(binding.getName()),
-                createFullSignature(binding.getTypeWrapped()),
+                createFullSignature(binding.getTypeWrapped(), binding.getTypeVariableMap()),
                 data
             );
             appendAttributesToBindingTableRow(row, table.id, binding)

@@ -91,7 +91,7 @@ function createMethodSignature(method) {
     let name = span(method.name());
     appendAnnotationToolTip(name, method.annotations());
     out.append(span(MODIFIER.toString(method.modifiers()) + " "));
-    out.append(createShortLink(method.getTypeWrapped()));
+    out.append(createShortLink(method.getTypeWrapped(), method.getTypeVariableMap()));
     out.append(' ');
     out.append(name);
     out.append('(');
@@ -112,7 +112,7 @@ function createMethodSignature(method) {
  */
 function createParameterSignature(parameter) {
     let output = span();
-    output.append(createShortLink(parameter.getTypeWrapped()));
+    output.append(createShortLink(parameter.getTypeWrapped(), parameter.getTypeVariableMap()));
     output.append(' ');
     output.append(appendAnnotationToolTip(span(parameter.getName()), parameter.getAnnotations()));
     return output;
@@ -129,7 +129,7 @@ function createFieldSignature(field) {
     appendAnnotationToolTip(name, field.getAnnotations());
     out.append(span(MODIFIER.toString(field.getModifiers()) + " "));
     let type = field.getTypeWrapped();
-    out.append(createShortLink(type));
+    out.append(createShortLink(type, field.getTypeVariableMap()));
     out.append(' ');
     out.append(name);
     return out;
@@ -166,7 +166,7 @@ function createConstructorSignature(constructor) {
     out.append('(');
     for (let i = 0; i < parameters.length; i++) {
         param = parameters[i];
-        out.appendChild(createShortLink(param.getTypeWrapped()));
+        out.appendChild(createShortLink(param.getTypeWrapped(), param.getTypeVariableMap()));
         name = span(param.name());
         appendAnnotationToolTip(name, param.annotations());
         out.append(' ');
@@ -329,6 +329,14 @@ function addMethodToTable(table, classID, method) {
 }
 
 function addFieldToTable(table, field) {
-    let row = addRow(table, href(span(field.getDeclaringClass()), `#${getClass(field.getDeclaringClass()).fullyQualifiedName(field.getTypeVariableMap())}`), createFieldSignature(field), createFullSignature(field.getDeclaringClass()));
+    let row = addRow(
+        table,
+        href(
+            span(field.getDeclaringClass()),
+            `#${getClass(field.getDeclaringClass()).fullyQualifiedName(field.getTypeVariableMap())}`
+        ),
+        createFieldSignature(field),
+        createFullSignature(field.getDeclaringClass(), field.getTypeVariableMap())
+    );
     appendAttributesToFieldTableRow(row, table.id, field);
 }
