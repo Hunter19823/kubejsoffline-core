@@ -141,11 +141,13 @@ function createFieldSignature(field) {
  * @returns {HTMLSpanElement} the html element representing the parameters
  */
 function createParametersSignature(holder) {
-    return tagJoiner(
+    let output = span();
+    tagJoiner(
         holder.getParameters(),
         ", ",
         (param) => createParameterSignature(param)
-    )
+    ).forEach((node) => output.append(node));
+    return output;
 }
 
 /**
@@ -199,11 +201,13 @@ function createAnnotationSignature(annotation) {
  * @returns {HTMLSpanElement}
  */
 function createTypeVariableSignature(holder, full = true) {
-    return tagJoiner(
+    let outputSpan = span();
+    tagJoiner(
         holder.getTypeVariables(),
         ", ",
         (typeVariable) => full ? createFullSignature(typeVariable, holder.getTypeVariableMap()) : createShortLink(typeVariable, holder.getTypeVariableMap()),
-    )
+    ).forEach((node) => outputSpan.append(node));
+    return outputSpan;
 }
 
 function appendAttributesToClassTableRow(row, table_id, clazz) {

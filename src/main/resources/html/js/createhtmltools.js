@@ -118,11 +118,11 @@ function appendAnnotationToolTip(tag, annotations) {
     tag.classList.add('tooltip');
     let tooltip = document.createElement('div');
     tooltip.classList.add('tooltiptext');
-    tooltip.appendChild(tagJoiner(
+    tagJoiner(
         annotations,
         '<br>',
         (annotation) => createAnnotationSignature(annotation)
-    ));
+    ).forEach((node) => tooltip.append(node));
     tag.appendChild(tooltip);
     return tag;
 }

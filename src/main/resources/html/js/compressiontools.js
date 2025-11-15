@@ -535,25 +535,25 @@ name_parameters = class {
  * @param transformer{function(T): HTMLElement} the transformer to use
  * @param prefix{HTMLElement?} the prefix to use
  * @param suffix{HTMLElement?} the suffix to use
- * @returns {HTMLSpanElement} the span element
+ * @returns {Array<HTMLSpanElement>} the span element
  */
 function tagJoiner(values, separator, transformer = (a) => span(a), prefix, suffix) {
     if (!exists(transformer)) {
         transformer = (a) => span(a);
     }
-    const output = span();
+    const output = [];
     if (prefix) {
-        output.append(prefix);
+        output.push(prefix);
     }
     for (let i = 0; i < values.length; i++) {
-        output.append(transformer(values[i]));
+        output.push(transformer(values[i]));
         // If not the last element, add the separator
         if (i < values.length - 1) {
-            output.append(span(separator));
+            output.push(span(separator));
         }
     }
     if (suffix) {
-        output.append(suffix);
+        output.push(suffix);
     }
     return output;
 
@@ -588,18 +588,17 @@ function getRawClassSignature(type, outputSpan, config) {
     if (typeVariables.length === 0) {
         return outputSpan;
     }
-    outputSpan.append(
-        tagJoiner(
-            typeVariables,
-            ", ",
-            (actualType) => createLinkableSignature(
-                actualType,
-                config,
-            ),
-            span("<"),
-            span(">")
-        )
-    )
+    tagJoiner(
+        typeVariables,
+        ", ",
+        (actualType) => createLinkableSignature(
+            actualType,
+            config,
+        ),
+        span("<"),
+        span(">")
+    ).forEach((node) => outputSpan.append(node));
+
     return outputSpan;
 }
 /**
@@ -624,17 +623,15 @@ function getTypeVariableSignature(type, outputSpan, config) {
         return outputSpan;
     }
     outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
-    outputSpan.append(
-        tagJoiner(
-            bounds,
-            " & ",
-            (bound) => createLinkableSignature(
-                bound,
-                config.setDefiningTypeVariable(true, type.id())
-            ),
-            span(" extends ")
-        )
-    );
+    tagJoiner(
+        bounds,
+        " & ",
+        (bound) => createLinkableSignature(
+            bound,
+            config.setDefiningTypeVariable(true, type.id())
+        ),
+        span(" extends ")
+    ).forEach((node) => outputSpan.append(node));
     return outputSpan;
 }
 
@@ -650,32 +647,28 @@ function getWildcardSignature(type, outputSpan, config) {
     outputSpan.append(span(name));
     const lowerBounds = type.getLowerBound();
     if (lowerBounds.length !== 0) {
-        outputSpan.append(
-            tagJoiner(
-                lowerBounds,
-                " & ",
-                (bound) => createLinkableSignature(
-                    bound,
-                    config
-                ),
-                span(" super ")
-            )
-        );
+        tagJoiner(
+            lowerBounds,
+            " & ",
+            (bound) => createLinkableSignature(
+                bound,
+                config
+            ),
+            span(" super ")
+        ).forEach((node) => outputSpan.append(node));
         return outputSpan;
     }
     const upperBounds = type.getUpperBound();
     if (upperBounds.length !== 0) {
-        outputSpan.append(
-            tagJoiner(
-                upperBounds,
-                " & ",
-                (bound) => createLinkableSignature(
-                    bound,
-                    config,
-                ),
-                span(" extends ")
-            )
-        );
+        tagJoiner(
+            upperBounds,
+            " & ",
+            (bound) => createLinkableSignature(
+                bound,
+                config,
+            ),
+            span(" extends ")
+        ).forEach((node) => outputSpan.append(node));
         return outputSpan;
     }
     return outputSpan;
@@ -716,18 +709,16 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
     if (actualTypes.length === 0) {
         return outputSpan;
     }
-    outputSpan.append(
-        tagJoiner(
-            actualTypes,
-            ", ",
-            (actualType) => createLinkableSignature(
-                actualType,
-                config.setDefiningTypeVariable(true, actualType)
-            ),
-            span("<"),
-            span(">")
-        )
-    );
+    tagJoiner(
+        actualTypes,
+        ", ",
+        (actualType) => createLinkableSignature(
+            actualType,
+            config.setDefiningTypeVariable(true, actualType)
+        ),
+        span("<"),
+        span(">")
+    ).forEach((node) => outputSpan.append(node));
     return outputSpan;
 }
 
