@@ -128,6 +128,7 @@ public interface DocumentationProvider {
         final int totalParameterizedTypeSize = CollectionGroup.INSTANCE.types().getAllParameterizedTypes().size();
         final int totalTypeVariableSize = CollectionGroup.INSTANCE.types().getAllTypeVariables().size();
         final int totalParameterSize = CollectionGroup.INSTANCE.parameters().getAllParameters().size();
+        final int totalMethodSize = CollectionGroup.INSTANCE.methods().getAllMethods().size();
         final int totalNameSize = CollectionGroup.INSTANCE.names().getAllNames().size();
         final int totalAnnotationSize = CollectionGroup.INSTANCE.annotations().getAllAnnotations().size();
         final int totalPackageSize = CollectionGroup.INSTANCE.packages().getAllPackages().size();
@@ -150,6 +151,7 @@ public interface DocumentationProvider {
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Parameterized Types: %d", step, totalSteps, totalParameterizedTypeSize));
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Type Variables: %d", step, totalSteps, totalTypeVariableSize));
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Parameters: %d", step, totalSteps, totalParameterSize));
+        bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Methods: %d", step, totalSteps, totalMethodSize));
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Names: %d", step, totalSteps, totalNameSize));
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Packages: %d", step, totalSteps, totalPackageSize));
         bridge.sendMessage(String.format("[KJS Offline] [Step %d/%d] Total Annotations: %d", step, totalSteps, totalAnnotationSize));
