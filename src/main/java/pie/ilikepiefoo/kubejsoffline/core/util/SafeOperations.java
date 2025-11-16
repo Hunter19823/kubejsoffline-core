@@ -77,6 +77,10 @@ public class SafeOperations {
         return !isTypePresent;
     }
 
+    public static boolean isTypeLoaded(Type type) {
+        return !isTypeNotLoaded(type);
+    }
+
     private static boolean isTypePresent(Type type) {
         if (type == null) {
             return true;

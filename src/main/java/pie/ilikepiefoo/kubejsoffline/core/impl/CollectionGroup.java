@@ -58,6 +58,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
@@ -81,8 +82,13 @@ public record CollectionGroup(
     public List<AnnotationID> of(Annotation[] annotations) {
         return Stream
                 .of(annotations)
+                .filter(Objects::nonNull)
                 .filter(SafeOperations::isAnnotationPresent)
-                .map(annotation -> annotations().addAnnotation(new AnnotationWrapper(this, annotation)))
+                .map((annotation) -> new AnnotationWrapper(this, annotation))
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(annotations()::addAnnotation)
                 .toList();
     }
 
@@ -96,8 +102,13 @@ public record CollectionGroup(
 
     public List<MethodID> of(Method[] methods) {
         return Arrays.stream(methods)
+                .filter(Objects::nonNull)
                 .filter(SafeOperations::isMethodPresent)
-                .map((method) -> methods().addMethod(new MethodWrapper(this, method)))
+                .map((method) -> new MethodWrapper(this, method))
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(methods()::addMethod)
                 .toList();
     }
 
@@ -105,7 +116,11 @@ public record CollectionGroup(
         return Arrays.stream(fields)
                 .filter(Objects::nonNull)
                 .filter(SafeOperations::isFieldPresent)
-                .map(field -> fields().addField(new FieldWrapper(this, field)))
+                .map((field) -> new FieldWrapper(this, field))
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(fields()::addField)
                 .toList();
     }
 
@@ -113,7 +128,11 @@ public record CollectionGroup(
         return Arrays.stream(constructors)
                 .filter(Objects::nonNull)
                 .filter(SafeOperations::isConstructorPresent)
-                .map(constructor -> constructors().addConstructor(new ConstructorWrapper(this, constructor)))
+                .map((constructor) -> new ConstructorWrapper(this, constructor))
+                .map(SafeOperations::tryIndex)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(constructors()::addConstructor)
                 .toList();
     }
 
@@ -132,7 +151,7 @@ public record CollectionGroup(
         return Stream
                 .of(types)
                 .filter(Objects::nonNull)
-                .filter(type -> !SafeOperations.isTypeNotLoaded(type))
+                .filter(SafeOperations::isTypeLoaded)
                 .filter(ignoreType.negate())
                 .toList();
     }
@@ -146,31 +165,21 @@ public record CollectionGroup(
     }
 
     public List<TypeID> ofTypes(Type[] types) {
-        LinkedList<TypeID> typeList = new LinkedList<>();
-        for (Type type : types) {
-            if (type == null) {
-                continue;
-            }
-            if (SafeOperations.isTypeNotLoaded(type)) {
-                continue;
-            }
-            typeList.add(of(type).asType());
-        }
-        return typeList;
+        return Arrays.stream(types)
+                .filter(Objects::nonNull)
+                .filter(SafeOperations::isTypeLoaded)
+                .map(this::of)
+                .map(TypeOrTypeVariableID::asType)
+                .toList();
     }
 
     public List<TypeID> of(Class<?>[] types) {
-        LinkedList<TypeID> typeList = new LinkedList<>();
-        for (Class<?> type : types) {
-            if (type == null) {
-                continue;
-            }
-            if (SafeOperations.isTypeNotLoaded(type)) {
-                continue;
-            }
-            typeList.add(of(type).asType());
-        }
-        return typeList;
+        return Arrays.stream(types)
+                .filter(Objects::nonNull)
+                .filter(SafeOperations::isTypeLoaded)
+                .map(this::of)
+                .map(TypeOrTypeVariableID::asType)
+                .toList();
     }
 
     public List<TypeVariableID> of(TypeVariable<?>[] typeVariables) {
