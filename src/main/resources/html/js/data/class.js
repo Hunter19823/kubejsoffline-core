@@ -369,10 +369,10 @@ function getClass(id) {
 
     // Override the type variable map getter to create a new one if it doesn't exist
     output.getTypeVariableMap = function () {
-        if (!exists(this._type_variable_map_base)) {
-            this._type_variable_map_base = createTypeVariableMap(output.id());
+        if (!exists(this.data._type_variable_map_base)) {
+            this.data._type_variable_map_base = createTypeVariableMap(output.id());
         }
-        return structuredClone(this._type_variable_map_base);
+        return structuredClone(this.data._type_variable_map_base);
     }
 
     /**

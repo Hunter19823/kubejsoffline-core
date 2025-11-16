@@ -77,25 +77,25 @@ async function indexClass(target) {
     );
     markRelationship(
         target,
-        classType.constructors(true).flatMap((constructorData) => constructorData.getParameters().map((parameterData) => parameterData.getTypeWrapped())),
+        classType.constructors(true).flatMap((constructorData) => constructorData.getParameters().map((parameterData) => parameterData.getType())),
         [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.fields(true).map((fieldData) => fieldData.getTypeWrapped()),
+        classType.fields(true).map((fieldData) => fieldData.getType()),
         [RELATIONSHIP.FIELD_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.methods(true).map((methodData) => methodData.getTypeWrapped()),
+        classType.methods(true).map((methodData) => methodData.getType()),
         [RELATIONSHIP.METHOD_RETURN_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
-        classType.methods(true).flatMap((methodData) => methodData.getParameters().map((parameterData) => parameterData.getTypeWrapped())),
+        classType.methods(true).flatMap((methodData) => methodData.getParameters().map((parameterData) => parameterData.getType())),
         [RELATIONSHIP.METHOD_PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.REFERENCED_BY]
     );
@@ -163,6 +163,7 @@ async function optimizeDataSearch() {
     DATA._type_variables = [];
     const indexPromises = [];
 
+    DATA.types.forEach((typeData, index) => getClass(index).getTypeVariableMap())
     for (let i = 0; i < DATA.types.length; i++) {
         const typeData = getTypeData(i);
         if (!exists(typeData)) {

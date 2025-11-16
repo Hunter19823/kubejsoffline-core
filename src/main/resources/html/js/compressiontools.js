@@ -73,18 +73,6 @@ function joiner(values, separator, transformer = (a) => a, prefix = "", suffix =
     }
     output += suffix;
     return output;
-
-}
-
-function removeCircularTypeVariables(typeVariableMap) {
-    // Remove any entries that equal their own key
-    for (let [key, value] of Object.entries(typeVariableMap)) {
-        // noinspection EqualityComparisonWithCoercionJS
-        if (key == value) {
-            delete typeVariableMap[key];
-        }
-    }
-    return typeVariableMap;
 }
 
 /**
@@ -97,65 +85,12 @@ function createTypeVariableMap(type, existingMap = {}) {
     return computeExhaustiveMapping(type);
 }
 
-function remapTypeVariables(typeVariableMap, parameterizedType) {
-    const classType = getClass(parameterizedType);
-    if (!classType.isParameterizedType()) {
-        console.error("Type is not a parameterized type. Cannot remap type variables.");
-        throw new Error("Invalid state has been reached.");
-    }
-    const rawTypeId = classType.getRawType();
-    const rawType = getClass(rawTypeId);
-    if (!rawType.isRawClass()) {
-        console.error("Raw type is not a raw class. Cannot remap type variables.");
-        throw new Error("Invalid state has been reached.");
-    }
-    const typeVariables = rawType.getTypeVariables();
-    const actualTypes = classType.getTypeVariables();
-    TYPE_LOOP:
-        for (let i = 0; i < typeVariables.length; i++) {
-            if (exists(typeVariableMap[typeVariables[i]])) {
-                continue;
-            }
-            let actualTypeId = actualTypes[i];
-            let actualType = getClass(actualTypeId);
-            if (!exists(actualType)) {
-                throw new Error(`Actual type is not defined. Cannot remap type variables. Parameterized Type: ${parameterizedType} Raw type: ${rawType.getId()} Type: ${typeVariables[i]}, Actual Type: ${actualTypeId}`);
-            }
-            if (!actualType.isTypeVariable()) {
-                typeVariableMap[typeVariables[i]] = actualTypes[i];
-                continue;
-            }
-            let iterationCounter = 0;
-            while (exists(typeVariableMap[actualTypeId]) && iterationCounter < 10) {
-                const remappedTypeId = typeVariableMap[actualTypeId];
-                const remappedType = getClass(remappedTypeId);
-                iterationCounter++;
-                if (remappedType.isTypeVariable()) {
-                    actualTypeId = remappedTypeId;
-                    actualType = remappedType;
-                } else {
-                    typeVariableMap[typeVariables[i]] = remappedTypeId;
-                    continue TYPE_LOOP;
-                }
-            }
-            if (iterationCounter >= 1000) {
-                throw new Error("Infinite Loop Detected. Cannot remap type variables.");
-            }
-
-            typeVariableMap[typeVariables[i]] = actualTypeId;
-        }
-}
-
-
 function computeConsolidatedMapping(id) {
     let type = getClass(id);
     let mapping = {};
     if (!type.isRawClass()) {
         return mapping;
     }
-    // type.getTypeVariables().forEach((typeVariableId) => {
-    //     mapping[typeVariableId] = typeVariableId;
-    // });
     let superType = type.getSuperClass();
     extractSuperMapping(superType, mapping);
 
@@ -176,12 +111,6 @@ function computeConsolidatedMapping(id) {
     if (isMapEmpty(superMapping) && areAllInterfacesEmpty) {
         return mapping;
     }
-
-    // putAll(mapping, superMapping);
-    //
-    // interfaceMappings.forEach((interfaceMapping) => {
-    //     putAll(mapping, interfaceMapping);
-    // });
 
     let merged = transformMapping(superMapping, mapping);
     interfaceMappings.forEach((interfaceMapping) => {

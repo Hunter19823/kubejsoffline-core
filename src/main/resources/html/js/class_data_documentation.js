@@ -890,15 +890,20 @@ function setTypeVariableMap(target) {
         if (!exists(map) || Object.keys(map).length === 0) {
             return target.getTypeVariableMap();
         }
+        let leftMap = JSON.stringify(target.getTypeVariableMap());
+        let rightMap = JSON.stringify(map);
+        if (leftMap === rightMap) {
+            return target.getTypeVariableMap();
+        }
         let originalGetTypeVariableMap = target.getTypeVariableMap;
         target.getTypeVariableMap = function () {
             let typeVariableMap = originalGetTypeVariableMap();
             for (const [key, value] of Object.entries(map)) {
                 typeVariableMap[key] = value;
             }
-            return removeCircularTypeVariables(typeVariableMap);
+            return typeVariableMap;
         }
-        return removeCircularTypeVariables(target.getTypeVariableMap());
+        return target.getTypeVariableMap();
     }
 
     return target;
