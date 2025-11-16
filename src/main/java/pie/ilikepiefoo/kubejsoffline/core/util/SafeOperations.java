@@ -104,11 +104,6 @@ public class SafeOperations {
                 return isTypeVariablePresent(typeVariable);
             }
             if (type instanceof ParameterizedType parameterizedType) {
-                for (var argument : parameterizedType.getActualTypeArguments()) {
-                    if (!isTypePresent(argument)) {
-                        return false;
-                    }
-                }
                 if (parameterizedType == parameterizedType.getRawType()) {
                     return false;
                 }
@@ -122,7 +117,25 @@ public class SafeOperations {
                 if (parameterizedType.getRawType() instanceof Class<?> rawClass) {
                     var typeParams = rawClass.getTypeParameters();
                     var actualTypes = parameterizedType.getActualTypeArguments();
-                    return typeParams.length == actualTypes.length;
+                    if (typeParams.length != actualTypes.length) {
+                        LOG.warn("Mismatch in type parameters and actual types for ParameterizedType: {}", parameterizedType);
+                        return false;
+                    }
+                    for (int i = 0; i < typeParams.length; i++) {
+                        var typeParam = typeParams[i];
+                        var actualType = actualTypes[i];
+                        var bounds = SafeOperations.getAllNonObjects(typeParam.getBounds());
+                        for (var bound : bounds) {
+                            if (!isTypePresent(bound)) {
+                                LOG.warn("Bound of type parameter is not present: {} in {}", bound, parameterizedType);
+                                return false;
+                            }
+                        }
+                        if (!isTypePresent(actualType)) {
+                            LOG.warn("Actual type argument is not present: {} in {}", actualType, parameterizedType);
+                            return false;
+                        }
+                    }
                 } else {
                     LOG.warn("Raw type of ParameterizedType is not a Class: {}", parameterizedType.getRawType());
                     return false;
