@@ -149,74 +149,81 @@ function transformMapping(typeVariableMap, overrideMap) {
 }
 
 function extractSuperMapping(id, typeVariableMap) {
-    if (!exists(typeVariableMap)) {
-        throw new Error("Type Variable Map must be provided to extract super mapping.");
-    }
-    if (!exists(id)) {
-        return;
-    }
-    let type = getClass(id);
-    if (!type.isParameterizedType()) {
-        return;
-    }
-    if (!exists(type.getRawType())) {
-        throw new Error("Raw Type must exist for parameterized type to extract super mapping.");
-    }
-    let rawType = getClass(type.getRawType());
-    let rawTypeVariables = rawType.getTypeVariables();
-    let actualTypes = type.getTypeVariables();
-
-    if (rawTypeVariables.length !== actualTypes.length) {
-        throw new Error("Raw Type Variables and Actual Types length mismatch when extracting super mapping.");
-    }
-
-    for (let i = 0; i < rawTypeVariables.length; i++) {
-        if (!exists(typeVariableMap[rawTypeVariables[i]])) {
-            typeVariableMap[rawTypeVariables[i]] = actualTypes[i];
+    try {
+        if (!exists(typeVariableMap)) {
+            throw new Error("Type Variable Map must be provided to extract super mapping.");
         }
+        if (!exists(id)) {
+            return;
+        }
+        let type = getClass(id);
+        if (!type.isParameterizedType()) {
+            return;
+        }
+        if (!exists(type.getRawType())) {
+            throw new Error("Raw Type must exist for parameterized type to extract super mapping.");
+        }
+        let rawType = getClass(type.getRawType());
+        let rawTypeVariables = rawType.getTypeVariables();
+        let actualTypes = type.getTypeVariables();
+
+        if (rawTypeVariables.length !== actualTypes.length) {
+            throw new Error("Raw Type Variables and Actual Types length mismatch when extracting super mapping.");
+        }
+
+        for (let i = 0; i < rawTypeVariables.length; i++) {
+            if (!exists(typeVariableMap[rawTypeVariables[i]])) {
+                typeVariableMap[rawTypeVariables[i]] = actualTypes[i];
+            }
+        }
+    } catch (e) {
+        console.error("Error extracting super mapping for type ID: " + id, e);
     }
 }
 
 function computeExhaustiveMapping(id) {
-    let type = getClass(id);
     let mapping = {};
-    if (type.isWildcard()) {
-        return mapping;
-    }
-    if (type.isTypeVariable()) {
-        mapping[type.id()] = type.id();
-        return mapping;
-    }
-    if (type.isParameterizedType()) {
-        let rawType = getClass(type.getRawType());
-        let ownerType = type.getOwnerType();
-        let rawTypeVariables = rawType.getTypeVariables();
-        let actualTypes = type.getTypeVariables();
-        if (rawTypeVariables.length !== actualTypes.length) {
-            throw new Error("Raw Type Variables and Actual Types length mismatch when computing exhaustive mapping.");
+    try {
+        let type = getClass(id);
+        if (type.isWildcard()) {
+            return mapping;
         }
-        let rawMapping = computeExhaustiveMapping(type.getRawType());
-        let ownerMapping = exists(ownerType) ? computeExhaustiveMapping(ownerType) : {};
-        putAll(mapping, rawMapping);
-        putAll(mapping, ownerMapping);
-        for (let i = 0; i < rawTypeVariables.length; i++) {
-            mapping[rawTypeVariables[i]] = actualTypes[i];
+        if (type.isTypeVariable()) {
+            mapping[type.id()] = type.id();
+            return mapping;
         }
-        return mapping;
-    }
-    if (!type.isRawClass()) {
-        throw new Error("Type must be a raw class, parameterized type, type variable, or wildcard to compute exhaustive mapping.");
-    }
-    let superType = type.getSuperClass();
-    let interfaces = type.getInterfaces();
-    let superMapping = exists(superType) ? computeExhaustiveMapping(superType) : {};
-    let interfaceMappings = interfaces.map((interfaceId) => computeExhaustiveMapping(interfaceId));
+        if (type.isParameterizedType()) {
+            let rawType = getClass(type.getRawType());
+            let ownerType = type.getOwnerType();
+            let rawTypeVariables = rawType.getTypeVariables();
+            let actualTypes = type.getTypeVariables();
+            if (rawTypeVariables.length !== actualTypes.length) {
+                throw new Error("Raw Type Variables and Actual Types length mismatch when computing exhaustive mapping.");
+            }
+            let rawMapping = computeExhaustiveMapping(type.getRawType());
+            let ownerMapping = exists(ownerType) ? computeExhaustiveMapping(ownerType) : {};
+            putAll(mapping, rawMapping);
+            putAll(mapping, ownerMapping);
+            for (let i = 0; i < rawTypeVariables.length; i++) {
+                mapping[rawTypeVariables[i]] = actualTypes[i];
+            }
+            return mapping;
+        }
+        if (!type.isRawClass()) {
+            throw new Error("Type must be a raw class, parameterized type, type variable, or wildcard to compute exhaustive mapping.");
+        }
+        let superType = type.getSuperClass();
+        let interfaces = type.getInterfaces();
+        let superMapping = exists(superType) ? computeExhaustiveMapping(superType) : {};
+        let interfaceMappings = interfaces.map((interfaceId) => computeExhaustiveMapping(interfaceId));
 
-    putAll(mapping, superMapping);
-    interfaceMappings.forEach((interfaceMapping) => {
-        putAll(mapping, interfaceMapping);
-    });
-
+        putAll(mapping, superMapping);
+        interfaceMappings.forEach((interfaceMapping) => {
+            putAll(mapping, interfaceMapping);
+        });
+    } catch (e) {
+        console.error("Error computing exhaustive mapping for type ID: " + id, e);
+    }
     return mapping;
 }
 
