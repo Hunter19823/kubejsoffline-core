@@ -371,3 +371,7 @@ td.link-container {
     color: #ff9800;
     font-weight: bold;
 }
+
+a, a:visited {
+    text-decoration: none;
+}
