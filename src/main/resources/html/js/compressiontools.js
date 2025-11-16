@@ -374,6 +374,14 @@ function getTypeVariableName(type, config) {
     if (config.getDefiningTypeVariable(type.id())) {
         return typeVariableName;
     }
+    let newType = config.remapType(type);
+    if (newType.id() !== type.id()) {
+        return getGenericDefinitionLogic(
+            newType,
+            config
+                .setDefiningTypeVariable(true, type.id())
+        );
+    }
     const bounds = type.getTypeVariableBounds();
     if (bounds.length === 0) {
         return typeVariableName;
@@ -395,12 +403,6 @@ function getRawClassName(type, config) {
 
 function getGenericDefinitionLogic(type, config) {
     type = getClass(type);
-    if (type.isTypeVariable()) {
-        let newType = config.remapType(type);
-        if (newType.id() !== type.id()) {
-            return getGenericDefinitionLogic(newType, config);
-        }
-    }
     if (type.isRawClass()) {
         if (exists(type.getDeclaringClass())) {
             return cachedGenericDefinition(type.getDeclaringClass(), config) + "$" + getRawClassName(type, config.setAppendPackageName(false));
@@ -617,6 +619,13 @@ function getTypeVariableSignature(type, outputSpan, config) {
         outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
         return outputSpan;
     }
+    let newType = config.remapType(type);
+    if (newType.id() !== type.id()) {
+        return createLinkableSignature(
+            newType,
+            config.setDefiningTypeVariable(true, type.id())
+        );
+    }
     const bounds = type.getTypeVariableBounds();
     if (bounds.length === 0) {
         outputSpan.append(createLink(span(typeVariableName), config.getLinkableID(type.id())));
@@ -730,12 +739,6 @@ function getParameterizedTypeSignature(type, outputSpan, config) {
  */
 function createLinkableSignature(type, config) {
     type = getClass(type);
-    if (type.isTypeVariable()) {
-        let newType = config.remapType(type);
-        if (newType.id() !== type.id()) {
-            return createLinkableSignature(newType, config);
-        }
-    }
     const outputSpan = document.createElement('span');
     if (type.isRawClass()) {
         return getRawClassSignature(type, outputSpan, config);

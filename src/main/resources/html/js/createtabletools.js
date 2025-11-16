@@ -190,10 +190,14 @@ function createMethodTable(target) {
     //         }
     //     });
     // });
+    createMethodTableFromList('Methods', methods);
+}
+
+function createMethodTableFromList(title, methods) {
     if (methods.length === 0) {
         return;
     }
-    createPagedTable('Methods', 'methods', methods, addMethodToTableFunction(),
+    return createPagedTable(title, 'methods', methods, addMethodToTableFunction(),
         'Link',
         'Signature',
         'Access Modifiers',
@@ -224,10 +228,14 @@ function createFieldTable(target) {
         // }
         return true;
     });
+    createFieldTableFromList('Fields', fields);
+}
+
+function createFieldTableFromList(title, fields) {
     if (fields.length === 0) {
         return;
     }
-    createPagedTable('Fields', 'fields', fields, addFieldToTableFunction(), 'Link', 'Signature', 'Access Modifiers', 'Type', 'Field Name', 'Declaring Class')
+    return createPagedTable(title, 'fields', fields, addFieldToTableFunction(), 'Link', 'Signature', 'Access Modifiers', 'Type', 'Field Name', 'Declaring Class')
         ?.sortableByField((a) => a)
         ?.create();
 }
@@ -249,10 +257,14 @@ function createConstructorTable(target) {
         // }
         return true;
     });
+    createConstructorTableFromList(constructors);
+}
+
+function createConstructorTableFromList(constructors) {
     if (constructors.length === 0) {
         return;
     }
-    createPagedTable('Constructors', 'constructors', constructors, addConstructorToTableFunction(),
+    return createPagedTable('Constructors', 'constructors', constructors, addConstructorToTableFunction(),
         'Link',
         'Constructors',
         'Access Modifiers',
@@ -314,23 +326,20 @@ function createRelationshipTable(target) {
 }
 
 function createClassTable(title, table_id, classes) {
-    if (classes) {
-        createPagedTable(title, table_id, classes, addClassToTableFunction(),
-            'Link',
-            'Signature',
-            'Modifiers',
-            'Package',
-            'Name',
-            'Type Variables',
-            'Enclosing Class'
-        )
-            ?.sortableByClass((a) => a)
-            ?.create();
+    if (!exists(classes) || classes.length === 0) {
+        return;
     }
-}
-
-function createInnerClassTable(subject) {
-
+    createPagedTable(title, table_id, classes, addClassToTableFunction(),
+        'Link',
+        'Signature',
+        'Modifiers',
+        'Package',
+        'Name',
+        'Type Variables',
+        'Enclosing Class'
+    )
+        ?.sortableByClass((a) => a)
+        ?.create();
 }
 
 /**
@@ -357,10 +366,14 @@ function createBindingsTable(title, scope, table_id, bindings) {
 function createTypeVariableMappingTable(target) {
     let typeVariableMap = target.getTypeVariableMap();
     console.log(`Creating type variable mapping table for ${target.toString()}: `, typeVariableMap);
+    createTypeVariableTable(typeVariableMap);
+}
+
+function createTypeVariableTable(typeVariables) {
     if (typeVariableMap.length === 0) {
         return;
     }
-    createPagedTable(
+    return createPagedTable(
         'Type Variable Mappings',
         'type-variable-mappings',
         Object.entries(typeVariableMap).map(

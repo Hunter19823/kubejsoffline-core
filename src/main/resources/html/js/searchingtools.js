@@ -620,21 +620,13 @@ function loadSearchResults() {
     }
 
     try {
-        createPagedTable("Matching Fields", 'field-table', results.fields, (table, fieldData) => {
-            addFieldToTable(table, fieldData);
-        }, 'Link', 'Declared In', 'Field Signature', 'Declaration Class')
-            ?.sortableByField((a) => a)
-            ?.create();
+        createFieldTableFromList('Matching Fields', results.fields);
     } catch (e) {
         console.error("Error creating field table:", e);
     }
 
     try {
-        createPagedTable("Matching Methods", 'method-table', results.methods, (table, methodData) => {
-            addMethodToTable(table, methodData.getDeclaringClassWrapped(), methodData);
-        }, 'Link', 'Declared In', 'Method Signature', 'Declaration Class')
-            ?.sortableByMethod((a) => a)
-            ?.create();
+        createMethodTableFromList("Matching Methods", results.methods);
     } catch (e) {
         console.error("Error creating method table:", e);
     }
