@@ -66,7 +66,7 @@ function getMethod(methodData, typeVariableMap = {}, sourceClassId, sourceMethod
     output.toString = function () {
         let returnType = this.getTypeWrapped().toString();
         let modifier = MODIFIER.toString(this.getModifiers());
-        let typeVariables = this.getTypeVariablesMapped().map((v) => getClass(v)).map((tv) => tv.toString());
+        let typeVariables = this.getTypeVariablesMapped().map((v) => getClass(v.id())).map((tv) => tv.toString());
         let params = this.parameters().map((param) => param.toString()).join(", ");
         let args = [
             modifier,
