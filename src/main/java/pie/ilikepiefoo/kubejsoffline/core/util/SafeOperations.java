@@ -116,7 +116,17 @@ public class SafeOperations {
                     return false;
                 }
                 var result = isTypePresent(parameterizedType.getRawType()) && isTypePresent(parameterizedType.getOwnerType());
-                return result;
+                if (!result) {
+                    return false;
+                }
+                if (parameterizedType.getRawType() instanceof Class<?> rawClass) {
+                    var typeParams = rawClass.getTypeParameters();
+                    var actualTypes = parameterizedType.getActualTypeArguments();
+                    return typeParams.length == actualTypes.length;
+                } else {
+                    LOG.warn("Raw type of ParameterizedType is not a Class: {}", parameterizedType.getRawType());
+                    return false;
+                }
             }
             if (type instanceof WildcardType wildcardType) {
                 return isPresent(wildcardType.getUpperBounds()) && isPresent(wildcardType.getLowerBounds());
