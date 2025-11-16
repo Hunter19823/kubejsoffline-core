@@ -101,6 +101,22 @@ public record CollectionGroup(
                 .toList();
     }
 
+    public List<FieldID> of(Field[] fields) {
+        return Arrays.stream(fields)
+                .filter(Objects::nonNull)
+                .filter(SafeOperations::isFieldPresent)
+                .map(field -> fields().addField(new FieldWrapper(this, field)))
+                .toList();
+    }
+
+    public List<ConstructorID> of(Constructor<?>[] constructors) {
+        return Arrays.stream(constructors)
+                .filter(Objects::nonNull)
+                .filter(SafeOperations::isConstructorPresent)
+                .map(constructor -> constructors().addConstructor(new ConstructorWrapper(this, constructor)))
+                .toList();
+    }
+
     public List<TypeOrTypeVariableID> of(Type[] types) {
         return this.of(types, (type) -> false);
     }
@@ -183,34 +199,6 @@ public record CollectionGroup(
             throw new NullPointerException("Package cannot be null");
         }
         return packages().addPackage(pack.getName());
-    }
-
-    public List<FieldID> of(Field[] fields) {
-        LinkedList<FieldID> fieldList = new LinkedList<>();
-        for (Field field : fields) {
-            if (field == null) {
-                continue;
-            }
-            if (!SafeOperations.isFieldPresent(field)) {
-                continue;
-            }
-            fieldList.add(fields().addField(new FieldWrapper(this, field)));
-        }
-        return fieldList;
-    }
-
-    public List<ConstructorID> of(Constructor<?>[] constructors) {
-        LinkedList<ConstructorID> constructorList = new LinkedList<>();
-        for (Constructor<?> constructor : constructors) {
-            if (constructor == null) {
-                continue;
-            }
-            if (!SafeOperations.isConstructorPresent(constructor)) {
-                continue;
-            }
-            constructorList.add(constructors().addConstructor(new ConstructorWrapper(this, constructor)));
-        }
-        return constructorList;
     }
 
 
