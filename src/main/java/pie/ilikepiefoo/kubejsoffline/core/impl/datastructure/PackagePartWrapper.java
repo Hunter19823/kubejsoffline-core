@@ -72,6 +72,10 @@ public class PackagePartWrapper implements PackagePart {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof PackagePart other) {
+            return Objects.equals(this.getName(), other.getName()) &&
+                    Objects.equals(this.getPrefix(), other.getPrefix());
+        }
+        return false;
     }
 }

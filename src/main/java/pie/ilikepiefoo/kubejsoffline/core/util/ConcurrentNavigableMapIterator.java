@@ -39,7 +39,7 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
      */
     @Override
     public boolean hasNext() {
-        if (!remainingValues.empty()) {
+        if (!remainingValues.isEmpty()) {
             return true; // If there are already remaining values, no need to refill
         }
         if (currentKey == null && !map.isEmpty()) {
@@ -57,6 +57,7 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
             return false; // No more keys to iterate
         }
         if (currentKey == finalKey) {
+            LOG.info("Finished processing all elements in the {} queue.", name);
             return false; // If currentKey is the last key, no more elements to iterate
         }
         var subMap = map.subMap(currentKey, true, finalKey, true);
@@ -81,9 +82,9 @@ public class ConcurrentNavigableMapIterator<K, V> implements Iterator<V>, Iterab
     }
 
     public void reset() {
+        LOG.info("Iterator for {} has been reset. The last index processed was {}.", name, currentKey);
         remainingValues.clear();
         currentKey = null;
-        LOG.info("Iterator for {} has been reset.", name);
     }
 
 

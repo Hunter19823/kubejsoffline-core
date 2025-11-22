@@ -533,3 +533,73 @@ function generateGraphVizDotFromReferencesToId(id) {
     const graph = createGraphVizGraph(Array.from(references));
     return generateGraphVizDot(graph);
 }
+
+function findCircularReferences(id, visited=new Set(), path=[]) {
+    const classType = getClass(id);
+    if (visited.has(classType.id())) {
+        const cycleStartIndex = path.indexOf(classType.id());
+        if (cycleStartIndex !== -1) {
+            return [path.slice(cycleStartIndex), classType.id()];
+        }
+        return null;
+    }
+    visited.add(classType.id());
+    path.push(classType.id());
+
+    let cycle = null;
+    if (classType.isRawClass()) {
+        // Superclass
+        if (exists(classType.getSuperClass())) {
+            cycle = findCircularReferences(classType.getSuperClass(), visited, path);
+            if (cycle) return cycle;
+        }
+        // Interfaces
+        for (let interfaceId of classType.getInterfaces()) {
+            cycle = findCircularReferences(interfaceId, visited, path);
+            if (cycle) return cycle;
+        }
+        // Type Variables
+        for (let typeVarId of classType.getTypeVariables()) {
+            cycle = findCircularReferences(typeVarId, visited, path);
+            if (cycle) return cycle;
+        }
+    }
+    if (classType.isParameterizedType()) {
+        // Raw Type
+        if (exists(classType.getRawType())) {
+            cycle = findCircularReferences(classType.getRawType(), visited, path);
+            if (cycle) return cycle;
+        }
+        // Owner Type
+        if (exists(classType.getOwnerType())) {
+            cycle = findCircularReferences(classType.getOwnerType(), visited, path);
+            if (cycle) return cycle;
+        }
+        // Actual Types
+        for (let actualTypeId of classType.getTypeVariables()) {
+            cycle = findCircularReferences(actualTypeId, visited, path);
+            if (cycle) return cycle;
+        }
+    }
+    if (classType.isTypeVariable()) {
+        // Bounds
+        for (let boundId of classType.getTypeVariableBounds()) {
+            cycle = findCircularReferences(boundId, visited, path);
+            if (cycle) return cycle;
+        }
+    }
+    if (classType.isWildcard()) {
+        // Upper Bounds
+        for (let upperBoundId of classType.getUpperBound()) {
+            cycle = findCircularReferences(upperBoundId, visited, path);
+            if (cycle) return cycle;
+        }
+        // Lower Bounds
+        for (let lowerBoundId of classType.getLowerBound()) {
+            cycle = findCircularReferences(lowerBoundId, visited, path);
+            if (cycle) return cycle;
+        }
+    }
+    path.pop();
+    return null;
+}

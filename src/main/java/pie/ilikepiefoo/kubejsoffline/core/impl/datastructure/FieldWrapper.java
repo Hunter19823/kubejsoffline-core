@@ -14,6 +14,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Objects;
 
 public class FieldWrapper implements FieldData {
     protected final CollectionGroup collectionGroup;
@@ -42,14 +43,6 @@ public class FieldWrapper implements FieldData {
 
     @Override
     public JsonElement toJSON() {
-//        JsonObject json = new JsonObject();
-//        json.add(JSONProperty.FIELD_NAME.jsName, getName().toJSON());
-//        json.add(JSONProperty.FIELD_TYPE.jsName, getType().toJSON());
-//        if (getModifiers() != 0) {
-//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-//        }
-//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-
         return compressObject(
                 getName().toJSON(),
                 getType().toJSON(),
@@ -89,7 +82,11 @@ public class FieldWrapper implements FieldData {
 
     @Override
     public int hashCode() {
-        return this.field.hashCode();
+        return Objects.hash(
+                getName(),
+                getModifiers(),
+                getType()
+        );
     }
 
     @Override
@@ -100,9 +97,11 @@ public class FieldWrapper implements FieldData {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof FieldWrapper)) {
-            return false;
+        if (obj instanceof FieldData other) {
+            return Objects.equals(this.getName(), other.getName()) &&
+                    Objects.equals(this.getModifiers(), other.getModifiers()) &&
+                    Objects.equals(this.getType(), other.getType());
         }
-        return this.hashCode() == obj.hashCode();
+        return false;
     }
 }

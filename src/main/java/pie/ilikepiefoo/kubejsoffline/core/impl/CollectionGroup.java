@@ -243,20 +243,20 @@ public record CollectionGroup(
         }
         for (var type : types) {
             type.index();
-            for (var method : methods) {
-                method.index();
-            }
             for (var field : fields) {
                 field.index();
             }
             for (var constructor : constructors) {
                 constructor.index();
             }
-            for (var annotation : annotations) {
-                annotation.index();
+            for (var method : methods) {
+                method.index();
             }
             for (var parameter : parameters) {
                 parameter.index();
+            }
+            for (var annotation : annotations) {
+                annotation.index();
             }
         }
         for (var pkg : packages) {
@@ -277,6 +277,7 @@ public record CollectionGroup(
         fields.toggleLock();
         constructors.toggleLock();
         packages.toggleLock();
+        names.toggleLock();
     }
 
     public static long getWeight(TypeData type) {

@@ -16,6 +16,7 @@ import pie.ilikepiefoo.kubejsoffline.core.util.SafeOperations;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Objects;
 
 public class ConstructorWrapper implements ConstructorData {
     protected final CollectionGroup collectionGroup;
@@ -44,20 +45,6 @@ public class ConstructorWrapper implements ConstructorData {
 
     @Override
     public JsonElement toJSON() {
-//        var json = new JsonObject();
-//        if (getModifiers() != 0) {
-//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-//        }
-//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-//        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
-//        // Throw an exception if the type parameters or parameters cannot be loaded.
-//        if (!getTypeParameters().isEmpty()) {
-//            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
-//        }
-//        if (!getParameters().isEmpty()) {
-//            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
-//        }
-
         return compressObject(
                 getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
                 JSONSerializable.of(getAnnotations()),
@@ -106,7 +93,13 @@ public class ConstructorWrapper implements ConstructorData {
 
     @Override
     public int hashCode() {
-        return this.constructor.hashCode();
+        return Objects.hash(
+                getModifiers(),
+                getAnnotations(),
+                getExceptions(),
+                getTypeParameters(),
+                getParameters()
+        );
     }
 
     @Override
@@ -117,9 +110,13 @@ public class ConstructorWrapper implements ConstructorData {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof ConstructorWrapper)) {
-            return false;
+        if (obj instanceof ConstructorWrapper other) {
+            return Objects.equals(this.getModifiers(), other.getModifiers())
+                    && Objects.equals(this.getAnnotations(), other.getAnnotations())
+                    && Objects.equals(this.getExceptions(), other.getExceptions())
+                    && Objects.equals(this.getTypeParameters(), other.getTypeParameters())
+                    && Objects.equals(this.getParameters(), other.getParameters());
         }
-        return this.hashCode() == obj.hashCode();
+        return false;
     }
 }

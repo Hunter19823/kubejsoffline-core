@@ -50,21 +50,6 @@ public class MethodWrapper implements MethodData {
 
     @Override
     public JsonElement toJSON() {
-//        var json = new JsonObject();
-//        json.add(JSONProperty.METHOD_NAME.jsName, getName().toJSON());
-//        if (getModifiers() != 0) {
-//            json.addProperty(JSONProperty.MODIFIERS.jsName, method.getModifiers());
-//        }
-//        json.add(JSONProperty.METHOD_RETURN_TYPE.jsName, getType().toJSON());
-//        addAllTo(json, JSONProperty.ANNOTATIONS.jsName, true, this::getAnnotations);
-//        if (!getParameters().isEmpty()) {
-//            json.add(JSONProperty.PARAMETERS.jsName, JSONSerializable.of(getParameters()));
-//        }
-//        if (!getTypeParameters().isEmpty()) {
-//            json.add(JSONProperty.TYPE_VARIABLES.jsName, JSONSerializable.of(getTypeParameters()));
-//        }
-//        addAllTo(json, JSONProperty.EXCEPTIONS.jsName, true, this::getExceptions);
-//
         return compressObject(
                 getName().toJSON(),
                 getModifiers() != 0 ? new JsonPrimitive(getModifiers()) : null,
@@ -150,9 +135,15 @@ public class MethodWrapper implements MethodData {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof MethodWrapper other)) {
-            return false;
+        if (obj instanceof MethodWrapper other) {
+            return Objects.equals(this.getName(), other.getName())
+                    && Objects.equals(this.getModifiers(), other.getModifiers())
+                    && Objects.equals(this.getType(), other.getType())
+                    && Objects.equals(this.getAnnotations(), other.getAnnotations())
+                    && Objects.equals(this.getParameters(), other.getParameters())
+                    && Objects.equals(this.getTypeParameters(), other.getTypeParameters())
+                    && Objects.equals(this.getExceptions(), other.getExceptions());
         }
-        return this.hashCode() == obj.hashCode();
+        return false;
     }
 }

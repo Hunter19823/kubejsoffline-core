@@ -67,10 +67,7 @@ public class TypeVariableWrapper implements TypeVariableData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(
-                typeVariable.getName(),
-                collectionGroup.getLoadedTypes(typeVariable.getBounds(), (Type type) -> type == Object.class)
-        );
+        return Objects.hash(typeVariable);
     }
 
     @Override

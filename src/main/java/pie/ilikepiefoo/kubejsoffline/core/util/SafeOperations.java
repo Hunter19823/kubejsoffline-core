@@ -90,6 +90,25 @@ public class SafeOperations {
                 return true;
             }
 
+            if (type.hashCode() == Integer.MAX_VALUE) {
+                LOG.warn("Type has suspicious hashCode(): {}", type);
+                return false;
+            }
+
+            if (type.hashCode() == Integer.MIN_VALUE) {
+                LOG.warn("Type has suspicious hashCode(): {}", type);
+                return false;
+            }
+
+            if (type.toString().isBlank()) {
+                LOG.warn("Type has blank toString(): {}", type);
+                return false;
+            }
+            if (type.getTypeName().isBlank()) {
+                LOG.warn("Type has blank type name: {}", type);
+                return false;
+            }
+
             TYPES_PROCESSING.get().add(type);
             if (type.getTypeName().isBlank()) {
                 return false;
@@ -147,6 +166,7 @@ public class SafeOperations {
 
             return true;
         } catch (final Throwable e) {
+            LOG.warn("Type is not present for documentation...", e);
             return false;
         }
     }

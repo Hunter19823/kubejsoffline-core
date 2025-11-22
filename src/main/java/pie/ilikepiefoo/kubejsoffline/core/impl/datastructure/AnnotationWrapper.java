@@ -37,11 +37,6 @@ public class AnnotationWrapper implements AnnotationData {
 
     @Override
     public JsonElement toJSON() {
-//        var json = new JsonObject();
-//        json.add(JSONProperty.ANNOTATION_TYPE.jsName, getAnnotationType().toJSON());
-//        if (!getAnnotationValue().isBlank()) {
-//            json.addProperty(JSONProperty.ANNOTATION_STRING.jsName, getAnnotationValue());
-//        }
         return compressObject(
                 getAnnotationType().toJSON(),
                 getAnnotationValue().isBlank() ? null : getAnnotationValueId().toJSON()
@@ -93,6 +88,10 @@ public class AnnotationWrapper implements AnnotationData {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof AnnotationData other) {
+            return Objects.equals(this.getAnnotationType(), other.getAnnotationType()) &&
+                    Objects.equals(this.getAnnotationValue(), other.getAnnotationValue());
+        }
+        return false;
     }
 }

@@ -200,6 +200,9 @@ public class RawClassWrapper implements RawClassData {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof RawClassWrapper other) {
+            return this.clazz.equals(other.clazz);
+        }
+        return false;
     }
 }

@@ -63,11 +63,7 @@ public class WildcardTypeWrapper implements WildcardTypeData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(
-                "?",
-                collectionGroup.getLoadedTypes(wildcardType.getLowerBounds(), (Type type) -> type == Object.class),
-                collectionGroup.getLoadedTypes(wildcardType.getUpperBounds(), (Type type) -> type == Object.class)
-        );
+        return Objects.hash(wildcardType);
     }
 
     @Override
@@ -78,6 +74,9 @@ public class WildcardTypeWrapper implements WildcardTypeData {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof WildcardTypeWrapper other) {
+            return this.wildcardType.equals(other.wildcardType);
+        }
+        return false;
     }
 }

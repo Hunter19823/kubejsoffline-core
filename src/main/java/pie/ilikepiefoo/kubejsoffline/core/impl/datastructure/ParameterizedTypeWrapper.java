@@ -10,9 +10,7 @@ import pie.ilikepiefoo.kubejsoffline.core.impl.CollectionGroup;
 import pie.ilikepiefoo.kubejsoffline.core.util.json.JSONProperty;
 
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Objects;
 
 public class ParameterizedTypeWrapper implements ParameterizedTypeData {
     protected final CollectionGroup collectionGroup;
@@ -86,10 +84,7 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(
-                collectionGroup.getLoadedTypes(new Type[]{parameterizedType.getRawType(), parameterizedType.getOwnerType()}),
-                collectionGroup.getLoadedTypes(parameterizedType.getActualTypeArguments())
-        );
+        return parameterizedType.hashCode();
     }
 
     @Override
@@ -100,6 +95,9 @@ public class ParameterizedTypeWrapper implements ParameterizedTypeData {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof ParameterizedTypeWrapper other) {
+            return this.parameterizedType.equals(other.parameterizedType);
+        }
+        return false;
     }
 }

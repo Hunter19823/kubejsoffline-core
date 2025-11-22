@@ -44,17 +44,6 @@ public class ParameterWrapper implements ParameterData {
 
     @Override
     public JsonElement toJSON() {
-//        var json = new JsonObject();
-//        json.add(JSONProperty.PARAMETER_NAME.jsName, getName().toJSON());
-//        json.add(JSONProperty.PARAMETER_TYPE.jsName, getType().toJSON());
-//
-//        if (getModifiers() != 0) {
-//            json.addProperty(JSONProperty.MODIFIERS.jsName, getModifiers());
-//        }
-//        if (!getAnnotations().isEmpty()) {
-//            json.add(JSONProperty.ANNOTATIONS.jsName, JSONSerializable.of(getAnnotations()));
-//        }
-
         return compressObject(
                 getName().toJSON(),
                 getType().toJSON(),
@@ -110,6 +99,12 @@ public class ParameterWrapper implements ParameterData {
         if (this == obj) {
             return true;
         }
-        return this.hashCode() == obj.hashCode();
+        if (obj instanceof ParameterWrapper other) {
+            return Objects.equals(this.getName(), other.getName())
+                    && Objects.equals(this.getModifiers(), other.getModifiers())
+                    && Objects.equals(this.getType(), other.getType())
+                    && Objects.equals(this.getAnnotations(), other.getAnnotations());
+        }
+        return false;
     }
 }
