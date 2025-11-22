@@ -212,14 +212,50 @@ function findEventClasses() {
 }
 
 function getRelation(relationshipType, id) {
-    if (!RELATIONSHIP_GRAPH.has(relationshipType)) {
-        return [];
+    // Check in-memory cache (synchronous)
+    // NOTE: Relationship graph should be loaded into memory during initialization
+    // to ensure synchronous access. If it's not in memory, return empty array.
+    if (RELATIONSHIP_GRAPH.has(relationshipType)) {
+        const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
+        if (relationshipMap.has(id)) {
+            return Array.from(relationshipMap.get(id));
+        }
     }
-    const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
-    if (!relationshipMap.has(id)) {
-        return [];
+    
+    // If not in memory, the relationship graph hasn't been loaded yet.
+    // This should only happen during initialization. Return empty array.
+    return [];
+}
+
+// Async version for when async is explicitly needed
+async function getRelationAsync(relationshipType, id) {
+    // Check in-memory cache first
+    if (RELATIONSHIP_GRAPH.has(relationshipType)) {
+        const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
+        if (relationshipMap.has(id)) {
+            return Array.from(relationshipMap.get(id));
+        }
     }
-    return Array.from(relationshipMap.get(id));
+    
+    // Try to load from IndexedDB
+    if (typeof readRelationshipGraphEntry === 'function') {
+        try {
+            const toSet = await readRelationshipGraphEntry(relationshipType, id);
+            if (toSet !== undefined) {
+                // Update in-memory cache
+                if (!RELATIONSHIP_GRAPH.has(relationshipType)) {
+                    RELATIONSHIP_GRAPH.set(relationshipType, new Map());
+                }
+                const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
+                relationshipMap.set(id, toSet);
+                return Array.from(toSet);
+            }
+        } catch (err) {
+            console.debug(`Failed to load relationship graph entry for ${relationshipType}:${id}:`, err);
+        }
+    }
+    
+    return [];
 }
 
 /**
@@ -231,6 +267,8 @@ function getRelation(relationshipType, id) {
 function getAllRelations(id) {
     // Return a list of map of id, to list of relationship type.
     const relations = new Map();
+    
+    // Check in-memory cache (synchronous)
     RELATIONSHIP_GRAPH.forEach((relationshipMap, relationshipType) => {
         if (!relationshipMap.has(id)) {
             return;
@@ -242,6 +280,77 @@ function getAllRelations(id) {
             relations.get(to).push(relationshipType);
         })
     });
+    
+    // Try to load missing relationship types from IndexedDB asynchronously (non-blocking)
+    if (typeof readRelationshipGraphByType === 'function') {
+        // Get all relationship types that might exist
+        const allRelationshipTypes = Object.values(RELATIONSHIP);
+        for (const relationshipType of allRelationshipTypes) {
+            // Skip if already loaded in memory
+            if (RELATIONSHIP_GRAPH.has(relationshipType)) {
+                continue;
+            }
+            
+            // Load asynchronously in background
+            readRelationshipGraphByType(relationshipType).then(relationshipMap => {
+                if (relationshipMap && relationshipMap.has(id)) {
+                    // Update in-memory cache
+                    RELATIONSHIP_GRAPH.set(relationshipType, relationshipMap);
+                }
+            }).catch(err => {
+                console.debug(`Failed to load relationship graph for type ${relationshipType}:`, err);
+            });
+        }
+    }
+    
+    return relations;
+}
+
+// Async version for when async is explicitly needed
+async function getAllRelationsAsync(id) {
+    const relations = new Map();
+    
+    // First, check in-memory cache
+    RELATIONSHIP_GRAPH.forEach((relationshipMap, relationshipType) => {
+        if (!relationshipMap.has(id)) {
+            return;
+        }
+        relationshipMap.get(id).forEach((to) => {
+            if (!relations.has(to)) {
+                relations.set(to, []);
+            }
+            relations.get(to).push(relationshipType);
+        })
+    });
+    
+    // Then, try to load missing relationship types from IndexedDB
+    if (typeof readRelationshipGraphByType === 'function') {
+        // Get all relationship types that might exist
+        const allRelationshipTypes = Object.values(RELATIONSHIP);
+        for (const relationshipType of allRelationshipTypes) {
+            // Skip if already loaded in memory
+            if (RELATIONSHIP_GRAPH.has(relationshipType)) {
+                continue;
+            }
+            
+            try {
+                const relationshipMap = await readRelationshipGraphByType(relationshipType);
+                if (relationshipMap && relationshipMap.has(id)) {
+                    // Update in-memory cache
+                    RELATIONSHIP_GRAPH.set(relationshipType, relationshipMap);
+                    relationshipMap.get(id).forEach((to) => {
+                        if (!relations.has(to)) {
+                            relations.set(to, []);
+                        }
+                        relations.get(to).push(relationshipType);
+                    });
+                }
+            } catch (err) {
+                console.debug(`Failed to load relationship graph for type ${relationshipType}:`, err);
+            }
+        }
+    }
+    
     return relations;
 }
 
@@ -288,7 +397,9 @@ function getRelationshipGraphAsJSON(map) {
 /**
  * Load a JSON string into the relationship graph.
  * This is used to send and receive data between the worker and the main thread.
+ * NOTE: This function is deprecated - data is now stored in IndexedDB instead.
  * @param json {RelationshipGraphJSONString} the JSON string to load.
+ * @deprecated Use IndexedDB instead. This function is kept for backward compatibility.
  */
 function loadJSONToRelationshipGraph(json) {
     RELATIONSHIP_GRAPH.clear();

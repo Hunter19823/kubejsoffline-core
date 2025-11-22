@@ -21,6 +21,7 @@ public class IndexPage extends HTMLFile {
         for (Map.Entry<String, Supplier<JsonElement>> entry : GlobalConstants.INSTANCE.getConstants().entrySet()) {
             this.HEADER_TAG.add(new JSONDataTag(entry.getKey(), entry.getValue().get(), gson).id(entry.getKey().toLowerCase())).setClass("constant");
         }
+        this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/indexeddb-tools.js", documentationBridge).id("indexeddb-tools"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/indexingworker.js", documentationBridge).id("worker-script"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/constants.js", documentationBridge).id("constants"));
         this.HEADER_TAG.add(new CustomAssetTag("script", "html/js/class_data_documentation.js", documentationBridge).id("class-documentation-tools"));

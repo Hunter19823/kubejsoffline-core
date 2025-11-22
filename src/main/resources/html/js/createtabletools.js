@@ -369,7 +369,7 @@ function createTypeVariableMappingTable(target) {
     createTypeVariableTable(typeVariableMap);
 }
 
-function createTypeVariableTable(typeVariables) {
+function createTypeVariableTable(typeVariableMap) {
     if (typeVariableMap.length === 0) {
         return;
     }

@@ -37,6 +37,20 @@ function getClass(id) {
             if (LOOK_UP_CACHE.has(id)) {
                 return getClass(LOOK_UP_CACHE.get(id));
             }
+            
+            // Try to load from IndexedDB asynchronously (non-blocking)
+            // This will update the cache for future lookups
+            if (typeof readLookupCacheEntry === 'function') {
+                readLookupCacheEntry(id).then(value => {
+                    if (value !== undefined) {
+                        LOOK_UP_CACHE.set(id, value);
+                    }
+                }).catch(err => {
+                    // Silently fail - IndexedDB might not be available or entry doesn't exist
+                    console.debug(`Failed to load lookup cache entry for ${id}:`, err);
+                });
+            }
+            
             // Check if the string matches the java qualified type name regex
             if (!id.match(/([a-zA-Z_$][a-zA-Z\d_$]*\.)*[a-zA-Z_$][a-zA-Z\d_$]*/)) {
                 // Class does not match a valid java qualified type name, so return null
@@ -45,6 +59,12 @@ function getClass(id) {
             const subject = findClassByName(id);
             if (exists(subject)) {
                 LOOK_UP_CACHE.set(id, subject.id());
+                // Also write to IndexedDB asynchronously (non-blocking)
+                if (typeof writeLookupCacheEntry === 'function') {
+                    writeLookupCacheEntry(id, subject.id()).catch(err => {
+                        console.debug(`Failed to write lookup cache entry for ${id}:`, err);
+                    });
+                }
             }
             return subject;
         default:

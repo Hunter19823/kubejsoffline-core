@@ -1,0 +1,828 @@
+/**
+ * IndexedDB utilities for storing and retrieving optimized data.
+ * This module provides an abstraction layer for storing large data structures
+ * in IndexedDB to avoid memory duplication between worker and main thread.
+ */
+
+const DB_NAME_PREFIX = 'kubejs_offline_docs';
+const DB_VERSION = 1;
+
+// Store names
+const STORE_OPTIMIZED_DATA = 'optimizedData';
+const STORE_LOOKUP_CACHE = 'lookupCache';
+const STORE_RELATIONSHIP_GRAPH = 'relationshipGraph';
+const STORE_METADATA = 'metadata';
+
+// In-memory caches for frequently accessed data (LRU-like behavior)
+const memoryCache = {
+    optimizedData: new Map(),
+    lookupCache: new Map(),
+    relationshipGraph: new Map(),
+    maxSize: 1000 // Maximum entries per cache
+};
+
+let dbPromise = null;
+let currentDbName = null;
+
+/**
+ * Create a short hash from a version string for use in database names.
+ * @param {string} version - The full version string
+ * @returns {string} A short hash suitable for database names
+ */
+function createShortHash(version) {
+    // Create a shorter hash from the version string
+    let hash = 0;
+    for (let i = 0; i < version.length; i++) {
+        const char = version.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Convert to positive hex string (8 chars)
+    return Math.abs(hash).toString(16).padStart(8, '0');
+}
+
+/**
+ * Get the database name for a given data version.
+ * @param {string} dataVersion - The data version hash
+ * @returns {string} The database name
+ */
+function getDatabaseName(dataVersion) {
+    if (!dataVersion) {
+        // Fallback to default name if no version provided
+        return DB_NAME_PREFIX;
+    }
+    const shortHash = createShortHash(dataVersion);
+    return `${DB_NAME_PREFIX}_${shortHash}`;
+}
+
+/**
+ * Initialize IndexedDB database and return a promise that resolves to the database.
+ * @param {string} dataVersion - Optional data version to use for database name
+ * @returns {Promise<IDBDatabase>}
+ */
+function initIndexedDB(dataVersion = null) {
+    const dbName = getDatabaseName(dataVersion);
+    
+    // If we already have a promise for this database, return it
+    if (dbPromise && currentDbName === dbName) {
+        return dbPromise;
+    }
+    
+    // Reset promise if database name changed
+    if (currentDbName !== dbName) {
+        dbPromise = null;
+        currentDbName = dbName;
+    }
+
+    dbPromise = new Promise((resolve, reject) => {
+        // Check for IndexedDB support in both worker and main thread contexts
+        const idb = (typeof self !== 'undefined' && 'indexedDB' in self) ? self.indexedDB :
+                    (typeof window !== 'undefined' && 'indexedDB' in window) ? window.indexedDB :
+                    null;
+        
+        if (!idb) {
+            reject(new Error('IndexedDB is not supported in this browser'));
+            return;
+        }
+
+        const request = idb.open(dbName, DB_VERSION);
+
+        request.onerror = () => {
+            reject(new Error('Failed to open IndexedDB: ' + request.error));
+        };
+
+        request.onsuccess = () => {
+            resolve(request.result);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+
+            // Create stores if they don't exist
+            if (!db.objectStoreNames.contains(STORE_OPTIMIZED_DATA)) {
+                db.createObjectStore(STORE_OPTIMIZED_DATA);
+            }
+            if (!db.objectStoreNames.contains(STORE_LOOKUP_CACHE)) {
+                db.createObjectStore(STORE_LOOKUP_CACHE);
+            }
+            if (!db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
+                const relationshipStore = db.createObjectStore(STORE_RELATIONSHIP_GRAPH);
+                relationshipStore.createIndex('relationshipType', 'relationshipType', { unique: false });
+                relationshipStore.createIndex('from', 'from', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(STORE_METADATA)) {
+                db.createObjectStore(STORE_METADATA);
+            }
+        };
+    });
+
+    return dbPromise;
+}
+
+/**
+ * Get the database instance.
+ * Uses the currently initialized database (from last initIndexedDB call).
+ * @returns {Promise<IDBDatabase>}
+ */
+function getDB() {
+    if (!dbPromise) {
+        // If no database has been initialized, initialize with default (no version)
+        return initIndexedDB(null);
+    }
+    return dbPromise;
+}
+
+/**
+ * Write optimized data property to IndexedDB.
+ * @param {string} key - The property key
+ * @param {*} value - The property value
+ * @returns {Promise<void>}
+ */
+async function writeOptimizedData(key, value) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_OPTIMIZED_DATA], 'readwrite');
+        const store = transaction.objectStore(STORE_OPTIMIZED_DATA);
+        const request = store.put(value, key);
+
+        request.onsuccess = () => {
+            // Update memory cache
+            if (memoryCache.optimizedData.size >= memoryCache.maxSize) {
+                const firstKey = memoryCache.optimizedData.keys().next().value;
+                memoryCache.optimizedData.delete(firstKey);
+            }
+            memoryCache.optimizedData.set(key, value);
+            resolve();
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to write optimized data: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write multiple optimized data properties in a batch.
+ * @param {Object} data - Object with key-value pairs to write
+ * @returns {Promise<void>}
+ */
+async function writeOptimizedDataBatch(data) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_OPTIMIZED_DATA], 'readwrite');
+        const store = transaction.objectStore(STORE_OPTIMIZED_DATA);
+        let completed = 0;
+        const total = Object.keys(data).length;
+
+        if (total === 0) {
+            resolve();
+            return;
+        }
+
+        for (const [key, value] of Object.entries(data)) {
+            const request = store.put(value, key);
+            request.onsuccess = () => {
+                // Update memory cache
+                if (memoryCache.optimizedData.size >= memoryCache.maxSize) {
+                    const firstKey = memoryCache.optimizedData.keys().next().value;
+                    memoryCache.optimizedData.delete(firstKey);
+                }
+                memoryCache.optimizedData.set(key, value);
+                completed++;
+                if (completed === total) {
+                    resolve();
+                }
+            };
+            request.onerror = () => {
+                reject(new Error('Failed to write optimized data batch: ' + request.error));
+            };
+        }
+    });
+}
+
+/**
+ * Read optimized data property from IndexedDB.
+ * @param {string} key - The property key
+ * @returns {Promise<*>}
+ */
+async function readOptimizedData(key) {
+    // Check memory cache first
+    if (memoryCache.optimizedData.has(key)) {
+        return memoryCache.optimizedData.get(key);
+    }
+
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_OPTIMIZED_DATA], 'readonly');
+        const store = transaction.objectStore(STORE_OPTIMIZED_DATA);
+        const request = store.get(key);
+
+        request.onsuccess = () => {
+            const value = request.result;
+            // Update memory cache
+            if (value !== undefined) {
+                if (memoryCache.optimizedData.size >= memoryCache.maxSize) {
+                    const firstKey = memoryCache.optimizedData.keys().next().value;
+                    memoryCache.optimizedData.delete(firstKey);
+                }
+                memoryCache.optimizedData.set(key, value);
+            }
+            resolve(value);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to read optimized data: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write lookup cache entry to IndexedDB.
+ * @param {string} key - The lookup key
+ * @param {number} value - The type identifier
+ * @returns {Promise<void>}
+ */
+async function writeLookupCacheEntry(key, value) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_LOOKUP_CACHE], 'readwrite');
+        const store = transaction.objectStore(STORE_LOOKUP_CACHE);
+        const request = store.put(value, key);
+
+        request.onsuccess = () => {
+            // Update memory cache
+            if (memoryCache.lookupCache.size >= memoryCache.maxSize) {
+                const firstKey = memoryCache.lookupCache.keys().next().value;
+                memoryCache.lookupCache.delete(firstKey);
+            }
+            memoryCache.lookupCache.set(key, value);
+            resolve();
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to write lookup cache entry: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write multiple lookup cache entries in a batch.
+ * @param {Map|Object} cache - Map or object with key-value pairs
+ * @returns {Promise<void>}
+ */
+async function writeLookupCacheBatch(cache) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_LOOKUP_CACHE], 'readwrite');
+        const store = transaction.objectStore(STORE_LOOKUP_CACHE);
+        let entries = cache instanceof Map ? [...cache.entries()] : Object.entries(cache);
+        let completed = 0;
+        const total = entries.length;
+
+        if (total === 0) {
+            resolve();
+            return;
+        }
+
+        for (const [key, value] of entries) {
+            const request = store.put(value, key);
+            request.onsuccess = () => {
+                // Update memory cache
+                if (memoryCache.lookupCache.size >= memoryCache.maxSize) {
+                    const firstKey = memoryCache.lookupCache.keys().next().value;
+                    memoryCache.lookupCache.delete(firstKey);
+                }
+                memoryCache.lookupCache.set(key, value);
+                completed++;
+                if (completed === total) {
+                    resolve();
+                }
+            };
+            request.onerror = () => {
+                reject(new Error('Failed to write lookup cache batch: ' + request.error));
+            };
+        }
+    });
+}
+
+/**
+ * Read lookup cache entry from IndexedDB.
+ * @param {string} key - The lookup key
+ * @returns {Promise<number|undefined>}
+ */
+async function readLookupCacheEntry(key) {
+    // Check memory cache first
+    if (memoryCache.lookupCache.has(key)) {
+        return memoryCache.lookupCache.get(key);
+    }
+
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_LOOKUP_CACHE], 'readonly');
+        const store = transaction.objectStore(STORE_LOOKUP_CACHE);
+        const request = store.get(key);
+
+        request.onsuccess = () => {
+            const value = request.result;
+            // Update memory cache
+            if (value !== undefined) {
+                if (memoryCache.lookupCache.size >= memoryCache.maxSize) {
+                    const firstKey = memoryCache.lookupCache.keys().next().value;
+                    memoryCache.lookupCache.delete(firstKey);
+                }
+                memoryCache.lookupCache.set(key, value);
+            }
+            resolve(value);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to read lookup cache entry: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write relationship graph entry to IndexedDB.
+ * @param {string} relationshipType - The relationship type
+ * @param {number} from - The source type identifier
+ * @param {Set<number>|Array<number>} toSet - The target type identifiers
+ * @returns {Promise<void>}
+ */
+async function writeRelationshipGraphEntry(relationshipType, from, toSet) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
+        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
+        const key = `${relationshipType}:${from}`;
+        const value = Array.from(toSet);
+        const request = store.put({ relationshipType, from, toSet: value }, key);
+
+        request.onsuccess = () => {
+            // Update memory cache
+            const cacheKey = `${relationshipType}:${from}`;
+            if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
+                const firstKey = memoryCache.relationshipGraph.keys().next().value;
+                memoryCache.relationshipGraph.delete(firstKey);
+            }
+            memoryCache.relationshipGraph.set(cacheKey, new Set(value));
+            resolve();
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to write relationship graph entry: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write relationship graph entries in batches (by relationship type).
+ * @param {Map} relationshipGraph - The relationship graph Map
+ * @returns {Promise<void>}
+ */
+async function writeRelationshipGraphBatch(relationshipGraph) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
+        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
+        let completed = 0;
+        let total = 0;
+
+        // Count total entries
+        for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
+            total += relationshipMap.size;
+        }
+
+        if (total === 0) {
+            resolve();
+            return;
+        }
+
+        // Write all entries
+        for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
+            for (const [from, toSet] of relationshipMap.entries()) {
+                const key = `${relationshipType}:${from}`;
+                const value = Array.from(toSet);
+                const request = store.put({ relationshipType, from, toSet: value }, key);
+
+                request.onsuccess = () => {
+                    // Update memory cache
+                    const cacheKey = `${relationshipType}:${from}`;
+                    if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
+                        const firstKey = memoryCache.relationshipGraph.keys().next().value;
+                        memoryCache.relationshipGraph.delete(firstKey);
+                    }
+                    memoryCache.relationshipGraph.set(cacheKey, new Set(value));
+                    completed++;
+                    if (completed === total) {
+                        resolve();
+                    }
+                };
+                request.onerror = () => {
+                    reject(new Error('Failed to write relationship graph batch: ' + request.error));
+                };
+            }
+        }
+    });
+}
+
+/**
+ * Read relationship graph entry from IndexedDB.
+ * @param {string} relationshipType - The relationship type
+ * @param {number} from - The source type identifier
+ * @returns {Promise<Set<number>|undefined>}
+ */
+async function readRelationshipGraphEntry(relationshipType, from) {
+    const cacheKey = `${relationshipType}:${from}`;
+    // Check memory cache first
+    if (memoryCache.relationshipGraph.has(cacheKey)) {
+        return memoryCache.relationshipGraph.get(cacheKey);
+    }
+
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
+        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
+        const key = `${relationshipType}:${from}`;
+        const request = store.get(key);
+
+        request.onsuccess = () => {
+            const result = request.result;
+            const value = result ? new Set(result.toSet) : undefined;
+            // Update memory cache
+            if (value !== undefined) {
+                if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
+                    const firstKey = memoryCache.relationshipGraph.keys().next().value;
+                    memoryCache.relationshipGraph.delete(firstKey);
+                }
+                memoryCache.relationshipGraph.set(cacheKey, value);
+            }
+            resolve(value);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to read relationship graph entry: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Read all relationship graph entries for a specific relationship type.
+ * @param {string} relationshipType - The relationship type
+ * @returns {Promise<Map<number, Set<number>>>}
+ */
+async function readRelationshipGraphByType(relationshipType) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
+        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
+        const index = store.index('relationshipType');
+        const request = index.getAll(relationshipType);
+
+        request.onsuccess = () => {
+            const result = new Map();
+            for (const entry of request.result) {
+                result.set(entry.from, new Set(entry.toSet));
+            }
+            resolve(result);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to read relationship graph by type: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Write metadata to IndexedDB.
+ * @param {string} key - The metadata key
+ * @param {*} value - The metadata value
+ * @returns {Promise<void>}
+ */
+async function writeMetadata(key, value) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_METADATA], 'readwrite');
+        const store = transaction.objectStore(STORE_METADATA);
+        const request = store.put(value, key);
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => {
+            reject(new Error('Failed to write metadata: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Read metadata from IndexedDB.
+ * @param {string} key - The metadata key
+ * @returns {Promise<*>}
+ */
+async function readMetadata(key) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_METADATA], 'readonly');
+        const store = transaction.objectStore(STORE_METADATA);
+        const request = store.get(key);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => {
+            reject(new Error('Failed to read metadata: ' + request.error));
+        };
+    });
+}
+
+/**
+ * Check if optimization is complete.
+ * Also verifies that data version matches (if version checking is available).
+ * @param {Object} data - Optional DATA object for version validation
+ * @returns {Promise<boolean>}
+ */
+async function checkOptimizationStatus(data = null) {
+    try {
+        const status = await readMetadata('optimizationComplete');
+        if (status !== true) {
+            return false;
+        }
+        
+        // If data is provided, also check version validity
+        if (data && typeof isDataVersionValid === 'function') {
+            const versionValid = await isDataVersionValid(data);
+            if (!versionValid) {
+                console.warn('Optimization status is complete but data version is invalid. Optimization will be re-run.');
+                return false;
+            }
+        }
+        
+        return true;
+    } catch (e) {
+        console.error('Failed to check optimization status:', e);
+        return false;
+    }
+}
+
+/**
+ * Simple hash function for creating version strings.
+ * @param {string} str - String to hash
+ * @returns {number} Hash value
+ */
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+}
+
+/**
+ * Simple sampling function for sampling array indexes.
+ * @param {Array} arr - Array to sample from
+ * @param {number} sampleCount - Number of samples to take
+ * @returns {Array} Sampled indexes
+ */
+function sampleIndexes(arr, sampleCount) {
+    const samples = [];
+    if (arr.length <= sampleCount) {
+        return arr.map((_, idx) => arr[idx]);
+    }
+    // Always include first and last
+    samples.push(0);
+    samples.push(arr.length - 1);
+    for (let i = 2; i < sampleCount; i++) {
+        const index = Math.floor(i * (arr.length - 1) / (sampleCount - 1));
+        if (!samples.includes(index)) {
+            samples.push(index);
+        }
+    }
+    if (samples[samples.length - 1] !== arr.length - 1) {
+        samples.push(arr.length - 1);
+    }
+    return samples;
+}
+
+/**
+ * Calculate a data version hash based on the DATA object structure.
+ * This helps detect when data has changed between page generations.
+ * 
+ * Since the HTML file is regenerated on each Minecraft command run, the DATA object
+ * can have non-deterministic indexes, class counts, and structure. This function
+ * creates a fingerprint of the data that will change when significant changes occur,
+ * allowing us to detect when IndexedDB contains stale/incompatible data.
+ * 
+ * IMPORTANT: This function only uses immutable properties that don't change at runtime.
+ * It avoids JSON.stringify() and any properties that might be modified based on page views.
+ * 
+ * The version is based on:
+ * - Counts of all major data arrays (types, parameters, methods, etc.)
+ * - Hash of array element structure (keys/types) without content
+ * - Overall hash for additional safety
+ * 
+ * @param {Object} data - The DATA object
+ * @returns {string} A version hash string
+ */
+function calculateDataVersion(data) {
+    // Create a hash based on key characteristics of the data
+    // This should change when data structure changes significantly
+    const versionParts = [
+        data.types ? data.types.length : 0,
+        data.parameters ? data.parameters.length : 0,
+        data.methods ? data.methods.length : 0,
+        data.constructors ? data.constructors.length : 0,
+        data.fields ? data.fields.length : 0,
+        data.packages ? data.packages.length : 0,
+        data.names ? data.names.length : 0,
+        data.annotations ? data.annotations.length : 0
+    ];
+    
+    // Create a version string from the parts
+    let versionString = versionParts.join('-');
+    
+    // Add a hash of array element structure (keys/types) without content
+    // This detects structural changes without being affected by runtime modifications
+    // Sample from beginning, middle, and end to catch various types of changes
+    if (data.types && data.types.length > 0) {
+        const sampleIndices = sampleIndexes(data.types, 25);
+        
+        const structureSamples = sampleIndices.map(idx => {
+            const type = data.types[idx];
+            if (!type || typeof type !== 'object') return '';
+            
+            // Only use the structure (keys) and primitive values, not objects/arrays
+            // This avoids issues with runtime modifications
+            try {
+                const keys = Object.keys(type).sort().join(',');
+                // Get a hash of just the keys and their types (not values)
+                const keyTypes = Object.keys(type).map(key => {
+                    const value = type[key];
+                    // Only include primitive types, not object/array content
+                    if (value === null) return key + ':null';
+                    if (Array.isArray(value)) return key + value.join(',') + ':array';
+                    if (typeof value === 'object') return key + ':object';
+                    return key + ':' + typeof value;
+                }).join('|');
+                return keys + '|' + keyTypes;
+            } catch (e) {
+                // Fallback: just use the number of keys
+                return Object.keys(type).length.toString();
+            }
+        }).join('||');
+        
+        const structureHash = simpleHash(structureSamples);
+        versionString += '|' + structureHash;
+    }
+    
+    // Add overall hash for additional safety
+    const finalHash = simpleHash(versionString);
+    return versionString + '|' + finalHash;
+}
+
+/**
+ * Get the stored data version from IndexedDB.
+ * @returns {Promise<string|null>}
+ */
+async function getStoredDataVersion() {
+    try {
+        return await readMetadata('dataVersion');
+    } catch (e) {
+        console.debug('Failed to read stored data version:', e);
+        return null;
+    }
+}
+
+/**
+ * Store the current data version in IndexedDB.
+ * @param {string} version - The version hash
+ * @returns {Promise<void>}
+ */
+async function storeDataVersion(version) {
+    try {
+        await writeMetadata('dataVersion', version);
+    } catch (e) {
+        console.error('Failed to store data version:', e);
+        throw e;
+    }
+}
+
+/**
+ * Check if the current data version matches the stored version.
+ * NOTE: With version-based databases, this is less critical since each version
+ * has its own database. This function is kept for compatibility.
+ * @param {Object} data - The DATA object
+ * @returns {Promise<boolean>}
+ */
+async function isDataVersionValid(data) {
+    try {
+        const currentVersion = calculateDataVersion(data);
+        const storedVersion = await getStoredDataVersion();
+        
+        if (!storedVersion) {
+            console.log('No stored data version found.');
+            return false;
+        }
+        
+        const isValid = currentVersion === storedVersion;
+        if (!isValid) {
+            console.log('Data version mismatch. Current:', currentVersion, 'Stored:', storedVersion);
+        }
+        return isValid;
+    } catch (e) {
+        console.error('Failed to validate data version:', e);
+        return false;
+    }
+}
+
+/**
+ * Get the current database name being used.
+ * @returns {string|null}
+ */
+function getCurrentDatabaseName() {
+    return currentDbName;
+}
+
+/**
+ * Clear all data from the current IndexedDB database (useful for debugging or reset).
+ * Clears only the currently active database (version-specific).
+ * @returns {Promise<void>}
+ */
+async function clearIndexedDB() {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([
+            STORE_OPTIMIZED_DATA,
+            STORE_LOOKUP_CACHE,
+            STORE_RELATIONSHIP_GRAPH,
+            STORE_METADATA
+        ], 'readwrite');
+
+        let completed = 0;
+        const stores = [
+            STORE_OPTIMIZED_DATA,
+            STORE_LOOKUP_CACHE,
+            STORE_RELATIONSHIP_GRAPH,
+            STORE_METADATA
+        ];
+
+        stores.forEach(storeName => {
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+            request.onsuccess = () => {
+                completed++;
+                if (completed === stores.length) {
+                    // Clear memory caches
+                    memoryCache.optimizedData.clear();
+                    memoryCache.lookupCache.clear();
+                    memoryCache.relationshipGraph.clear();
+                    resolve();
+                }
+            };
+            request.onerror = () => {
+                reject(new Error('Failed to clear store ' + storeName + ': ' + request.error));
+            };
+        });
+    });
+}
+
+/**
+ * List all version-specific databases that exist.
+ * Note: IndexedDB doesn't provide a direct API to list all databases.
+ * This function returns the currently known database name.
+ * For a complete list, databases would need to be tracked separately (e.g., in localStorage).
+ * @returns {Promise<string[]>} Array of database names
+ */
+async function listAllVersionDatabases() {
+    const databases = [];
+    if (currentDbName) {
+        databases.push(currentDbName);
+    }
+    return Promise.resolve(databases);
+}
+
+// Export functions for use in worker context (self) or main thread (window)
+const globalScope = typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : global);
+if (globalScope) {
+    globalScope.initIndexedDB = initIndexedDB;
+    globalScope.writeOptimizedData = writeOptimizedData;
+    globalScope.writeOptimizedDataBatch = writeOptimizedDataBatch;
+    globalScope.readOptimizedData = readOptimizedData;
+    globalScope.writeLookupCacheEntry = writeLookupCacheEntry;
+    globalScope.writeLookupCacheBatch = writeLookupCacheBatch;
+    globalScope.readLookupCacheEntry = readLookupCacheEntry;
+    globalScope.writeRelationshipGraphEntry = writeRelationshipGraphEntry;
+    globalScope.writeRelationshipGraphBatch = writeRelationshipGraphBatch;
+    globalScope.readRelationshipGraphEntry = readRelationshipGraphEntry;
+    globalScope.readRelationshipGraphByType = readRelationshipGraphByType;
+    globalScope.writeMetadata = writeMetadata;
+    globalScope.readMetadata = readMetadata;
+    globalScope.checkOptimizationStatus = checkOptimizationStatus;
+    globalScope.clearIndexedDB = clearIndexedDB;
+    globalScope.calculateDataVersion = calculateDataVersion;
+    globalScope.getStoredDataVersion = getStoredDataVersion;
+    globalScope.storeDataVersion = storeDataVersion;
+    globalScope.isDataVersionValid = isDataVersionValid;
+    globalScope.getDatabaseName = getDatabaseName;
+    globalScope.getCurrentDatabaseName = getCurrentDatabaseName;
+    globalScope.createShortHash = createShortHash;
+    globalScope.listAllVersionDatabases = listAllVersionDatabases;
+}
+

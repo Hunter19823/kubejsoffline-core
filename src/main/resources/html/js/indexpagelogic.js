@@ -499,30 +499,103 @@ function createOptimizationWorkerThread() {
     parts.push(document.getElementById('class-documentation-tools').innerText);
     parts.push(document.getElementById('compression-tools').innerText);
     parts.push(document.getElementById('relationship-graphs').innerText);
+    // Include IndexedDB tools for worker
+    const indexedDbScript = document.getElementById('indexeddb-tools');
+    if (indexedDbScript) {
+        parts.push(indexedDbScript.innerText);
+    } else {
+        console.warn("indexeddb-tools script not found. Worker may not function correctly.");
+    }
     [...document.getElementsByClassName('data-holding-script')].map((script => script.innerText)).forEach((script) => parts.push(script));
     parts.push(document.getElementById('worker-script').innerText);
 
     return new Worker(URL.createObjectURL(new Blob(parts, {type: 'application/javascript'})));
 }
 
-function onWindowLoad() {
+/**
+ * Load relationship graph from IndexedDB into memory.
+ * This ensures getRelation() works synchronously.
+ * @returns {Promise<void>}
+ */
+async function loadRelationshipGraphIntoMemory() {
+    if (typeof readRelationshipGraphByType !== 'function') {
+        console.warn("readRelationshipGraphByType not available. Skipping relationship graph load.");
+        return;
+    }
+
     try {
-        console.log("Window Loaded. Now optimizing data.");
-        setToast("Please wait while data is being indexed. This should only take a few seconds.");
-        const WORKER = createOptimizationWorkerThread();
-        WORKER.onmessage = (e) => {
-            console.log("Worker thread has sent data back.");
-            const OPTIMIZED_DATA = e.data.data;
-            Object.entries(OPTIMIZED_DATA).forEach(([key, value]) => {
-                DATA[key] = value;
-            });
-            const NEW_CACHE = e.data.cache;
-            Object.entries(NEW_CACHE).forEach(([key, value]) => {
-                LOOK_UP_CACHE.set(key, value);
-            });
-            const NEW_RELATIONSHIP_GRAPH = e.data.RELATIONSHIP_GRAPH;
-            loadJSONToRelationshipGraph(NEW_RELATIONSHIP_GRAPH);
-            WORKER.terminate();
+        console.log("Loading relationship graph into memory from IndexedDB...");
+        const allRelationshipTypes = Object.values(RELATIONSHIP);
+        let loadedCount = 0;
+
+        for (const relationshipType of allRelationshipTypes) {
+            try {
+                const relationshipMap = await readRelationshipGraphByType(relationshipType);
+                if (relationshipMap && relationshipMap.size > 0) {
+                    RELATIONSHIP_GRAPH.set(relationshipType, relationshipMap);
+                    loadedCount++;
+                }
+            } catch (err) {
+                console.debug(`Failed to load relationship graph for type ${relationshipType}:`, err);
+            }
+        }
+
+        console.log(`Loaded ${loadedCount} relationship types into memory.`);
+    } catch (err) {
+        console.error("Failed to load relationship graph into memory:", err);
+    }
+}
+
+async function onWindowLoad() {
+    try {
+        console.log("Window Loaded. Initializing IndexedDB and optimizing data.");
+        
+        // Calculate data version early to determine which database to use
+        let dataVersion = null;
+        try {
+            dataVersion = calculateDataVersion(DATA);
+            console.log("Data version calculated:", dataVersion);
+            console.log("Database name will be:", getDatabaseName(dataVersion));
+        } catch (e) {
+            console.error("Failed to calculate data version:", e);
+            // Continue with default database name
+        }
+        
+        // Initialize IndexedDB with the data version (creates version-specific database)
+        try {
+            await initIndexedDB(dataVersion);
+            console.log(`IndexedDB initialized with database: ${getCurrentDatabaseName()}`);
+        } catch (e) {
+            console.error("Failed to initialize IndexedDB:", e);
+            setToast("Failed to initialize IndexedDB. Please refresh the page.");
+            return;
+        }
+
+        // Check if optimization is already complete in this version's database
+        const isOptimized = await checkOptimizationStatus(DATA);
+        if (isOptimized) {
+            console.log("Data already optimized. Loading from IndexedDB.");
+            setToast("Loading optimized data...");
+            
+            // Load essential metadata and optimized properties
+            try {
+                const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
+                for (const prop of optimizedProps) {
+                    const value = await readOptimizedData(prop);
+                    if (value !== undefined) {
+                        DATA[prop] = value;
+                    }
+                }
+                DATA._optimized = true;
+                console.log("Essential metadata loaded from IndexedDB.");
+            } catch (e) {
+                console.error("Failed to load metadata from IndexedDB:", e);
+                // Continue with optimization
+            }
+
+            // Load relationship graph into memory for synchronous access
+            await loadRelationshipGraphIntoMemory();
+            
             clearToast();
             onHashChange();
 
@@ -542,7 +615,80 @@ function onWindowLoad() {
             });
 
             console.debug("Hash Change Complete.");
+            return;
         }
+
+        // If not optimized, start worker
+        setToast("Please wait while data is being indexed. This should only take a few seconds.");
+        const WORKER = createOptimizationWorkerThread();
+        
+        WORKER.onmessage = async (e) => {
+            if (e.data.type === 'progress') {
+                console.log(`Worker progress: ${e.data.stage} - ${e.data.message}`);
+                if (e.data.stage === 'writing') {
+                    setToast(`Writing data to storage: ${e.data.message}`);
+                } else if (e.data.stage === 'optimizing') {
+                    setToast(`Optimizing data: ${e.data.message}`);
+                }
+                return;
+            }
+
+            if (e.data.type === 'error') {
+                console.error("Worker error:", e.data.error);
+                MESSAGES.push({
+                    level: 'error',
+                    args: ["Error occurred optimizing data: ", e.data.error, e.data.stack]
+                });
+                setToast("An error occurred while optimizing data. Please refresh the page to try again. Please report this issue if it persists.");
+                flushLogs();
+                WORKER.terminate();
+                return;
+            }
+
+            if (e.data.type === 'complete') {
+                console.log("Worker thread completed optimization.");
+                
+                // Load essential metadata and optimized properties from IndexedDB
+                try {
+                    const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
+                    for (const prop of optimizedProps) {
+                        const value = await readOptimizedData(prop);
+                        if (value !== undefined) {
+                            DATA[prop] = value;
+                        }
+                    }
+                    DATA._optimized = true;
+                    console.log("Essential metadata loaded from IndexedDB.");
+                } catch (err) {
+                    console.error("Failed to load metadata from IndexedDB:", err);
+                }
+
+                // Load relationship graph into memory for synchronous access
+                await loadRelationshipGraphIntoMemory();
+
+                WORKER.terminate();
+                clearToast();
+                onHashChange();
+
+                addEventListener('popstate', (event) => {
+                    console.debug("Popstate changed");
+                    onHashChange();
+                });
+                window.addEventListener('scroll', (e) => {
+                    if (GLOBAL_DATA['handleScroll']) {
+                        GLOBAL_DATA['handleScroll']();
+                    }
+                });
+                window.addEventListener('resize', (e) => {
+                    if (GLOBAL_DATA['handleResize']) {
+                        GLOBAL_DATA['handleResize']();
+                    }
+                });
+
+                console.debug("Hash Change Complete.");
+            }
+        }
+        
         WORKER.onerror = (e) => {
             console.error("Error occurred optimizing data: ", e);
             MESSAGES.push(
@@ -554,6 +700,7 @@ function onWindowLoad() {
             setToast("An error occurred while optimizing data. Please refresh the page to try again. Please report this issue if it persists.");
             flushLogs();
         }
+        
         console.log("Now sending the optimize task...");
         WORKER.postMessage({task: TASKS.OPTIMIZE})
         console.log("Optimize task sent.");
