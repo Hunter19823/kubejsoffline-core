@@ -178,7 +178,7 @@ function scrollToText(text) {
     console.warn("Chrome Scroll to highlighted text is not implemented.");
 }
 
-function setToast(message) {
+function setToast(message, progress = null) {
     let toast = document.getElementById("toast");
     if (toast) {
         document.body.removeChild(toast);
@@ -186,7 +186,37 @@ function setToast(message) {
     toast = document.createElement("div");
     toast.id = "toast";
     toast.classList.add("toast");
-    toast.appendChild(header(message, 2));
+    
+    const messageElement = header(message, 2);
+    toast.appendChild(messageElement);
+    
+    // Add progress bar if progress is provided
+    if (progress !== null && progress !== undefined) {
+        const progressContainer = document.createElement("div");
+        progressContainer.style.marginTop = "0.5em";
+        progressContainer.style.width = "100%";
+        progressContainer.style.backgroundColor = "#1f1414";
+        progressContainer.style.borderRadius = "4px";
+        progressContainer.style.overflow = "hidden";
+        
+        const progressBar = document.createElement("div");
+        progressBar.style.height = "0.5em";
+        progressBar.style.backgroundColor = "#2196F3";
+        progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        progressBar.style.transition = "width 0.3s ease";
+        
+        progressContainer.appendChild(progressBar);
+        toast.appendChild(progressContainer);
+        
+        // Add percentage text
+        const progressText = document.createElement("div");
+        progressText.style.marginTop = "0.25em";
+        progressText.style.fontSize = "0.9em";
+        progressText.style.textAlign = "center";
+        progressText.textContent = `${Math.round(progress)}%`;
+        toast.appendChild(progressText);
+    }
+    
     document.body.append(toast);
 }
 
@@ -517,7 +547,7 @@ function createOptimizationWorkerThread() {
  * This ensures getRelation() works synchronously.
  * @returns {Promise<void>}
  */
-async function loadRelationshipGraphIntoMemory() {
+async function loadRelationshipGraphIntoMemory(progressCallback = null) {
     if (typeof readRelationshipGraphByType !== 'function') {
         console.warn("readRelationshipGraphByType not available. Skipping relationship graph load.");
         return;
@@ -527,16 +557,29 @@ async function loadRelationshipGraphIntoMemory() {
         console.log("Loading relationship graph into memory from IndexedDB...");
         const allRelationshipTypes = Object.values(RELATIONSHIP);
         let loadedCount = 0;
+        const totalTypes = allRelationshipTypes.length;
 
-        for (const relationshipType of allRelationshipTypes) {
+        for (let i = 0; i < allRelationshipTypes.length; i++) {
+            const relationshipType = allRelationshipTypes[i];
             try {
                 const relationshipMap = await readRelationshipGraphByType(relationshipType);
                 if (relationshipMap && relationshipMap.size > 0) {
                     RELATIONSHIP_GRAPH.set(relationshipType, relationshipMap);
                     loadedCount++;
                 }
+                
+                // Report progress
+                if (progressCallback) {
+                    const progress = ((i + 1) / totalTypes) * 100;
+                    progressCallback(i + 1, totalTypes, 'relationshipGraph', progress);
+                }
             } catch (err) {
                 console.debug(`Failed to load relationship graph for type ${relationshipType}:`, err);
+                // Still report progress even on error
+                if (progressCallback) {
+                    const progress = ((i + 1) / totalTypes) * 100;
+                    progressCallback(i + 1, totalTypes, 'relationshipGraph', progress);
+                }
             }
         }
 
@@ -575,26 +618,41 @@ async function onWindowLoad() {
         const isOptimized = await checkOptimizationStatus(DATA);
         if (isOptimized) {
             console.log("Data already optimized. Loading from IndexedDB.");
-            setToast("Loading optimized data...");
+            setToast("Loading optimized data...", 0);
+            
+            // Calculate total items to load for progress tracking
+            const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
+            const allRelationshipTypes = Object.values(RELATIONSHIP);
+            const totalItems = optimizedProps.length + allRelationshipTypes.length;
+            let loadedCount = 0;
             
             // Load essential metadata and optimized properties
             try {
-                const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
-                for (const prop of optimizedProps) {
+                for (let i = 0; i < optimizedProps.length; i++) {
+                    const prop = optimizedProps[i];
                     const value = await readOptimizedData(prop);
                     if (value !== undefined) {
                         DATA[prop] = value;
                     }
+                    loadedCount++;
+                    
+                    // Update progress
+                    const progress = (loadedCount / totalItems) * 100;
+                    setToast(`Loading optimized data: ${loadedCount} / ${totalItems}`, progress);
                 }
                 DATA._optimized = true;
                 console.log("Essential metadata loaded from IndexedDB.");
             } catch (e) {
                 console.error("Failed to load metadata from IndexedDB:", e);
-                // Continue with optimization
+                // Continue with relationship graph loading
             }
 
-            // Load relationship graph into memory for synchronous access
-            await loadRelationshipGraphIntoMemory();
+            // Load relationship graph with progress tracking
+            await loadRelationshipGraphIntoMemory((current, total, stage, progress) => {
+                loadedCount = optimizedProps.length + current;
+                const overallProgress = (loadedCount / totalItems) * 100;
+                setToast(`Loading relationship graph: ${current} / ${total}`, overallProgress);
+            });
             
             clearToast();
             onHashChange();
@@ -625,11 +683,39 @@ async function onWindowLoad() {
         WORKER.onmessage = async (e) => {
             if (e.data.type === 'progress') {
                 console.log(`Worker progress: ${e.data.stage} - ${e.data.message}`);
-                if (e.data.stage === 'writing') {
-                    setToast(`Writing data to storage: ${e.data.message}`);
-                } else if (e.data.stage === 'optimizing') {
-                    setToast(`Optimizing data: ${e.data.message}`);
+                
+                let toastMessage = '';
+                let progress = null;
+                
+                if (e.data.stage === 'optimizing') {
+                    // Show class scanning progress
+                    if (e.data.current !== undefined && e.data.total !== undefined) {
+                        toastMessage = `Scanning classes: ${e.data.current} / ${e.data.total}`;
+                        progress = e.data.progress;
+                    } else {
+                        toastMessage = `Optimizing data: ${e.data.message}`;
+                    }
+                } else if (e.data.stage === 'writing') {
+                    // Show IndexedDB writing progress
+                    if (e.data.current !== undefined && e.data.total !== undefined) {
+                        const substage = e.data.substage || '';
+                        const stageNames = {
+                            'optimizedData': 'Optimized Data',
+                            'lookupCache': 'Lookup Cache',
+                            'relationshipGraph': 'Relationship Graph'
+                        };
+                        const stageName = stageNames[substage] || 'Data';
+                        toastMessage = `Writing ${stageName}: ${e.data.current} / ${e.data.total}`;
+                        progress = e.data.progress;
+                    } else {
+                        toastMessage = `Writing data to storage: ${e.data.message}`;
+                    }
+                } else {
+                    toastMessage = e.data.message || 'Processing...';
+                    progress = e.data.progress;
                 }
+                
+                setToast(toastMessage, progress);
                 return;
             }
 
@@ -648,14 +734,27 @@ async function onWindowLoad() {
             if (e.data.type === 'complete') {
                 console.log("Worker thread completed optimization.");
                 
+                // Calculate total items to load for progress tracking
+                const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
+                const allRelationshipTypes = Object.values(RELATIONSHIP);
+                const totalItems = optimizedProps.length + allRelationshipTypes.length;
+                let loadedCount = 0;
+                
+                setToast("Loading optimized data...", 0);
+                
                 // Load essential metadata and optimized properties from IndexedDB
                 try {
-                    const optimizedProps = ['_optimized', '_wildcard_types', '_parameterized_types', '_raw_types', '_type_variables', '_events', '_eventsIndexed'];
-                    for (const prop of optimizedProps) {
+                    for (let i = 0; i < optimizedProps.length; i++) {
+                        const prop = optimizedProps[i];
                         const value = await readOptimizedData(prop);
                         if (value !== undefined) {
                             DATA[prop] = value;
                         }
+                        loadedCount++;
+                        
+                        // Update progress
+                        const progress = (loadedCount / totalItems) * 100;
+                        setToast(`Loading optimized data: ${loadedCount} / ${totalItems}`, progress);
                     }
                     DATA._optimized = true;
                     console.log("Essential metadata loaded from IndexedDB.");
@@ -663,8 +762,12 @@ async function onWindowLoad() {
                     console.error("Failed to load metadata from IndexedDB:", err);
                 }
 
-                // Load relationship graph into memory for synchronous access
-                await loadRelationshipGraphIntoMemory();
+                // Load relationship graph with progress tracking
+                await loadRelationshipGraphIntoMemory((current, total, stage, progress) => {
+                    loadedCount = optimizedProps.length + current;
+                    const overallProgress = (loadedCount / totalItems) * 100;
+                    setToast(`Loading relationship graph: ${current} / ${total}`, overallProgress);
+                });
 
                 WORKER.terminate();
                 clearToast();

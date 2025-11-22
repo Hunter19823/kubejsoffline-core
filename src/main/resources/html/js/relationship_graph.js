@@ -155,13 +155,15 @@ async function indexClass(target) {
     )
 }
 
-async function optimizeDataSearch() {
+async function optimizeDataSearch(progressCallback = null) {
     DATA._optimized = true;
     DATA._wildcard_types = [];
     DATA._parameterized_types = [];
     DATA._raw_types = [];
     DATA._type_variables = [];
     const indexPromises = [];
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
 
     DATA.types.forEach((typeData, index) => getClass(index).getTypeVariableMap())
     for (let i = 0; i < DATA.types.length; i++) {
@@ -171,7 +173,21 @@ async function optimizeDataSearch() {
             continue;
         }
         const subject = getClass(i);
-        indexPromises.push(indexClass(i));
+        indexPromises.push(indexClass(i).then(() => {
+            processedCount++;
+            // Send progress update every 10 items or on last item
+            if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+                const progress = (processedCount / totalTypes) * 100;
+                progressCallback({
+                    type: 'progress',
+                    stage: 'optimizing',
+                    message: `Scanning classes: ${processedCount} / ${totalTypes}`,
+                    progress: progress,
+                    current: processedCount,
+                    total: totalTypes
+                });
+            }
+        }));
         if (subject.isWildcard()) {
             DATA._wildcard_types.push(i);
         } else if (subject.isParameterizedType()) {

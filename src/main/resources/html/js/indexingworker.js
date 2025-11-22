@@ -29,6 +29,7 @@ function removeCachedValuesForSerialization() {
 
 /**
  * Write optimized data to IndexedDB in batches.
+ * @param {string} dataVersion - The data version for database selection
  * @returns {Promise<void>}
  */
 async function writeOptimizedDataToIndexedDB(dataVersion) {
@@ -45,19 +46,53 @@ async function writeOptimizedDataToIndexedDB(dataVersion) {
             }
         }
 
+        // Calculate total items to write for progress tracking
+        const optimizedPropsCount = Object.keys(optimizedProperties).length;
+        const lookupCacheCount = LOOK_UP_CACHE instanceof Map ? LOOK_UP_CACHE.size : Object.keys(LOOK_UP_CACHE).length;
+        let relationshipGraphCount = 0;
+        for (const [relationshipType, relationshipMap] of RELATIONSHIP_GRAPH.entries()) {
+            relationshipGraphCount += relationshipMap.size;
+        }
+        const totalItems = optimizedPropsCount + lookupCacheCount + relationshipGraphCount;
+        let baseCompleted = 0; // Track items completed in previous stages
+
+        // Progress callback factory for batch writes
+        // Each stage gets its own callback that knows its offset
+        const createProgressCallback = (stageOffset, stageName) => {
+            return (current, total, stage, progress) => {
+                const overallCurrent = stageOffset + current;
+                const overallProgress = (overallCurrent / totalItems) * 100;
+                postMessage({
+                    type: 'progress',
+                    stage: 'writing',
+                    message: `Writing ${stageName}: ${current} / ${total}`,
+                    progress: overallProgress,
+                    current: overallCurrent,
+                    total: totalItems,
+                    substage: stage
+                });
+            };
+        };
+
         // Write optimized properties in batches
         console.info("Writing optimized data properties to IndexedDB...");
-        await writeOptimizedDataBatch(optimizedProperties);
+        postMessage({ type: 'progress', stage: 'writing', message: 'Writing optimized data properties...', progress: 0, current: 0, total: totalItems });
+        await writeOptimizedDataBatch(optimizedProperties, createProgressCallback(0, 'Optimized Data'));
+        baseCompleted += optimizedPropsCount;
         console.info("Optimized data properties written.");
 
         // Write lookup cache in batches
         console.info("Writing lookup cache to IndexedDB...");
-        await writeLookupCacheBatch(LOOK_UP_CACHE);
+        postMessage({ type: 'progress', stage: 'writing', message: 'Writing lookup cache...', progress: (baseCompleted / totalItems) * 100, current: baseCompleted, total: totalItems });
+        await writeLookupCacheBatch(LOOK_UP_CACHE, createProgressCallback(optimizedPropsCount, 'Lookup Cache'));
+        baseCompleted += lookupCacheCount;
         console.info("Lookup cache written.");
 
         // Write relationship graph in batches
         console.info("Writing relationship graph to IndexedDB...");
-        await writeRelationshipGraphBatch(RELATIONSHIP_GRAPH);
+        postMessage({ type: 'progress', stage: 'writing', message: 'Writing relationship graph...', progress: (baseCompleted / totalItems) * 100, current: baseCompleted, total: totalItems });
+        await writeRelationshipGraphBatch(RELATIONSHIP_GRAPH, createProgressCallback(optimizedPropsCount + lookupCacheCount, 'Relationship Graph'));
+        baseCompleted += relationshipGraphCount;
         console.info("Relationship graph written.");
 
         // Write completion status
@@ -68,8 +103,8 @@ async function writeOptimizedDataToIndexedDB(dataVersion) {
         // Note: Data version is stored separately in the main worker message handler
         // to ensure it's calculated from pristine DATA before any modifications
 
-        // Send progress update
-        postMessage({ type: 'progress', stage: 'complete', message: 'All data written to IndexedDB' });
+        // Send final progress update
+        postMessage({ type: 'progress', stage: 'complete', message: 'All data written to IndexedDB', progress: 100, current: totalItems, total: totalItems });
     } catch (error) {
         console.error("Error writing to IndexedDB:", error);
         postMessage({ type: 'error', error: error.message });
@@ -92,10 +127,12 @@ self.onmessage = async function (e) {
             }
 
             // Send initial progress
-            postMessage({ type: 'progress', stage: 'optimizing', message: 'Starting data optimization...' });
+            postMessage({ type: 'progress', stage: 'optimizing', message: 'Starting data optimization...', progress: 0, current: 0, total: DATA.types ? DATA.types.length : 0 });
 
-            // Run optimization
-            await optimizeDataSearch();
+            // Run optimization with progress callback
+            await optimizeDataSearch((progressData) => {
+                postMessage(progressData);
+            });
             console.info("Data optimization complete, preparing for IndexedDB storage...");
 
             // Remove cached values that shouldn't be stored

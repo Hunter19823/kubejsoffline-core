@@ -164,9 +164,10 @@ async function writeOptimizedData(key, value) {
 /**
  * Write multiple optimized data properties in a batch.
  * @param {Object} data - Object with key-value pairs to write
+ * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage)
  * @returns {Promise<void>}
  */
-async function writeOptimizedDataBatch(data) {
+async function writeOptimizedDataBatch(data, progressCallback = null) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_OPTIMIZED_DATA], 'readwrite');
@@ -189,6 +190,13 @@ async function writeOptimizedDataBatch(data) {
                 }
                 memoryCache.optimizedData.set(key, value);
                 completed++;
+                
+                // Report progress (throttle to every 10 items or on completion)
+                if (progressCallback && (completed % 10 === 0 || completed === total)) {
+                    const progress = (completed / total) * 100;
+                    progressCallback(completed, total, 'optimizedData', progress);
+                }
+                
                 if (completed === total) {
                     resolve();
                 }
@@ -268,9 +276,10 @@ async function writeLookupCacheEntry(key, value) {
 /**
  * Write multiple lookup cache entries in a batch.
  * @param {Map|Object} cache - Map or object with key-value pairs
+ * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage, progress)
  * @returns {Promise<void>}
  */
-async function writeLookupCacheBatch(cache) {
+async function writeLookupCacheBatch(cache, progressCallback = null) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_LOOKUP_CACHE], 'readwrite');
@@ -294,6 +303,13 @@ async function writeLookupCacheBatch(cache) {
                 }
                 memoryCache.lookupCache.set(key, value);
                 completed++;
+                
+                // Report progress (throttle to every 100 items or on completion)
+                if (progressCallback && (completed % 100 === 0 || completed === total)) {
+                    const progress = (completed / total) * 100;
+                    progressCallback(completed, total, 'lookupCache', progress);
+                }
+                
                 if (completed === total) {
                     resolve();
                 }
@@ -377,9 +393,10 @@ async function writeRelationshipGraphEntry(relationshipType, from, toSet) {
 /**
  * Write relationship graph entries in batches (by relationship type).
  * @param {Map} relationshipGraph - The relationship graph Map
+ * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage, progress)
  * @returns {Promise<void>}
  */
-async function writeRelationshipGraphBatch(relationshipGraph) {
+async function writeRelationshipGraphBatch(relationshipGraph, progressCallback = null) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
@@ -413,6 +430,13 @@ async function writeRelationshipGraphBatch(relationshipGraph) {
                     }
                     memoryCache.relationshipGraph.set(cacheKey, new Set(value));
                     completed++;
+                    
+                    // Report progress (throttle to every 100 items or on completion)
+                    if (progressCallback && (completed % 100 === 0 || completed === total)) {
+                        const progress = (completed / total) * 100;
+                        progressCallback(completed, total, 'relationshipGraph', progress);
+                    }
+                    
                     if (completed === total) {
                         resolve();
                     }
