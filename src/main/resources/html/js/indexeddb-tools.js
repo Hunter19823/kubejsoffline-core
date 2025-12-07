@@ -6,6 +6,8 @@
 
 const DB_NAME_PREFIX = 'kubejs_offline_docs';
 const DB_VERSION = 1;
+const MAX_DATABASES = 3; // Maximum number of databases to keep
+const DB_TRACKING_KEY = 'kubejs_offline_db_tracking'; // localStorage key for tracking database access
 
 // Store names
 const STORE_OPTIMIZED_DATA = 'optimizedData';
@@ -73,6 +75,11 @@ function initIndexedDB(dataVersion = null) {
         dbPromise = null;
         currentDbName = dbName;
     }
+    
+    // Trigger cleanup of old databases (non-blocking)
+    cleanupOldDatabases().catch(e => {
+        console.debug('Database cleanup failed (non-critical):', e);
+    });
 
     dbPromise = new Promise((resolve, reject) => {
         // Check for IndexedDB support in both worker and main thread contexts
@@ -92,6 +99,8 @@ function initIndexedDB(dataVersion = null) {
         };
 
         request.onsuccess = () => {
+            // Record database access time
+            recordDatabaseAccess(dbName);
             resolve(request.result);
         };
 
@@ -127,6 +136,7 @@ function initIndexedDB(dataVersion = null) {
 function getDB() {
     if (!dbPromise) {
         // If no database has been initialized, initialize with default (no version)
+        console.error('IndexedDB not initialized. Initializing with default database.');
         return initIndexedDB(null);
     }
     return dbPromise;
@@ -808,18 +818,205 @@ async function clearIndexedDB() {
 }
 
 /**
+ * Get the storage object (localStorage) for tracking database access.
+ * Returns null if localStorage is not available (e.g., in some worker contexts).
+ * @returns {Storage|null}
+ */
+function getStorage() {
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            return window.localStorage;
+        }
+        if (typeof self !== 'undefined' && self.localStorage) {
+            return self.localStorage;
+        }
+        return null;
+    } catch (e) {
+        // localStorage may be disabled or unavailable
+        return null;
+    }
+}
+
+/**
+ * Record database access time for LRU tracking.
+ * @param {string} dbName - The database name
+ */
+function recordDatabaseAccess(dbName) {
+    const storage = getStorage();
+    if (!storage) return;
+    
+    try {
+        const tracking = JSON.parse(storage.getItem(DB_TRACKING_KEY) || '{}');
+        tracking[dbName] = Date.now();
+        storage.setItem(DB_TRACKING_KEY, JSON.stringify(tracking));
+    } catch (e) {
+        console.debug('Failed to record database access:', e);
+    }
+}
+
+/**
+ * Get database access times from storage.
+ * @returns {Object<string, number>} Object mapping database names to access timestamps
+ */
+function getDatabaseAccessTimes() {
+    const storage = getStorage();
+    if (!storage) return {};
+    
+    try {
+        return JSON.parse(storage.getItem(DB_TRACKING_KEY) || '{}');
+    } catch (e) {
+        console.debug('Failed to get database access times:', e);
+        return {};
+    }
+}
+
+/**
+ * Remove database from tracking.
+ * @param {string} dbName - The database name
+ */
+function removeDatabaseTracking(dbName) {
+    const storage = getStorage();
+    if (!storage) return;
+    
+    try {
+        const tracking = JSON.parse(storage.getItem(DB_TRACKING_KEY) || '{}');
+        delete tracking[dbName];
+        storage.setItem(DB_TRACKING_KEY, JSON.stringify(tracking));
+    } catch (e) {
+        console.debug('Failed to remove database tracking:', e);
+    }
+}
+
+/**
  * List all version-specific databases that exist.
- * Note: IndexedDB doesn't provide a direct API to list all databases.
- * This function returns the currently known database name.
- * For a complete list, databases would need to be tracked separately (e.g., in localStorage).
+ * Uses indexedDB.databases() if available, otherwise falls back to tracking.
  * @returns {Promise<string[]>} Array of database names
  */
 async function listAllVersionDatabases() {
-    const databases = [];
-    if (currentDbName) {
-        databases.push(currentDbName);
+    const idb = (typeof self !== 'undefined' && 'indexedDB' in self) ? self.indexedDB :
+                (typeof window !== 'undefined' && 'indexedDB' in window) ? window.indexedDB :
+                null;
+    
+    if (!idb) {
+        return [];
     }
-    return Promise.resolve(databases);
+    
+    // Try to use indexedDB.databases() if available (modern browsers)
+    if (typeof idb.databases === 'function') {
+        try {
+            const databases = await idb.databases();
+            // Filter to only include our databases
+            return databases
+                .map(db => db.name)
+                .filter(name => name.startsWith(DB_NAME_PREFIX));
+        } catch (e) {
+            console.debug('indexedDB.databases() not available, falling back to tracking:', e);
+        }
+    }
+    
+    // Fallback: use tracking data
+    const tracking = getDatabaseAccessTimes();
+    return Object.keys(tracking).filter(name => name.startsWith(DB_NAME_PREFIX));
+}
+
+/**
+ * Delete an IndexedDB database.
+ * @param {string} dbName - The database name to delete
+ * @returns {Promise<void>}
+ */
+async function deleteDatabase(dbName) {
+    const idb = (typeof self !== 'undefined' && 'indexedDB' in self) ? self.indexedDB :
+                (typeof window !== 'undefined' && 'indexedDB' in window) ? window.indexedDB :
+                null;
+    
+    if (!idb) {
+        throw new Error('IndexedDB is not supported');
+    }
+    
+    return new Promise((resolve, reject) => {
+        const request = idb.deleteDatabase(dbName);
+        
+        request.onsuccess = () => {
+            // Remove from tracking
+            removeDatabaseTracking(dbName);
+            // If this was the current database, reset state
+            if (dbName === currentDbName) {
+                dbPromise = null;
+                currentDbName = null;
+            }
+            resolve();
+        };
+        
+        request.onerror = () => {
+            reject(new Error('Failed to delete database: ' + request.error));
+        };
+        
+        request.onblocked = () => {
+            // Database is in use, but we'll still try to delete it
+            console.warn('Database deletion blocked, but continuing:', dbName);
+        };
+    });
+}
+
+/**
+ * Clean up old databases, keeping only the most recently used ones.
+ * If there are more than MAX_DATABASES, removes the least recently used ones.
+ * @param {number} maxDatabases - Maximum number of databases to keep (defaults to MAX_DATABASES)
+ * @returns {Promise<number>} Number of databases deleted
+ */
+async function cleanupOldDatabases(maxDatabases = MAX_DATABASES) {
+    try {
+        const allDatabases = await listAllVersionDatabases();
+        
+        if (allDatabases.length <= maxDatabases) {
+            return 0; // No cleanup needed
+        }
+        
+        const accessTimes = getDatabaseAccessTimes();
+        
+        // Sort databases by access time (most recent first)
+        const sortedDatabases = allDatabases
+            .map(dbName => ({
+                name: dbName,
+                accessTime: accessTimes[dbName] || 0
+            }))
+            .sort((a, b) => b.accessTime - a.accessTime);
+        
+        // Keep the most recently used databases
+        const databasesToKeep = sortedDatabases.slice(0, maxDatabases);
+        const databasesToDelete = sortedDatabases.slice(maxDatabases);
+        
+        // Don't delete the current database even if it's old
+        const currentDb = getCurrentDatabaseName();
+        const filteredToDelete = databasesToDelete.filter(db => db.name !== currentDb);
+        
+        if (filteredToDelete.length === 0) {
+            return 0;
+        }
+        
+        // Delete old databases
+        let deletedCount = 0;
+        const deletePromises = filteredToDelete.map(async (db) => {
+            try {
+                await deleteDatabase(db.name);
+                deletedCount++;
+                console.log('Deleted old database:', db.name);
+            } catch (e) {
+                console.warn('Failed to delete database:', db.name, e);
+            }
+        });
+        
+        await Promise.all(deletePromises);
+        
+        if (deletedCount > 0) {
+            console.log(`Cleaned up ${deletedCount} old database(s), keeping ${databasesToKeep.length} most recent`);
+        }
+        
+        return deletedCount;
+    } catch (e) {
+        console.error('Failed to cleanup old databases:', e);
+        return 0;
+    }
 }
 
 // Export functions for use in worker context (self) or main thread (window)
@@ -848,5 +1045,8 @@ if (globalScope) {
     globalScope.getCurrentDatabaseName = getCurrentDatabaseName;
     globalScope.createShortHash = createShortHash;
     globalScope.listAllVersionDatabases = listAllVersionDatabases;
+    globalScope.deleteDatabase = deleteDatabase;
+    globalScope.cleanupOldDatabases = cleanupOldDatabases;
+    globalScope.getDatabaseAccessTimes = getDatabaseAccessTimes;
 }
 
