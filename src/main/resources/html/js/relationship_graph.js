@@ -196,7 +196,7 @@ async function optimizeDataSearch(progressCallback = null) {
                 progressCallback({
                     type: 'progress',
                     stage: 'optimizing',
-                    message: `Scanning classes: ${processedCount} / ${totalTypes}`,
+                    message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
                     progress: progress,
                     current: processedCount,
                     total: totalTypes
@@ -211,6 +211,17 @@ async function optimizeDataSearch(progressCallback = null) {
             DATA._type_variables.push(i);
         } else {
             DATA._raw_types.push(i);
+        }
+        if (progressCallback && (i % 10 === 0 || i === totalTypes)) {
+            const progress = (i / totalTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'optimizing',
+                message: `Scanners Initialized: ${i} / ${totalTypes}`,
+                progress: progress,
+                current: i,
+                total: totalTypes
+            });
         }
     }
     await Promise.all(indexPromises);
