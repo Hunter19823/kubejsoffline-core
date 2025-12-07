@@ -155,6 +155,89 @@ async function indexClass(target) {
     )
 }
 
+/**
+ * Marks parameterized types that share the same raw type as neighbors.
+ * This creates a direct relationship between parameterized types that would otherwise
+ * be 1-2 degrees separated through their shared raw type.
+ * 
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+function markParameterizedTypeNeighbors(progressCallback = null) {
+    const totalParameterizedTypes = DATA._parameterized_types.length;
+    let processedCount = 0;
+    
+    // Group parameterized types by their raw type
+    const rawTypeGroups = new Map();
+    
+    DATA._parameterized_types.forEach((paramTypeId, index) => {
+        const paramType = getClass(paramTypeId);
+        if (!paramType || !paramType.isParameterizedType()) {
+            return;
+        }
+        
+        const rawType = paramType.getRawType();
+        if (!exists(rawType)) {
+            return;
+        }
+        
+        if (!rawTypeGroups.has(rawType)) {
+            rawTypeGroups.set(rawType, []);
+        }
+        rawTypeGroups.get(rawType).push(paramTypeId);
+        
+        processedCount++;
+        // Send progress update every 10 items or on last item
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalParameterizedTypes)) {
+            const progress = (processedCount / totalParameterizedTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_neighbors',
+                message: `Grouping parameterized types: ${processedCount} / ${totalParameterizedTypes}`,
+                progress: progress,
+                current: processedCount,
+                total: totalParameterizedTypes
+            });
+        }
+    });
+    
+    // Filter groups to only those with 2+ types
+    const groupsWithNeighbors = Array.from(rawTypeGroups.entries()).filter(([rawType, paramTypeIds]) => paramTypeIds.length >= 2);
+    const totalGroups = groupsWithNeighbors.length;
+    let groupsProcessed = 0;
+    
+    // For each group with 2+ parameterized types, mark all pairs as neighbors
+    groupsWithNeighbors.forEach(([rawType, paramTypeIds]) => {
+        // Mark all pairs as neighbors (bidirectional)
+        for (let i = 0; i < paramTypeIds.length; i++) {
+            for (let j = i + 1; j < paramTypeIds.length; j++) {
+                const typeA = paramTypeIds[i];
+                const typeB = paramTypeIds[j];
+                // Mark bidirectional relationship: A neighbors B and B neighbors A
+                markRelationship(
+                    typeA,
+                    [typeB],
+                    [RELATIONSHIP.NEIGHBOR],
+                    [RELATIONSHIP.NEIGHBOR]
+                );
+            }
+        }
+        
+        groupsProcessed++;
+        // Send progress update every 10 groups or on last group
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === totalGroups)) {
+            const progress = (groupsProcessed / totalGroups) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_neighbors',
+                message: `Marking neighbors: ${groupsProcessed} / ${totalGroups} groups`,
+                progress: progress,
+                current: groupsProcessed,
+                total: totalGroups
+            });
+        }
+    });
+}
+
 async function optimizeDataSearch(progressCallback = null) {
     DATA._optimized = true;
     DATA._wildcard_types = [];
@@ -225,6 +308,7 @@ async function optimizeDataSearch(progressCallback = null) {
         }
     }
     await Promise.all(indexPromises);
+    markParameterizedTypeNeighbors(progressCallback);
     findEventClasses();
 }
 
