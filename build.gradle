@@ -60,6 +60,9 @@ publishing {
     }
     publications {
         gpr(MavenPublication) {
+            groupId = project.group
+            artifactId = project.archives_base_name
+            version = version
             from(components.java)
         }
     }
