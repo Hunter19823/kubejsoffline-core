@@ -682,8 +682,6 @@ async function onWindowLoad() {
         
         WORKER.onmessage = async (e) => {
             if (e.data.type === 'progress') {
-                console.log(`Worker progress: ${e.data.stage} - ${e.data.message}`);
-                
                 let toastMessage = '';
                 let progress = null;
                 
