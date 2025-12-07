@@ -238,6 +238,89 @@ function markParameterizedTypeNeighbors(progressCallback = null) {
     });
 }
 
+/**
+ * Marks inner classes that share the same enclosing class as siblings.
+ * This creates a direct relationship between nested/inner classes that are
+ * declared within the same enclosing class.
+ * 
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+function markInnerClassSiblings(progressCallback = null) {
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
+    
+    // Group classes by their enclosing class
+    const enclosingClassGroups = new Map();
+    
+    for (let i = 0; i < totalTypes; i++) {
+        const classType = getClass(i);
+        if (!classType) {
+            continue;
+        }
+        
+        const enclosingClass = classType.getEnclosingClass();
+        if (!exists(enclosingClass)) {
+            continue; // Skip classes without an enclosing class
+        }
+        
+        if (!enclosingClassGroups.has(enclosingClass)) {
+            enclosingClassGroups.set(enclosingClass, []);
+        }
+        enclosingClassGroups.get(enclosingClass).push(i);
+        
+        processedCount++;
+        // Send progress update every 10 items or on last item
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+            const progress = (processedCount / totalTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_siblings',
+                message: `Grouping inner classes: ${processedCount} / ${totalTypes}`,
+                progress: progress,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    }
+    
+    // Filter groups to only those with 2+ classes
+    const groupsWithSiblings = Array.from(enclosingClassGroups.entries()).filter(([enclosingClass, classIds]) => classIds.length >= 2);
+    const totalGroups = groupsWithSiblings.length;
+    let groupsProcessed = 0;
+    
+    // For each group with 2+ inner classes, mark all pairs as siblings
+    groupsWithSiblings.forEach(([enclosingClass, classIds]) => {
+        // Mark all pairs as siblings (bidirectional)
+        for (let i = 0; i < classIds.length; i++) {
+            for (let j = i + 1; j < classIds.length; j++) {
+                const classA = classIds[i];
+                const classB = classIds[j];
+                // Mark bidirectional relationship: A siblings B and B siblings A
+                markRelationship(
+                    classA,
+                    [classB],
+                    [RELATIONSHIP.SIBLING],
+                    [RELATIONSHIP.SIBLING]
+                );
+            }
+        }
+        
+        groupsProcessed++;
+        // Send progress update every 10 groups or on last group
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === totalGroups)) {
+            const progress = (groupsProcessed / totalGroups) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_siblings',
+                message: `Marking siblings: ${groupsProcessed} / ${totalGroups} groups`,
+                progress: progress,
+                current: groupsProcessed,
+                total: totalGroups
+            });
+        }
+    });
+}
+
 async function optimizeDataSearch(progressCallback = null) {
     DATA._optimized = true;
     DATA._wildcard_types = [];
@@ -309,6 +392,7 @@ async function optimizeDataSearch(progressCallback = null) {
     }
     await Promise.all(indexPromises);
     markParameterizedTypeNeighbors(progressCallback);
+    markInnerClassSiblings(progressCallback);
     findEventClasses();
 }
 
