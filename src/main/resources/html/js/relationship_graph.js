@@ -165,7 +165,22 @@ async function optimizeDataSearch(progressCallback = null) {
     const totalTypes = DATA.types.length;
     let processedCount = 0;
 
-    DATA.types.forEach((typeData, index) => getClass(index).getTypeVariableMap())
+    DATA.types.forEach((typeData, index) => {
+        processedCount++;
+        getClass(index).getTypeVariableMap()
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+            const progress = (processedCount / totalTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'warmup',
+                message: `Warming classes: ${processedCount} / ${totalTypes}`,
+                progress: progress,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    });
+    processedCount = 0;
     for (let i = 0; i < DATA.types.length; i++) {
         const typeData = getTypeData(i);
         if (!exists(typeData)) {
