@@ -411,14 +411,6 @@ function getClass(id) {
 
     output.fullyQualifiedName = function (typeVariableMap = {}, includeGenerics = true) {
         return getGenericDefinition(this.id(), typeVariableMap, includeGenerics) + "[]".repeat(this.getArrayDepth());
-            // const typeVariables = this.getTypeVariables();
-            // let genericSuffix = "";
-            // if (typeVariables.length > 0 && includeGenerics) {
-            //     genericSuffix = joiner(typeVariables, ", ", (type) => {
-            //         return getClass(type).fullyQualifiedName(typeVariableMap);
-            //     }, "<", ">");
-            // }
-            // return name + genericSuffix + "[]".repeat(this.getArrayDepth());
     }
     output.fullName = output.fullyQualifiedName;
     output.getFullyQualifiedName = output.fullyQualifiedName;
@@ -428,14 +420,7 @@ function getClass(id) {
     output.name = function (typeVariableMap = {}, includeGenerics = true) {
         if (this.isRawClass()) {
             const name = getGenericName(this.id(), createTypeVariableMap(this.id()), includeGenerics);
-            const typeVariables = this.getTypeVariables();
-            let genericSuffix = "";
-            if (typeVariables.length > 0 && includeGenerics) {
-                genericSuffix = joiner(typeVariables, ", ", (type) => {
-                    return getClass(type).name(typeVariableMap);
-                }, "<", ">");
-            }
-            return name + genericSuffix + "[]".repeat(this.getArrayDepth());
+            return name + "[]".repeat(this.getArrayDepth());
         } else {
             return getGenericName(this.id(), typeVariableMap, includeGenerics) + "[]".repeat(this.getArrayDepth());
         }
