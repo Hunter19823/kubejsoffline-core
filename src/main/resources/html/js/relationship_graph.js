@@ -156,263 +156,112 @@ async function indexClass(target) {
 }
 
 /**
+ * Helper function to group items, filter groups with 2+ items, and mark all pairs with a relationship.
+ */
+async function markGroupedRelationships(items, getKey, relationship, groupingMessage, markingMessage, progressCallback) {
+    const groups = new Map();
+    let processed = 0;
+    const total = items.length;
+    
+    // Group items
+    for (const item of items) {
+        const key = getKey(item);
+        if (key === null || key === undefined) continue;
+        
+        if (!groups.has(key)) {
+            groups.set(key, []);
+        }
+        groups.get(key).push(item);
+        
+        processed++;
+        if (progressCallback && (processed % 10 === 0 || processed === total)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `${groupingMessage}: ${processed} / ${total}`,
+                progress: (processed / total) * 100,
+                current: processed,
+                total: total
+            });
+        }
+        if (processed % 50 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+    
+    // Filter and mark pairs
+    const validGroups = Array.from(groups.values()).filter(group => group.length >= 2);
+    let groupsProcessed = 0;
+    
+    for (const group of validGroups) {
+        for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+                markRelationship(group[i], [group[j]], [relationship], [relationship]);
+            }
+        }
+        
+        groupsProcessed++;
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === validGroups.length)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `${markingMessage}: ${groupsProcessed} / ${validGroups.length}`,
+                progress: (groupsProcessed / validGroups.length) * 100,
+                current: groupsProcessed,
+                total: validGroups.length
+            });
+        }
+        if (groupsProcessed % 50 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+}
+
+/**
  * Marks all relationship types (neighbors, siblings, and roommates) sequentially.
- * This function combines three relationship marking operations to avoid progress callback conflicts.
  * 
  * @param {function|null} progressCallback - Optional callback function to report progress
  * @returns {Promise<void>} Promise that resolves when all relationship marking is complete
  */
 async function markAllRelationships(progressCallback = null) {
     // 1. Mark parameterized type neighbors
-    const totalParameterizedTypes = DATA._parameterized_types.length;
-    let processedCount = 0;
-    
-    // Group parameterized types by their raw type
-    const rawTypeGroups = new Map();
-    
-    for (const paramTypeId of DATA._parameterized_types) {
-        const paramType = getClass(paramTypeId);
-        if (!paramType || !paramType.isParameterizedType()) {
-            continue;
-        }
-        
-        const rawType = paramType.getRawType();
-        if (!exists(rawType)) {
-            continue;
-        }
-        
-        if (!rawTypeGroups.has(rawType)) {
-            rawTypeGroups.set(rawType, []);
-        }
-        rawTypeGroups.get(rawType).push(paramTypeId);
-        
-        processedCount++;
-        // Send progress update every 10 items or on last item
-        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalParameterizedTypes)) {
-            const progress = (processedCount / totalParameterizedTypes) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Grouping parameterized types: ${processedCount} / ${totalParameterizedTypes}`,
-                progress: progress,
-                current: processedCount,
-                total: totalParameterizedTypes
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (processedCount % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
-    
-    // Filter groups to only those with 2+ types
-    const groupsWithNeighbors = Array.from(rawTypeGroups.entries()).filter(([rawType, paramTypeIds]) => paramTypeIds.length >= 2);
-    let groupsProcessed = 0;
-    
-    // For each group with 2+ parameterized types, mark all pairs as neighbors
-    for (const [rawType, paramTypeIds] of groupsWithNeighbors) {
-        // Mark all pairs as neighbors (bidirectional)
-        for (let i = 0; i < paramTypeIds.length; i++) {
-            for (let j = i + 1; j < paramTypeIds.length; j++) {
-                const typeA = paramTypeIds[i];
-                const typeB = paramTypeIds[j];
-                // Mark bidirectional relationship: A neighbors B and B neighbors A
-                markRelationship(
-                    typeA,
-                    [typeB],
-                    [RELATIONSHIP.NEIGHBOR],
-                    [RELATIONSHIP.NEIGHBOR]
-                );
-            }
-        }
-        
-        groupsProcessed++;
-        // Send progress update every 10 groups or on last group
-        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === groupsWithNeighbors.length)) {
-            const progress = (groupsProcessed / groupsWithNeighbors.length) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Marking neighbors: ${groupsProcessed} / ${groupsWithNeighbors.length} groups`,
-                progress: progress,
-                current: groupsProcessed,
-                total: groupsWithNeighbors.length
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (groupsProcessed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
+    await markGroupedRelationships(
+        DATA._parameterized_types,
+        (id) => {
+            const paramType = getClass(id);
+            return paramType && paramType.isParameterizedType() ? paramType.getRawType() : null;
+        },
+        RELATIONSHIP.NEIGHBOR,
+        'Grouping parameterized types',
+        'Marking neighbors',
+        progressCallback
+    );
     
     // 2. Mark inner class siblings
-    const totalTypes = DATA.types.length;
-    processedCount = 0;
-    
-    // Group classes by their enclosing class
-    const enclosingClassGroups = new Map();
-    
-    for (let i = 0; i < totalTypes; i++) {
-        const classType = getClass(i);
-        if (!classType) {
-            continue;
-        }
-        
-        const enclosingClass = classType.getEnclosingClass();
-        if (!exists(enclosingClass)) {
-            continue; // Skip classes without an enclosing class
-        }
-        
-        if (!enclosingClassGroups.has(enclosingClass)) {
-            enclosingClassGroups.set(enclosingClass, []);
-        }
-        enclosingClassGroups.get(enclosingClass).push(i);
-        
-        processedCount++;
-        // Send progress update every 10 items or on last item
-        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
-            const progress = (processedCount / totalTypes) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Grouping inner classes: ${processedCount} / ${totalTypes}`,
-                progress: progress,
-                current: processedCount,
-                total: totalTypes
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (processedCount % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
-    
-    // Filter groups to only those with 2+ classes
-    const groupsWithSiblings = Array.from(enclosingClassGroups.entries()).filter(([enclosingClass, classIds]) => classIds.length >= 2);
-    groupsProcessed = 0;
-    
-    // For each group with 2+ inner classes, mark all pairs as siblings
-    for (const [enclosingClass, classIds] of groupsWithSiblings) {
-        // Mark all pairs as siblings (bidirectional)
-        for (let i = 0; i < classIds.length; i++) {
-            for (let j = i + 1; j < classIds.length; j++) {
-                const classA = classIds[i];
-                const classB = classIds[j];
-                // Mark bidirectional relationship: A siblings B and B siblings A
-                markRelationship(
-                    classA,
-                    [classB],
-                    [RELATIONSHIP.SIBLING],
-                    [RELATIONSHIP.SIBLING]
-                );
-            }
-        }
-        
-        groupsProcessed++;
-        // Send progress update every 10 groups or on last group
-        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === groupsWithSiblings.length)) {
-            const progress = (groupsProcessed / groupsWithSiblings.length) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Marking siblings: ${groupsProcessed} / ${groupsWithSiblings.length} groups`,
-                progress: progress,
-                current: groupsProcessed,
-                total: groupsWithSiblings.length
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (groupsProcessed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
+    await markGroupedRelationships(
+        Array.from({ length: DATA.types.length }, (_, i) => i),
+        (id) => {
+            const classType = getClass(id);
+            return classType ? classType.getEnclosingClass() : null;
+        },
+        RELATIONSHIP.SIBLING,
+        'Grouping inner classes',
+        'Marking siblings',
+        progressCallback
+    );
     
     // 3. Mark package roommates
-    processedCount = 0;
-    
-    // Group classes by their package ID (using ID instead of name to avoid memory overhead)
-    const packageGroups = new Map();
-    
-    for (let i = 0; i < totalTypes; i++) {
-        const classType = getClass(i);
-        if (!classType) {
-            continue;
-        }
-        
-        const packageId = classType.getPackageId();
-        if (!exists(packageId)) {
-            continue; // Skip classes without a package (default package or invalid)
-        }
-        
-        if (!packageGroups.has(packageId)) {
-            packageGroups.set(packageId, []);
-        }
-        packageGroups.get(packageId).push(i);
-        
-        processedCount++;
-        // Send progress update every 10 items or on last item
-        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
-            const progress = (processedCount / totalTypes) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Grouping classes by package: ${processedCount} / ${totalTypes}`,
-                progress: progress,
-                current: processedCount,
-                total: totalTypes
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (processedCount % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
-    
-    // Filter groups to only those with 2+ classes
-    const groupsWithRoommates = Array.from(packageGroups.entries()).filter(([packageId, classIds]) => classIds.length >= 2);
-    groupsProcessed = 0;
-    
-    // For each group with 2+ classes, mark all pairs as roommates
-    for (const [packageId, classIds] of groupsWithRoommates) {
-        // Mark all pairs as roommates (bidirectional)
-        for (let i = 0; i < classIds.length; i++) {
-            for (let j = i + 1; j < classIds.length; j++) {
-                const classA = classIds[i];
-                const classB = classIds[j];
-                // Mark bidirectional relationship: A roommates B and B roommates A
-                markRelationship(
-                    classA,
-                    [classB],
-                    [RELATIONSHIP.ROOMMATE],
-                    [RELATIONSHIP.ROOMMATE]
-                );
-            }
-        }
-        
-        groupsProcessed++;
-        // Send progress update every 10 groups or on last group
-        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === groupsWithRoommates.length)) {
-            const progress = (groupsProcessed / groupsWithRoommates.length) * 100;
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Marking roommates: ${groupsProcessed} / ${groupsWithRoommates.length} packages`,
-                progress: progress,
-                current: groupsProcessed,
-                total: groupsWithRoommates.length
-            });
-        }
-        
-        // Yield to other tasks periodically
-        if (groupsProcessed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
+    await markGroupedRelationships(
+        Array.from({ length: DATA.types.length }, (_, i) => i),
+        (id) => {
+            const classType = getClass(id);
+            return classType ? classType.getPackageId() : null;
+        },
+        RELATIONSHIP.ROOMMATE,
+        'Grouping classes by package',
+        'Marking roommates',
+        progressCallback
+    );
 }
 
 async function optimizeDataSearch(progressCallback = null) {
