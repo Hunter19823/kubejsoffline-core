@@ -410,19 +410,15 @@ function getClass(id) {
     output.getReferenceName = output.referenceName;
 
     output.fullyQualifiedName = function (typeVariableMap = {}, includeGenerics = true) {
-        if (this.isRawClass()) {
-            const name = getGenericDefinition(this.id(), typeVariableMap, includeGenerics);
-            const typeVariables = this.getTypeVariables();
-            let genericSuffix = "";
-            if (typeVariables.length > 0 && includeGenerics) {
-                genericSuffix = joiner(typeVariables, ", ", (type) => {
-                    return getClass(type).fullyQualifiedName(typeVariableMap);
-                }, "<", ">");
-            }
-            return name + genericSuffix + "[]".repeat(this.getArrayDepth());
-        } else {
-            return getGenericDefinition(this.id(), typeVariableMap, includeGenerics) + "[]".repeat(this.getArrayDepth());
-        }
+        return getGenericDefinition(this.id(), typeVariableMap, includeGenerics) + "[]".repeat(this.getArrayDepth());
+            // const typeVariables = this.getTypeVariables();
+            // let genericSuffix = "";
+            // if (typeVariables.length > 0 && includeGenerics) {
+            //     genericSuffix = joiner(typeVariables, ", ", (type) => {
+            //         return getClass(type).fullyQualifiedName(typeVariableMap);
+            //     }, "<", ">");
+            // }
+            // return name + genericSuffix + "[]".repeat(this.getArrayDepth());
     }
     output.fullName = output.fullyQualifiedName;
     output.getFullyQualifiedName = output.fullyQualifiedName;

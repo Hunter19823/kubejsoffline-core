@@ -519,25 +519,26 @@ function getRawClassSignature(type, outputSpan, config) {
 
     outputSpan.append(createLink(span(name), config.getLinkableID(type.id())));
 
-    if (config.getDefiningParameterizedType()) {
-        return outputSpan;
-    }
-    const typeVariables = type.getTypeVariables();
-    if (typeVariables.length === 0) {
-        return outputSpan;
-    }
-    tagJoiner(
-        typeVariables,
-        ", ",
-        (actualType) => createLinkableSignature(
-            actualType,
-            config,
-        ),
-        span("<"),
-        span(">")
-    ).forEach((node) => outputSpan.append(node));
-
     return outputSpan;
+    // if (config.getDefiningParameterizedType()) {
+    //     return outputSpan;
+    // }
+    // const typeVariables = type.getTypeVariables();
+    // if (typeVariables.length === 0) {
+    //     return outputSpan;
+    // }
+    // tagJoiner(
+    //     typeVariables,
+    //     ", ",
+    //     (actualType) => createLinkableSignature(
+    //         actualType,
+    //         config,
+    //     ),
+    //     span("<"),
+    //     span(">")
+    // ).forEach((node) => outputSpan.append(node));
+    //
+    // return outputSpan;
 }
 /**
  * Generates the HTML signature for a type variable.
