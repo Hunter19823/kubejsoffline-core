@@ -321,6 +321,89 @@ function markInnerClassSiblings(progressCallback = null) {
     });
 }
 
+/**
+ * Marks classes that share the same package as roommates.
+ * This creates a direct relationship between classes that are
+ * defined within the same package.
+ * 
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+function markPackageRoommates(progressCallback = null) {
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
+    
+    // Group classes by their package ID (using ID instead of name to avoid memory overhead)
+    const packageGroups = new Map();
+    
+    for (let i = 0; i < totalTypes; i++) {
+        const classType = getClass(i);
+        if (!classType) {
+            continue;
+        }
+        
+        const packageId = classType.getPackageId();
+        if (!exists(packageId)) {
+            continue; // Skip classes without a package (default package or invalid)
+        }
+        
+        if (!packageGroups.has(packageId)) {
+            packageGroups.set(packageId, []);
+        }
+        packageGroups.get(packageId).push(i);
+        
+        processedCount++;
+        // Send progress update every 10 items or on last item
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+            const progress = (processedCount / totalTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_roommates',
+                message: `Grouping classes by package: ${processedCount} / ${totalTypes}`,
+                progress: progress,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    }
+    
+    // Filter groups to only those with 2+ classes
+    const groupsWithRoommates = Array.from(packageGroups.entries()).filter(([packageId, classIds]) => classIds.length >= 2);
+    const totalGroups = groupsWithRoommates.length;
+    let groupsProcessed = 0;
+    
+    // For each group with 2+ classes, mark all pairs as roommates
+    groupsWithRoommates.forEach(([packageId, classIds]) => {
+        // Mark all pairs as roommates (bidirectional)
+        for (let i = 0; i < classIds.length; i++) {
+            for (let j = i + 1; j < classIds.length; j++) {
+                const classA = classIds[i];
+                const classB = classIds[j];
+                // Mark bidirectional relationship: A roommates B and B roommates A
+                markRelationship(
+                    classA,
+                    [classB],
+                    [RELATIONSHIP.ROOMMATE],
+                    [RELATIONSHIP.ROOMMATE]
+                );
+            }
+        }
+        
+        groupsProcessed++;
+        // Send progress update every 10 groups or on last group
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === totalGroups)) {
+            const progress = (groupsProcessed / totalGroups) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_roommates',
+                message: `Marking roommates: ${groupsProcessed} / ${totalGroups} packages`,
+                progress: progress,
+                current: groupsProcessed,
+                total: totalGroups
+            });
+        }
+    });
+}
+
 async function optimizeDataSearch(progressCallback = null) {
     DATA._optimized = true;
     DATA._wildcard_types = [];
@@ -393,6 +476,7 @@ async function optimizeDataSearch(progressCallback = null) {
     await Promise.all(indexPromises);
     markParameterizedTypeNeighbors(progressCallback);
     markInnerClassSiblings(progressCallback);
+    markPackageRoommates(progressCallback);
     findEventClasses();
 }
 

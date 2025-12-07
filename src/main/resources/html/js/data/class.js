@@ -463,6 +463,21 @@ function getClass(id) {
         return (exists(this._array_depth) ? this._array_depth : 0);
     }
 
+    output.getPackageId = function () {
+        const packageId = this.data[PROPERTY.PACKAGE_NAME];
+        if (exists(packageId)) {
+            return packageId;
+        }
+        // For parameterized types, get the package ID from the raw type
+        if (this.isParameterized()) {
+            const rawType = this.getRawType();
+            if (exists(rawType)) {
+                return getClass(rawType).getPackageId();
+            }
+        }
+        return null;
+    }
+
     output.getPackageName = function () {
         if (exists(this.data._cachedPackageName)) {
             return this.data._cachedPackageName;
