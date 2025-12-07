@@ -126,6 +126,18 @@ self.onmessage = async function (e) {
                 // Continue anyway - we'll calculate it again later
             }
 
+            // Initialize IndexedDB with the data version BEFORE optimization starts
+            // This ensures that any database reads during optimization use the correct database
+            if (dataVersion) {
+                try {
+                    await initIndexedDB(dataVersion);
+                    console.info(`IndexedDB initialized in worker with database: ${getCurrentDatabaseName()}`);
+                } catch (dbError) {
+                    console.error("Failed to initialize IndexedDB in worker:", dbError);
+                    // Continue with optimization - database operations will fail gracefully
+                }
+            }
+
             // Send initial progress
             postMessage({ type: 'progress', stage: 'optimizing', message: 'Starting data optimization...', progress: 0, current: 0, total: DATA.types ? DATA.types.length : 0 });
 

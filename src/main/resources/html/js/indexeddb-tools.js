@@ -136,8 +136,9 @@ function initIndexedDB(dataVersion = null) {
 function getDB() {
     if (!dbPromise) {
         // If no database has been initialized, initialize with default (no version)
-        console.error('IndexedDB not initialized. Initializing with default database.');
-        return initIndexedDB(null);
+        // WARNING: This should not happen in normal operation. Database should be initialized
+        // with initIndexedDB(dataVersion) before any database operations are performed.
+        throw new Error("The DB couldn't be initialized, and was likely removed.");
     }
     return dbPromise;
 }
