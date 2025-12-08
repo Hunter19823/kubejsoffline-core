@@ -63,6 +63,7 @@ const GLOBAL_SETTINGS = {
     "showRelationships": true,
     "defaultSearchPageSize": 25,
     "debug": false,
+    "cacheMaxSize": 500, // Maximum number of entries per LRU cache
 };
 
 /**

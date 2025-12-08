@@ -56,7 +56,7 @@ function markRelationship(from, targets, relationshipTypes, inverseRelationshipT
  * using the data provided in the class data.
  * @param target {TypeIdentifier} the id of the class
  */
-async function indexClass(target) {
+function indexClass(target) {
     const classType = getClass(target);
     classType._follow_inheritance((parent, index) => {
         if (index === target) {
@@ -184,9 +184,6 @@ async function markGroupedRelationships(items, getKey, relationship, groupingMes
                 total: total
             });
         }
-        if (processed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
     }
     
     // Filter and mark pairs
@@ -210,9 +207,6 @@ async function markGroupedRelationships(items, getKey, relationship, groupingMes
                 current: groupsProcessed,
                 total: validGroups.length
             });
-        }
-        if (groupsProcessed % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
         }
     }
 }
@@ -238,30 +232,33 @@ async function markAllRelationships(progressCallback = null) {
     );
     
     // 2. Mark inner class siblings
-    await markGroupedRelationships(
-        Array.from({ length: DATA.types.length }, (_, i) => i),
-        (id) => {
-            const classType = getClass(id);
-            return classType ? classType.getEnclosingClass() : null;
-        },
-        RELATIONSHIP.SIBLING,
-        'Grouping inner classes',
-        'Marking siblings',
-        progressCallback
-    );
-    
-    // 3. Mark package roommates
-    await markGroupedRelationships(
-        Array.from({ length: DATA.types.length }, (_, i) => i),
-        (id) => {
-            const classType = getClass(id);
-            return classType ? classType.getPackageId() : null;
-        },
-        RELATIONSHIP.ROOMMATE,
-        'Grouping classes by package',
-        'Marking roommates',
-        progressCallback
-    );
+    // If there are more than 20k classes, skip sibling marking to save time and memory
+    if (DATA.types.length <= 20000) {
+        await markGroupedRelationships(
+            Array.from({length: DATA.types.length}, (_, i) => i),
+            (id) => {
+                const classType = getClass(id);
+                return classType ? classType.getEnclosingClass() : null;
+            },
+            RELATIONSHIP.SIBLING,
+            'Grouping inner classes',
+            'Marking siblings',
+            progressCallback
+        );
+
+        // 3. Mark package roommates
+        await markGroupedRelationships(
+            Array.from({length: DATA.types.length}, (_, i) => i),
+            (id) => {
+                const classType = getClass(id);
+                return classType ? classType.getPackageId() : null;
+            },
+            RELATIONSHIP.ROOMMATE,
+            'Grouping classes by package',
+            'Marking roommates',
+            progressCallback
+        );
+    }
 }
 
 async function optimizeDataSearch(progressCallback = null) {
@@ -297,21 +294,7 @@ async function optimizeDataSearch(progressCallback = null) {
             continue;
         }
         const subject = getClass(i);
-        indexPromises.push(indexClass(i).then(() => {
-            processedCount++;
-            // Send progress update every 10 items or on last item
-            if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
-                const progress = (processedCount / totalTypes) * 100;
-                progressCallback({
-                    type: 'progress',
-                    stage: 'optimizing',
-                    message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
-                    progress: progress,
-                    current: processedCount,
-                    total: totalTypes
-                });
-            }
-        }));
+        indexClass(i);
         if (subject.isWildcard()) {
             DATA._wildcard_types.push(i);
         } else if (subject.isParameterizedType()) {
@@ -321,14 +304,16 @@ async function optimizeDataSearch(progressCallback = null) {
         } else {
             DATA._raw_types.push(i);
         }
-        if (progressCallback && (i % 10 === 0 || i === totalTypes)) {
-            const progress = (i / totalTypes) * 100;
+        processedCount++;
+        // Send progress update every 10 items or on last item
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+            const progress = (processedCount / totalTypes) * 100;
             progressCallback({
                 type: 'progress',
                 stage: 'optimizing',
-                message: `Scanners Initialized: ${i} / ${totalTypes}`,
+                message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
                 progress: progress,
-                current: i,
+                current: processedCount,
                 total: totalTypes
             });
         }

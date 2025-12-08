@@ -1,4 +1,96 @@
 /**
+ * LRU (Least Recently Used) Cache implementation.
+ * Maintains a fixed-size cache, evicting the least recently used items when the limit is reached.
+ * @param {number} maxSize - Maximum number of entries in the cache
+ */
+function LRUCache(maxSize) {
+    this.maxSize = maxSize || (GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize) || 500;
+    this.cache = new Map(); // Map maintains insertion order in modern JavaScript
+    
+    /**
+     * Get a value from the cache.
+     * @param {*} key - The cache key
+     * @returns {*|undefined} The cached value, or undefined if not found
+     */
+    this.get = function(key) {
+        if (this.cache.has(key)) {
+            // Move to end (most recently used)
+            const value = this.cache.get(key);
+            this.cache.delete(key);
+            this.cache.set(key, value);
+            return value;
+        }
+        return undefined;
+    };
+    
+    /**
+     * Set a value in the cache.
+     * @param {*} key - The cache key
+     * @param {*} value - The value to cache
+     */
+    this.set = function(key, value) {
+        if (this.cache.has(key)) {
+            // Update existing entry - move to end
+            this.cache.delete(key);
+        } else if (this.cache.size >= this.maxSize) {
+            // Remove least recently used (first entry)
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        this.cache.set(key, value);
+    };
+    
+    /**
+     * Check if a key exists in the cache.
+     * @param {*} key - The cache key
+     * @returns {boolean}
+     */
+    this.has = function(key) {
+        return this.cache.has(key);
+    };
+    
+    /**
+     * Clear all entries from the cache.
+     */
+    this.clear = function() {
+        this.cache.clear();
+    };
+    
+    /**
+     * Get the current size of the cache.
+     * @returns {number}
+     */
+    this.size = function() {
+        return this.cache.size;
+    };
+}
+
+// Global LRU caches for class data
+// These are shared across all class instances to reduce memory usage
+const CLASS_CACHES = {
+    fieldsShallow: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    fieldsDeep: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    methodsShallow: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    methodsDeep: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    constructors: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    packageNames: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    inheritedClasses: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500)
+};
+
+/**
+ * Helper function to generate a cache key for class data.
+ * @param {TypeIdentifier} classId - The class identifier
+ * @param {boolean} [shallow] - Optional shallow flag for fields/methods
+ * @returns {string} Cache key
+ */
+function getCacheKey(classId, shallow) {
+    if (shallow !== undefined) {
+        return `${classId}:${shallow ? 'shallow' : 'deep'}`;
+    }
+    return String(classId);
+}
+
+/**
  * Looks up and wraps the class with the given id, name, or object, and returns the
  * wrapped class. If the class is not found, then null is returned.
  * @param id {TypeIdentifier | FullTypeName | TypeName | SimplifiedTypeName | IndexedClassData}
@@ -187,12 +279,16 @@ function getClass(id) {
      * @returns {Field[]} an array of fields
      */
     output.fields = function (shallow = false) {
-        if (shallow && exists(this.data._shallow_field_cache)) {
-            return this.data._shallow_field_cache;
+        const classId = this.id();
+        const cache = shallow ? CLASS_CACHES.fieldsShallow : CLASS_CACHES.fieldsDeep;
+        const cacheKey = getCacheKey(classId, shallow);
+        
+        // Check global LRU cache
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
         }
-        if (!shallow && exists(this.data._field_cache)) {
-            return this.data._field_cache;
-        }
+        
         const fields = [];
 
         function addFields(data) {
@@ -211,6 +307,8 @@ function getClass(id) {
             });
         }
         if (fields.length === 0) {
+            // Cache empty arrays too
+            cache.set(cacheKey, []);
             return [];
         }
 
@@ -218,11 +316,8 @@ function getClass(id) {
             fields[i].data._dataIndex = i;
         }
 
-        if (shallow) {
-            this.data._shallow_field_cache = fields;
-        } else {
-            this.data._field_cache = fields;
-        }
+        // Store in global LRU cache
+        cache.set(cacheKey, fields);
 
         return fields;
     }
@@ -235,12 +330,16 @@ function getClass(id) {
      * @returns {Method[]}
      */
     output.methods = function (shallow = false) {
-        if (shallow && exists(this.data._shallow_method_cache)) {
-            return this.data._shallow_method_cache;
+        const classId = this.id();
+        const cache = shallow ? CLASS_CACHES.methodsShallow : CLASS_CACHES.methodsDeep;
+        const cacheKey = getCacheKey(classId, shallow);
+        
+        // Check global LRU cache
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
         }
-        if (!shallow && exists(this.data._method_cache)) {
-            return this.data._method_cache;
-        }
+        
         const methods = [];
 
         function addMethods(data) {
@@ -259,17 +358,16 @@ function getClass(id) {
             });
         }
         if (methods.length === 0) {
+            // Cache empty arrays too
+            cache.set(cacheKey, []);
             return [];
         }
         for (let i = 0; i < methods.length; i++) {
             methods[i].data._dataIndex = i;
         }
 
-        if (shallow) {
-            this.data._shallow_method_cache = methods;
-        }else {
-            this.data._method_cache = methods;
-        }
+        // Store in global LRU cache
+        cache.set(cacheKey, methods);
 
         return methods;
     }
@@ -277,9 +375,16 @@ function getClass(id) {
     output.getMethods = output.methods;
 
     output.constructors = function () {
-        if (exists(this.data._constructor_cache)) {
-            return this.data._constructor_cache;
+        const classId = this.id();
+        const cache = CLASS_CACHES.constructors;
+        const cacheKey = getCacheKey(classId);
+        
+        // Check global LRU cache
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
         }
+        
         const constructors = [];
         if (exists(this.data[PROPERTY.CONSTRUCTORS])) {
             for (let i = 0; i < this.data[PROPERTY.CONSTRUCTORS].length; i++) {
@@ -288,6 +393,8 @@ function getClass(id) {
         }
 
         if (constructors.length === 0) {
+            // Cache empty arrays too
+            cache.set(cacheKey, []);
             return [];
         }
 
@@ -295,7 +402,8 @@ function getClass(id) {
             constructors[i].data._dataIndex = i;
         }
 
-        this.data._constructor_cache = constructors;
+        // Store in global LRU cache
+        cache.set(cacheKey, constructors);
         return constructors;
     }
 
@@ -464,20 +572,33 @@ function getClass(id) {
     }
 
     output.getPackageName = function () {
-        if (exists(this.data._cachedPackageName)) {
-            return this.data._cachedPackageName;
+        const classId = this.id();
+        const cache = CLASS_CACHES.packageNames;
+        const cacheKey = getCacheKey(classId);
+        
+        // Check global LRU cache
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
         }
+        
+        let result;
         const packageName = this.data[PROPERTY.PACKAGE_NAME];
         if (exists(packageName)) {
-            this.data._cachedPackageName = getPackageName(packageName);
+            result = getPackageName(packageName);
         } else {
             if (this.isRawClass()) {
-                this.data._cachedPackageName = "";
+                result = "";
             } else if (this.isParameterized()) {
-                this.data._cachedPackageName = getClass(this.getRawType()).getPackageName();
+                result = getClass(this.getRawType()).getPackageName();
+            } else {
+                result = "";
             }
         }
-        return this.data._cachedPackageName;
+        
+        // Store in global LRU cache
+        cache.set(cacheKey, result);
+        return result;
     }
     output.package = output.getPackageName;
     output.getPackage = output.getPackageName;
@@ -487,14 +608,23 @@ function getClass(id) {
     }
 
     output.getAllInheritedClasses = function () {
-        if (exists(this.data._cachedInheritedClasses)) {
-            return this.data._cachedInheritedClasses;
+        const classId = this.id();
+        const cache = CLASS_CACHES.inheritedClasses;
+        const cacheKey = getCacheKey(classId);
+        
+        // Check global LRU cache
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
         }
+        
         let classes = new Set();
         this._follow_inheritance((data, index) => {
             classes.add(index);
         });
-        this.data._cachedInheritedClasses = classes;
+        
+        // Store in global LRU cache
+        cache.set(cacheKey, classes);
         return classes;
     }
 

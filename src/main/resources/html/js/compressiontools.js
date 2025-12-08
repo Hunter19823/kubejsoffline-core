@@ -14,10 +14,26 @@ function cachedFunction(func) {
 function clearAllCaches() {
     LOOK_UP_CACHE.clear();
     RELATIONSHIP_GRAPH.clear();
+    // Clear global LRU caches if they exist
+    if (typeof CLASS_CACHES !== 'undefined') {
+        CLASS_CACHES.fieldsShallow.clear();
+        CLASS_CACHES.fieldsDeep.clear();
+        CLASS_CACHES.methodsShallow.clear();
+        CLASS_CACHES.methodsDeep.clear();
+        CLASS_CACHES.constructors.clear();
+        CLASS_CACHES.packageNames.clear();
+        CLASS_CACHES.inheritedClasses.clear();
+    }
     for (let i = 0; i < DATA.types.length; i++) {
         delete DATA.types[i]._name_cache;
+        // Old cache properties - may not exist anymore but safe to delete
         delete DATA.types[i]._cachedInheritedClasses;
         delete DATA.types[i]._cachedPackageName;
+        delete DATA.types[i]._field_cache;
+        delete DATA.types[i]._shallow_field_cache;
+        delete DATA.types[i]._method_cache;
+        delete DATA.types[i]._shallow_method_cache;
+        delete DATA.types[i]._constructor_cache;
         delete DATA.types[i]._id;
     }
     DATA._eventsIndexed = false;
