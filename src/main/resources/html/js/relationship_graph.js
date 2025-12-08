@@ -56,7 +56,7 @@ function markRelationship(from, targets, relationshipTypes, inverseRelationshipT
  * using the data provided in the class data.
  * @param target {TypeIdentifier} the id of the class
  */
-function indexClass(target) {
+async function indexClass(target) {
     const classType = getClass(target);
     classType._follow_inheritance((parent, index) => {
         if (index === target) {
@@ -294,7 +294,21 @@ async function optimizeDataSearch(progressCallback = null) {
             continue;
         }
         const subject = getClass(i);
-        indexClass(i);
+        indexPromises.push(indexClass(i).then(() => {
+            processedCount++;
+            // Send progress update every 10 items or on last item
+            if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+                const progress = (processedCount / totalTypes) * 100;
+                progressCallback({
+                    type: 'progress',
+                    stage: 'optimizing',
+                    message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
+                    progress: progress,
+                    current: processedCount,
+                    total: totalTypes
+                });
+            }
+        }));
         if (subject.isWildcard()) {
             DATA._wildcard_types.push(i);
         } else if (subject.isParameterizedType()) {
@@ -304,16 +318,14 @@ async function optimizeDataSearch(progressCallback = null) {
         } else {
             DATA._raw_types.push(i);
         }
-        processedCount++;
-        // Send progress update every 10 items or on last item
-        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
-            const progress = (processedCount / totalTypes) * 100;
+        if (progressCallback && (i % 10 === 0 || i === totalTypes)) {
+            const progress = (i / totalTypes) * 100;
             progressCallback({
                 type: 'progress',
                 stage: 'optimizing',
-                message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
+                message: `Scanners Initialized: ${i} / ${totalTypes}`,
                 progress: progress,
-                current: processedCount,
+                current: i,
                 total: totalTypes
             });
         }
