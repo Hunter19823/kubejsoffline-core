@@ -369,94 +369,98 @@ async function readLookupCacheEntry(key) {
 }
 
 /**
- * Write relationship graph entry to IndexedDB.
- * @param {string} relationshipType - The relationship type
- * @param {number} from - The source type identifier
- * @param {Set<number>|Array<number>} toSet - The target type identifiers
- * @returns {Promise<void>}
- */
-async function writeRelationshipGraphEntry(relationshipType, from, toSet) {
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
-        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        const key = `${relationshipType}:${from}`;
-        const value = Array.from(toSet);
-        const request = store.put({ relationshipType, from, toSet: value }, key);
-
-        request.onsuccess = () => {
-            // Update memory cache
-            const cacheKey = `${relationshipType}:${from}`;
-            if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
-                const firstKey = memoryCache.relationshipGraph.keys().next().value;
-                memoryCache.relationshipGraph.delete(firstKey);
-            }
-            memoryCache.relationshipGraph.set(cacheKey, new Set(value));
-            resolve();
-        };
-
-        request.onerror = () => {
-            reject(new Error('Failed to write relationship graph entry: ' + request.error));
-        };
-    });
-}
-
-/**
- * Write relationship graph entries in batches (by relationship type).
+ * Write relationship graph entries in a single transaction.
+ * All writes are queued at once for maximum performance.
  * @param {Map} relationshipGraph - The relationship graph Map
  * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage, progress)
  * @returns {Promise<void>}
  */
 async function writeRelationshipGraphBatch(relationshipGraph, progressCallback = null) {
     const db = await getDB();
+    
+    // Collect all entries first
+    const entries = [];
+    for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
+        for (const [from, toSet] of relationshipMap.entries()) {
+            const key = `${relationshipType}:${from}`;
+            const value = Array.from(toSet);
+            entries.push({
+                key: key,
+                relationshipType: relationshipType,
+                from: from,
+                toSet: value,
+                cacheKey: key
+            });
+        }
+    }
+    
+    const total = entries.length;
+    if (total === 0) {
+        return;
+    }
+    
+    // Use a single transaction for all writes
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
         let completed = 0;
-        let total = 0;
-
-        // Count total entries
-        for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
-            total += relationshipMap.size;
-        }
-
-        if (total === 0) {
-            resolve();
-            return;
-        }
-
-        // Write all entries
-        for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
-            for (const [from, toSet] of relationshipMap.entries()) {
-                const key = `${relationshipType}:${from}`;
-                const value = Array.from(toSet);
-                const request = store.put({ relationshipType, from, toSet: value }, key);
-
-                request.onsuccess = () => {
-                    // Update memory cache
-                    const cacheKey = `${relationshipType}:${from}`;
+        let hasError = false;
+        
+        // Queue all operations in a single transaction
+        for (const entry of entries) {
+            const request = store.put(
+                { 
+                    relationshipType: entry.relationshipType, 
+                    from: entry.from, 
+                    toSet: entry.toSet 
+                }, 
+                entry.key
+            );
+            
+            request.onsuccess = () => {
+                // Update memory cache (non-blocking, can happen asynchronously)
+                if (!hasError) {
                     if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
                         const firstKey = memoryCache.relationshipGraph.keys().next().value;
                         memoryCache.relationshipGraph.delete(firstKey);
                     }
-                    memoryCache.relationshipGraph.set(cacheKey, new Set(value));
+                    memoryCache.relationshipGraph.set(entry.cacheKey, new Set(entry.toSet));
+                    
                     completed++;
                     
-                    // Report progress (throttle to every 100 items or on completion)
-                    if (progressCallback && (completed % 100 === 0 || completed === total)) {
+                    // Report progress (throttle to every 1000 items or on completion)
+                    if (progressCallback && (completed % 1000 === 0 || completed === total)) {
                         const progress = (completed / total) * 100;
                         progressCallback(completed, total, 'relationshipGraph', progress);
                     }
-                    
-                    if (completed === total) {
-                        resolve();
-                    }
-                };
-                request.onerror = () => {
-                    reject(new Error('Failed to write relationship graph batch: ' + request.error));
-                };
-            }
+                }
+            };
+            
+            request.onerror = () => {
+                if (!hasError) {
+                    hasError = true;
+                    reject(new Error(`Failed to write relationship graph entry ${entry.key}: ${request.error}`));
+                }
+            };
         }
+        
+        // Handle transaction completion - this fires after all operations complete
+        transaction.oncomplete = () => {
+            if (!hasError) {
+                // Final progress update
+                if (progressCallback) {
+                    progressCallback(completed, total, 'relationshipGraph', 100);
+                }
+                resolve();
+            }
+        };
+        
+        transaction.onerror = () => {
+            if (!hasError) {
+                hasError = true;
+                reject(new Error(`Transaction failed: ${transaction.error}`));
+            }
+        };
     });
 }
 
@@ -1019,35 +1023,3 @@ async function cleanupOldDatabases(maxDatabases = MAX_DATABASES) {
         return 0;
     }
 }
-
-// Export functions for use in worker context (self) or main thread (window)
-const globalScope = typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : global);
-if (globalScope) {
-    globalScope.initIndexedDB = initIndexedDB;
-    globalScope.writeOptimizedData = writeOptimizedData;
-    globalScope.writeOptimizedDataBatch = writeOptimizedDataBatch;
-    globalScope.readOptimizedData = readOptimizedData;
-    globalScope.writeLookupCacheEntry = writeLookupCacheEntry;
-    globalScope.writeLookupCacheBatch = writeLookupCacheBatch;
-    globalScope.readLookupCacheEntry = readLookupCacheEntry;
-    globalScope.writeRelationshipGraphEntry = writeRelationshipGraphEntry;
-    globalScope.writeRelationshipGraphBatch = writeRelationshipGraphBatch;
-    globalScope.readRelationshipGraphEntry = readRelationshipGraphEntry;
-    globalScope.readRelationshipGraphByType = readRelationshipGraphByType;
-    globalScope.writeMetadata = writeMetadata;
-    globalScope.readMetadata = readMetadata;
-    globalScope.checkOptimizationStatus = checkOptimizationStatus;
-    globalScope.clearIndexedDB = clearIndexedDB;
-    globalScope.calculateDataVersion = calculateDataVersion;
-    globalScope.getStoredDataVersion = getStoredDataVersion;
-    globalScope.storeDataVersion = storeDataVersion;
-    globalScope.isDataVersionValid = isDataVersionValid;
-    globalScope.getDatabaseName = getDatabaseName;
-    globalScope.getCurrentDatabaseName = getCurrentDatabaseName;
-    globalScope.createShortHash = createShortHash;
-    globalScope.listAllVersionDatabases = listAllVersionDatabases;
-    globalScope.deleteDatabase = deleteDatabase;
-    globalScope.cleanupOldDatabases = cleanupOldDatabases;
-    globalScope.getDatabaseAccessTimes = getDatabaseAccessTimes;
-}
-
