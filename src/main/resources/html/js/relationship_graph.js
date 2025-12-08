@@ -54,6 +54,8 @@ function markRelationship(from, targets, relationshipTypes, inverseRelationshipT
 /**
  * This function marks all known relationships between itself and other classes
  * using the data provided in the class data.
+ * This version only handles class-specific relationships (inheritance, superclass, etc.)
+ * Field, method, and constructor relationships are handled in bulk by other functions.
  * @param target {TypeIdentifier} the id of the class
  */
 async function indexClass(target) {
@@ -74,30 +76,6 @@ async function indexClass(target) {
         getAsArray(classType.getSuperClass()),
         [RELATIONSHIP.SUPER_CLASS],
         []
-    );
-    markRelationship(
-        target,
-        classType.constructors(true).flatMap((constructorData) => constructorData.getParameters().map((parameterData) => parameterData.getType())),
-        [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
-        [RELATIONSHIP.REFERENCED_BY]
-    );
-    markRelationship(
-        target,
-        classType.fields(true).map((fieldData) => fieldData.getType()),
-        [RELATIONSHIP.FIELD_TYPE, RELATIONSHIP.REFERENCES],
-        [RELATIONSHIP.REFERENCED_BY]
-    );
-    markRelationship(
-        target,
-        classType.methods(true).map((methodData) => methodData.getType()),
-        [RELATIONSHIP.METHOD_RETURN_TYPE, RELATIONSHIP.REFERENCES],
-        [RELATIONSHIP.REFERENCED_BY]
-    );
-    markRelationship(
-        target,
-        classType.methods(true).flatMap((methodData) => methodData.getParameters().map((parameterData) => parameterData.getType())),
-        [RELATIONSHIP.METHOD_PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
-        [RELATIONSHIP.REFERENCED_BY]
     );
     markRelationship(
         target,
@@ -153,6 +131,397 @@ async function indexClass(target) {
         [RELATIONSHIP.TYPE_VARIABLE_BOUNDS, RELATIONSHIP.REFERENCES],
         [RELATIONSHIP.BOUNDED_WITHIN, RELATIONSHIP.REFERENCED_BY]
     )
+}
+
+/**
+ * Optimized function to mark field type relationships in bulk.
+ * Groups fields by their type and marks relationships for all classes that have fields of each type.
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+async function markFieldTypeRelationships(progressCallback = null) {
+    // Map: fieldType -> Set of classIds that have fields of this type
+    const fieldTypeToClasses = new Map();
+    // Map: fieldId -> Set of classIds that have this field
+    const fieldIdToClasses = new Map();
+    
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
+    
+    // First pass: build reverse map from field IDs to classes
+    for (let i = 0; i < totalTypes; i++) {
+        const typeData = getTypeData(i);
+        if (!exists(typeData)) continue;
+        
+        if (exists(typeData[PROPERTY.FIELDS])) {
+            const fieldIds = getAsArray(typeData[PROPERTY.FIELDS]);
+            for (const fieldId of fieldIds) {
+                if (typeof fieldId === 'number') {
+                    if (!fieldIdToClasses.has(fieldId)) {
+                        fieldIdToClasses.set(fieldId, new Set());
+                    }
+                    fieldIdToClasses.get(fieldId).add(i);
+                }
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Collecting field data: ${processedCount} / ${totalTypes}`,
+                progress: (processedCount / totalTypes) * 50,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    }
+    
+    // Second pass: group fields by type
+    const totalFields = DATA.fields.length;
+    processedCount = 0;
+    
+    for (let fieldId = 0; fieldId < totalFields; fieldId++) {
+        const fieldData = getFieldData(fieldId);
+        if (!exists(fieldData)) continue;
+        
+        const decodedField = decodeField(fieldData);
+        const fieldType = decodedField[PROPERTY.FIELD_TYPE];
+        
+        if (exists(fieldType) && typeof fieldType === 'number') {
+            // Get all classes that have this field
+            const classesWithField = fieldIdToClasses.get(fieldId);
+            if (classesWithField && classesWithField.size > 0) {
+                if (!fieldTypeToClasses.has(fieldType)) {
+                    fieldTypeToClasses.set(fieldType, new Set());
+                }
+                classesWithField.forEach(classId => {
+                    fieldTypeToClasses.get(fieldType).add(classId);
+                });
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalFields)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Grouping fields by type: ${processedCount} / ${totalFields}`,
+                progress: 50 + (processedCount / totalFields) * 25,
+                current: processedCount,
+                total: totalFields
+            });
+        }
+    }
+    
+    // Third pass: mark relationships in bulk
+    let relationshipsMarked = 0;
+    const totalRelationships = fieldTypeToClasses.size;
+    
+    for (const [fieldType, classIds] of fieldTypeToClasses.entries()) {
+        const classArray = Array.from(classIds);
+        for (const classId of classArray) {
+            markRelationship(
+                classId,
+                [fieldType],
+                [RELATIONSHIP.FIELD_TYPE, RELATIONSHIP.REFERENCES],
+                [RELATIONSHIP.REFERENCED_BY]
+            );
+        }
+        
+        relationshipsMarked++;
+        if (progressCallback && (relationshipsMarked % 100 === 0 || relationshipsMarked === totalRelationships)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking field relationships: ${relationshipsMarked} / ${totalRelationships}`,
+                progress: 75 + (relationshipsMarked / totalRelationships) * 25,
+                current: relationshipsMarked,
+                total: totalRelationships
+            });
+        }
+    }
+}
+
+/**
+ * Optimized function to mark method return type and parameter type relationships in bulk.
+ * Groups methods by their return type and parameter types, then marks relationships for all classes.
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+async function markMethodTypeRelationships(progressCallback = null) {
+    // Map: methodReturnType -> Set of classIds
+    const methodReturnTypeToClasses = new Map();
+    // Map: methodParameterType -> Set of classIds
+    const methodParameterTypeToClasses = new Map();
+    // Map: methodId -> Set of classIds that have this method
+    const methodIdToClasses = new Map();
+    
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
+    
+    // First pass: build reverse map from method IDs to classes
+    for (let i = 0; i < totalTypes; i++) {
+        const typeData = getTypeData(i);
+        if (!exists(typeData)) continue;
+        
+        if (exists(typeData[PROPERTY.METHODS])) {
+            const methodIds = getAsArray(typeData[PROPERTY.METHODS]);
+            for (const methodId of methodIds) {
+                if (typeof methodId === 'number') {
+                    if (!methodIdToClasses.has(methodId)) {
+                        methodIdToClasses.set(methodId, new Set());
+                    }
+                    methodIdToClasses.get(methodId).add(i);
+                }
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Collecting method data: ${processedCount} / ${totalTypes}`,
+                progress: (processedCount / totalTypes) * 33,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    }
+    
+    // Second pass: group methods by return type and parameter types
+    const totalMethods = DATA.methods.length;
+    processedCount = 0;
+    
+    for (let methodId = 0; methodId < totalMethods; methodId++) {
+        const methodData = getMethodData(methodId);
+        if (!exists(methodData)) continue;
+        
+        const decodedMethod = decodeMethod(methodData);
+        const returnType = decodedMethod[PROPERTY.METHOD_RETURN_TYPE];
+        const parameterIds = getAsArray(decodedMethod[PROPERTY.PARAMETERS]);
+        
+        // Get all classes that have this method
+        const classesWithMethod = methodIdToClasses.get(methodId);
+        if (!classesWithMethod || classesWithMethod.size === 0) continue;
+        
+        // Group by return type
+        if (exists(returnType) && typeof returnType === 'number') {
+            if (!methodReturnTypeToClasses.has(returnType)) {
+                methodReturnTypeToClasses.set(returnType, new Set());
+            }
+            classesWithMethod.forEach(classId => {
+                methodReturnTypeToClasses.get(returnType).add(classId);
+            });
+        }
+        
+        // Group by parameter types
+        for (const paramId of parameterIds) {
+            if (typeof paramId !== 'number') continue;
+            const paramData = getParameterData(paramId);
+            if (!exists(paramData)) continue;
+            
+            const decodedParam = decodeParameter(paramData);
+            const paramType = decodedParam[PROPERTY.PARAMETER_TYPE];
+            
+            if (exists(paramType) && typeof paramType === 'number') {
+                if (!methodParameterTypeToClasses.has(paramType)) {
+                    methodParameterTypeToClasses.set(paramType, new Set());
+                }
+                classesWithMethod.forEach(classId => {
+                    methodParameterTypeToClasses.get(paramType).add(classId);
+                });
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalMethods)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Grouping methods by type: ${processedCount} / ${totalMethods}`,
+                progress: 33 + (processedCount / totalMethods) * 33,
+                current: processedCount,
+                total: totalMethods
+            });
+        }
+    }
+    
+    // Third pass: mark return type relationships in bulk
+    let relationshipsMarked = 0;
+    const totalReturnRelationships = methodReturnTypeToClasses.size;
+    
+    for (const [returnType, classIds] of methodReturnTypeToClasses.entries()) {
+        const classArray = Array.from(classIds);
+        for (const classId of classArray) {
+            markRelationship(
+                classId,
+                [returnType],
+                [RELATIONSHIP.METHOD_RETURN_TYPE, RELATIONSHIP.REFERENCES],
+                [RELATIONSHIP.REFERENCED_BY]
+            );
+        }
+        
+        relationshipsMarked++;
+        if (progressCallback && (relationshipsMarked % 100 === 0 || relationshipsMarked === totalReturnRelationships)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking method return type relationships: ${relationshipsMarked} / ${totalReturnRelationships}`,
+                progress: 66 + (relationshipsMarked / totalReturnRelationships) * 17,
+                current: relationshipsMarked,
+                total: totalReturnRelationships
+            });
+        }
+    }
+    
+    // Fourth pass: mark parameter type relationships in bulk
+    relationshipsMarked = 0;
+    const totalParamRelationships = methodParameterTypeToClasses.size;
+    
+    for (const [paramType, classIds] of methodParameterTypeToClasses.entries()) {
+        const classArray = Array.from(classIds);
+        for (const classId of classArray) {
+            markRelationship(
+                classId,
+                [paramType],
+                [RELATIONSHIP.METHOD_PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
+                [RELATIONSHIP.REFERENCED_BY]
+            );
+        }
+        
+        relationshipsMarked++;
+        if (progressCallback && (relationshipsMarked % 100 === 0 || relationshipsMarked === totalParamRelationships)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking method parameter relationships: ${relationshipsMarked} / ${totalParamRelationships}`,
+                progress: 83 + (relationshipsMarked / totalParamRelationships) * 17,
+                current: relationshipsMarked,
+                total: totalParamRelationships
+            });
+        }
+    }
+}
+
+/**
+ * Optimized function to mark constructor parameter type relationships in bulk.
+ * Groups constructors by their parameter types and marks relationships for all classes.
+ * @param {function|null} progressCallback - Optional callback function to report progress
+ */
+async function markConstructorParameterTypeRelationships(progressCallback = null) {
+    // Map: constructorParameterType -> Set of classIds
+    const constructorParameterTypeToClasses = new Map();
+    // Map: constructorId -> Set of classIds that have this constructor
+    const constructorIdToClasses = new Map();
+    
+    const totalTypes = DATA.types.length;
+    let processedCount = 0;
+    
+    // First pass: build reverse map from constructor IDs to classes
+    for (let i = 0; i < totalTypes; i++) {
+        const typeData = getTypeData(i);
+        if (!exists(typeData)) continue;
+        
+        if (exists(typeData[PROPERTY.CONSTRUCTORS])) {
+            const constructorIds = getAsArray(typeData[PROPERTY.CONSTRUCTORS]);
+            for (const constructorId of constructorIds) {
+                if (typeof constructorId === 'number') {
+                    if (!constructorIdToClasses.has(constructorId)) {
+                        constructorIdToClasses.set(constructorId, new Set());
+                    }
+                    constructorIdToClasses.get(constructorId).add(i);
+                }
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Collecting constructor data: ${processedCount} / ${totalTypes}`,
+                progress: (processedCount / totalTypes) * 50,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
+    }
+    
+    // Second pass: group constructors by parameter types
+    const totalConstructors = DATA.constructors.length;
+    processedCount = 0;
+    
+    for (let constructorId = 0; constructorId < totalConstructors; constructorId++) {
+        const constructorData = getConstructorData(constructorId);
+        if (!exists(constructorData)) continue;
+        
+        const decodedConstructor = decodeConstructor(constructorData);
+        const parameterIds = getAsArray(decodedConstructor[PROPERTY.PARAMETERS]);
+        
+        // Get all classes that have this constructor
+        const classesWithConstructor = constructorIdToClasses.get(constructorId);
+        if (!classesWithConstructor || classesWithConstructor.size === 0) continue;
+        
+        // Group by parameter types
+        for (const paramId of parameterIds) {
+            if (typeof paramId !== 'number') continue;
+            const paramData = getParameterData(paramId);
+            if (!exists(paramData)) continue;
+            
+            const decodedParam = decodeParameter(paramData);
+            const paramType = decodedParam[PROPERTY.PARAMETER_TYPE];
+            
+            if (exists(paramType) && typeof paramType === 'number') {
+                if (!constructorParameterTypeToClasses.has(paramType)) {
+                    constructorParameterTypeToClasses.set(paramType, new Set());
+                }
+                classesWithConstructor.forEach(classId => {
+                    constructorParameterTypeToClasses.get(paramType).add(classId);
+                });
+            }
+        }
+        
+        processedCount++;
+        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalConstructors)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Grouping constructors by parameter type: ${processedCount} / ${totalConstructors}`,
+                progress: 50 + (processedCount / totalConstructors) * 25,
+                current: processedCount,
+                total: totalConstructors
+            });
+        }
+    }
+    
+    // Third pass: mark relationships in bulk
+    let relationshipsMarked = 0;
+    const totalRelationships = constructorParameterTypeToClasses.size;
+    
+    for (const [paramType, classIds] of constructorParameterTypeToClasses.entries()) {
+        const classArray = Array.from(classIds);
+        for (const classId of classArray) {
+            markRelationship(
+                classId,
+                [paramType],
+                [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
+                [RELATIONSHIP.REFERENCED_BY]
+            );
+        }
+        
+        relationshipsMarked++;
+        if (progressCallback && (relationshipsMarked % 100 === 0 || relationshipsMarked === totalRelationships)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking constructor parameter relationships: ${relationshipsMarked} / ${totalRelationships}`,
+                progress: 75 + (relationshipsMarked / totalRelationships) * 25,
+                current: relationshipsMarked,
+                total: totalRelationships
+            });
+        }
+    }
 }
 
 /**
@@ -330,11 +699,18 @@ async function optimizeDataSearch(progressCallback = null) {
             });
         }
     }
-    // Start relationship marking in parallel with class indexing
-    const relationshipPromise = markAllRelationships(progressCallback);
     
-    // Wait for both class indexing and relationship marking to complete
-    await Promise.all([...indexPromises, relationshipPromise]);
+    // Wait for class indexing to complete first (for class-specific relationships)
+    await Promise.all(indexPromises);
+    
+    // Now process field, method, and constructor relationships in bulk
+    // These can run in parallel since they don't depend on each other
+    await Promise.all([
+        markFieldTypeRelationships(progressCallback),
+        markMethodTypeRelationships(progressCallback),
+        markConstructorParameterTypeRelationships(progressCallback),
+        markAllRelationships(progressCallback)
+    ]);
     findEventClasses();
 }
 
@@ -376,37 +752,6 @@ function getRelation(relationshipType, id) {
     
     // If not in memory, the relationship graph hasn't been loaded yet.
     // This should only happen during initialization. Return empty array.
-    return [];
-}
-
-// Async version for when async is explicitly needed
-async function getRelationAsync(relationshipType, id) {
-    // Check in-memory cache first
-    if (RELATIONSHIP_GRAPH.has(relationshipType)) {
-        const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
-        if (relationshipMap.has(id)) {
-            return Array.from(relationshipMap.get(id));
-        }
-    }
-    
-    // Try to load from IndexedDB
-    if (typeof readRelationshipGraphEntry === 'function') {
-        try {
-            const toSet = await readRelationshipGraphEntry(relationshipType, id);
-            if (toSet !== undefined) {
-                // Update in-memory cache
-                if (!RELATIONSHIP_GRAPH.has(relationshipType)) {
-                    RELATIONSHIP_GRAPH.set(relationshipType, new Map());
-                }
-                const relationshipMap = RELATIONSHIP_GRAPH.get(relationshipType);
-                relationshipMap.set(id, toSet);
-                return Array.from(toSet);
-            }
-        } catch (err) {
-            console.debug(`Failed to load relationship graph entry for ${relationshipType}:${id}:`, err);
-        }
-    }
-    
     return [];
 }
 
@@ -458,53 +803,6 @@ function getAllRelations(id) {
     return relations;
 }
 
-// Async version for when async is explicitly needed
-async function getAllRelationsAsync(id) {
-    const relations = new Map();
-    
-    // First, check in-memory cache
-    RELATIONSHIP_GRAPH.forEach((relationshipMap, relationshipType) => {
-        if (!relationshipMap.has(id)) {
-            return;
-        }
-        relationshipMap.get(id).forEach((to) => {
-            if (!relations.has(to)) {
-                relations.set(to, []);
-            }
-            relations.get(to).push(relationshipType);
-        })
-    });
-    
-    // Then, try to load missing relationship types from IndexedDB
-    if (typeof readRelationshipGraphByType === 'function') {
-        // Get all relationship types that might exist
-        const allRelationshipTypes = Object.values(RELATIONSHIP);
-        for (const relationshipType of allRelationshipTypes) {
-            // Skip if already loaded in memory
-            if (RELATIONSHIP_GRAPH.has(relationshipType)) {
-                continue;
-            }
-            
-            try {
-                const relationshipMap = await readRelationshipGraphByType(relationshipType);
-                if (relationshipMap && relationshipMap.has(id)) {
-                    // Update in-memory cache
-                    RELATIONSHIP_GRAPH.set(relationshipType, relationshipMap);
-                    relationshipMap.get(id).forEach((to) => {
-                        if (!relations.has(to)) {
-                            relations.set(to, []);
-                        }
-                        relations.get(to).push(relationshipType);
-                    });
-                }
-            } catch (err) {
-                console.debug(`Failed to load relationship graph for type ${relationshipType}:`, err);
-            }
-        }
-    }
-    
-    return relations;
-}
 
 /**
  * A JSON object that represents the object with the following structure:
@@ -518,57 +816,10 @@ async function getAllRelationsAsync(id) {
  * @typedef {
  *  Record<RELATIONSHIP | string,Object.<TypeIdentifier | string,TypeIdentifier[]>>
  * } RelationshipGraphJSON
- /**
+*/
+
+/**
  * Represents the string version of the relationship graph.
  * @see RelationshipGraphJSON
  * @typedef {string} RelationshipGraphJSONString
  */
-
-/**
- * Get a list of all the relationships a Type has to other Types.
- * This is used to send and receive data between the worker and the main thread.
- * @param map {RelationshipGraph} a map of TypeIdentifiers to a set of TypeIdentifiers.
- * @returns {RelationshipGraphJSONString} the JSON string of the relationship graph.
- */
-function getRelationshipGraphAsJSON(map) {
-    /**
-     * @type RelationshipGraphJSON
-     */
-    let output;
-    output = {};
-    [...map.entries()].forEach(([relationshipType, relationshipMap]) => {
-        const relationshipOutput = {};
-        [...relationshipMap.entries()].forEach(([from, toSet]) => {
-            relationshipOutput[from] = Array.from(toSet);
-        });
-        output[relationshipType] = relationshipOutput;
-    });
-    return JSON.stringify(output);
-}
-
-/**
- * Load a JSON string into the relationship graph.
- * This is used to send and receive data between the worker and the main thread.
- * NOTE: This function is deprecated - data is now stored in IndexedDB instead.
- * @param json {RelationshipGraphJSONString} the JSON string to load.
- * @deprecated Use IndexedDB instead. This function is kept for backward compatibility.
- */
-function loadJSONToRelationshipGraph(json) {
-    RELATIONSHIP_GRAPH.clear();
-    /**
-     * @type {RelationshipGraphJSON}
-     */
-    const parsed = JSON.parse(json);
-
-    Object.entries(parsed).forEach(
-        /**
-         * @param {[RELATIONSHIP, Object.<TypeIdentifier | string, TypeIdentifier[]>]} entry
-         */
-        ([relationshipType, relationMap]) => {
-            const relationshipOutput = new Map();
-            Object.entries(relationMap).forEach(([from, toSet]) => {
-                relationshipOutput.set(parseInt(from), new Set(toSet));
-            });
-            RELATIONSHIP_GRAPH.set(relationshipType, relationshipOutput);
-        });
-}
