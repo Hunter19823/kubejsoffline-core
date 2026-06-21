@@ -1,8 +1,41 @@
+import com.github.gradle.node.npm.task.NpmInstallTask
+import com.github.gradle.node.npm.task.NpmTask
+
 plugins {
     id 'java'
     id 'java-library'
     id 'maven-publish'
+    id 'com.github.node-gradle.node' version '7.1.0'
 }
+
+node {
+    version = '20.18.0'
+    download = true
+    npmInstallCommand = 'ci'
+    workDir = file("${rootProject.projectDir}/.gradle/nodejs")
+    npmWorkDir = file("${rootProject.projectDir}/.gradle/npm")
+}
+
+def htmlJsDir = file("${rootProject.projectDir}/html-js")
+
+tasks.register('npmInstallHtmlJs', NpmInstallTask) {
+    workingDir = htmlJsDir
+    inputs.file("${htmlJsDir}/package.json")
+    inputs.file("${htmlJsDir}/package-lock.json")
+    outputs.dir("${htmlJsDir}/node_modules")
+}
+
+tasks.register('buildHtmlJs', NpmTask) {
+    dependsOn npmInstallHtmlJs
+    workingDir = htmlJsDir
+    args = ['run', 'build']
+    inputs.dir("${htmlJsDir}/src")
+    inputs.file("${htmlJsDir}/tsconfig.json")
+    inputs.file("${htmlJsDir}/package.json")
+    outputs.dir("${rootProject.projectDir}/src/main/resources/html/js")
+}
+
+processResources.dependsOn buildHtmlJs
 
 group = project.group
 version = "${project.version}.${System.getenv("BUILD_VERSION") ?: 9999}"
@@ -38,13 +71,17 @@ test {
 
 compileJava {
     options.compilerArgs << '-parameters'
-    sourceCompatibility = '17'
-    targetCompatibility = '17'
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
 }
 
 java {
     withSourcesJar()
     withJavadocJar()
+}
+
+tasks.named('sourcesJar') {
+    dependsOn buildHtmlJs
 }
 
 publishing {

@@ -116,6 +116,21 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+# Prefer JetBrains-managed JDK 17 from ~/.jdks when JAVA_HOME is unset.
+if [ -z "${JAVA_HOME:-}" ] && [ -d "${HOME}/.jdks" ]; then
+    for _KJS_JDK in \
+        "${HOME}/.jdks/corretto-17.0.17" \
+        "${HOME}/.jdks"/corretto-17.* \
+        "${HOME}/.jdks"/openjdk-17.*
+    do
+        if [ -x "${_KJS_JDK}/bin/java" ]; then
+            JAVA_HOME="${_KJS_JDK}"
+            export JAVA_HOME
+            break
+        fi
+    done
+    unset _KJS_JDK
+fi
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then

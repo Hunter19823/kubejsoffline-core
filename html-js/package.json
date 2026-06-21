@@ -1,0 +1,14 @@
+{
+  "name": "kubejsoffline-html-js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.debug-stubs.json",
+    "check": "tsc --noEmit && tsc -p tsconfig.debug-stubs.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

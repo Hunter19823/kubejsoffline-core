@@ -35,6 +35,15 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
+@rem Prefer JetBrains-managed JDK 17 from %USERPROFILE%\.jdks when JAVA_HOME is unset.
+if not defined JAVA_HOME (
+  if exist "%USERPROFILE%\.jdks\corretto-17.0.17\bin\java.exe" (
+    set "JAVA_HOME=%USERPROFILE%\.jdks\corretto-17.0.17"
+  ) else (
+    for /d %%J in ("%USERPROFILE%\.jdks\corretto-17.*") do set "JAVA_HOME=%%~fJ"
+  )
+)
+
 @rem Find java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
 
