@@ -1,4 +1,3 @@
-import com.github.gradle.node.npm.task.NpmInstallTask
 import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
@@ -18,8 +17,9 @@ node {
 
 def htmlJsDir = file("${rootProject.projectDir}/html-js")
 
-tasks.register('npmInstallHtmlJs', NpmInstallTask) {
+tasks.register('npmInstallHtmlJs', NpmTask) {
     workingDir = htmlJsDir
+    args = ['ci']
     inputs.file("${htmlJsDir}/package.json")
     inputs.file("${htmlJsDir}/package-lock.json")
     outputs.dir("${htmlJsDir}/node_modules")
@@ -39,8 +39,9 @@ processResources.dependsOn buildHtmlJs
 
 def documentationE2eDir = file("${rootProject.projectDir}/documentation-e2e")
 
-tasks.register('npmInstallDocumentationE2e', NpmInstallTask) {
+tasks.register('npmInstallDocumentationE2e', NpmTask) {
     workingDir = documentationE2eDir
+    args = ['ci']
     inputs.file("${documentationE2eDir}/package.json")
     inputs.file("${documentationE2eDir}/package-lock.json")
     outputs.dir("${documentationE2eDir}/node_modules")

@@ -35,12 +35,13 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
-@rem Prefer JetBrains-managed JDK 17 from %USERPROFILE%\.jdks when JAVA_HOME is unset.
-if not defined JAVA_HOME (
-  if exist "%USERPROFILE%\.jdks\corretto-17.0.17\bin\java.exe" (
-    set "JAVA_HOME=%USERPROFILE%\.jdks\corretto-17.0.17"
-  ) else (
-    for /d %%J in ("%USERPROFILE%\.jdks\corretto-17.*") do set "JAVA_HOME=%%~fJ"
+@rem Run Gradle on JDK 21 (matches the java toolchain in build.gradle).
+if exist "%USERPROFILE%\.jdk\bin\java.exe" (
+  set "JAVA_HOME=%USERPROFILE%\.jdk"
+) else (
+  for /d %%J in ("%USERPROFILE%\.jdks\openjdk-21.*") do set "JAVA_HOME=%%~fJ"
+  if not exist "%JAVA_HOME%\bin\java.exe" (
+    for /d %%J in ("%USERPROFILE%\.jdks\corretto-21.*") do set "JAVA_HOME=%%~fJ"
   )
 )
 

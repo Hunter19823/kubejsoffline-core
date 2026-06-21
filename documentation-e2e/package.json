@@ -10,7 +10,7 @@
     "test:debug": "cross-env PLAYWRIGHT_HEADED=true PLAYWRIGHT_SLOW_MO=250 playwright test",
     "test:ui": "playwright test --ui",
     "report": "playwright show-report",
-    "install-browsers": "playwright install --with-deps chromium"
+    "install-browsers": "npx playwright install --with-deps chromium"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
