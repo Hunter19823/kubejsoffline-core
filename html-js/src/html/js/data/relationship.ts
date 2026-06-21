@@ -1,7 +1,6 @@
-function getRelationship([to, relations]: [number, unknown]): JavaType {
-    const output = getClass(to)!;
-    output.data = JSON.parse(JSON.stringify(output.data)) as Record<string, unknown>;
-    output._relations = relations;
-    return output;
-}
-
+function getRelationship([to, relations]: [number, Record<string, unknown>]): JavaType {
+    const output = getClass(to)!;
+    output.data = JSON.parse(JSON.stringify(output.data)) as EntityData;
+    output._relations = relations;
+    return output;
+}

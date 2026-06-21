@@ -9,10 +9,10 @@ type MethodLike = DocWrapper & {
 
 function getMethod(
     methodData: unknown,
-    typeVariableMap: Record<string, unknown> = {},
+    typeVariableMap: TypeVariableMap = {},
     sourceClassId: number,
     sourceMethodId: number
-): DocWrapper {
+): MethodDoc {
     if (!exists(methodData)) {
         throw new Error('Invalid method data: ' + methodData);
     }
@@ -42,7 +42,7 @@ function getMethod(
 
     output.toKubeJSStaticCall = function (this: DocWrapper) {
         const parent = getClass((this.getDeclaringClass as () => number)())!;
-        let out = `// KJSODocs: ${(this.hrefLink as () => string)()}\n$${parent.simplename((this.getTypeVariableMap as () => unknown)()).toUpperCase()}.${(this.name as () => string)()}(`;
+        let out = `// KJSODocs: ${(this.hrefLink as () => string)()}\n$${parent.simplename((this.getTypeVariableMap as () => TypeVariableMap)()).toUpperCase()}.${(this.name as () => string)()}(`;
         out += (this.parameters as MethodLike['parameters'])
             .call(this)
             .map((param) => param.name())
@@ -59,7 +59,7 @@ function getMethod(
             .call(this)
             .map((param) => param.id())
             .join(',');
-        return `${getClass((this.getTypeWrapped as () => JavaType)())!.getReferenceName((this.getTypeVariableMap as () => unknown)())} ${(this.getName as () => string)()}(${params})`;
+        return `${getClass((this.getTypeWrapped as () => JavaType)())!.getReferenceName((this.getTypeVariableMap as () => TypeVariableMap)())} ${(this.getName as () => string)()}(${params})`;
     };
 
     output.getId = output.id;
@@ -74,7 +74,7 @@ function getMethod(
 
     output.toString = function (this: DocWrapper) {
         const returnType = (this.getTypeWrapped as () => JavaType)().toString();
-        const modifier = MODIFIER.toString((this.getModifiers as () => unknown)());
+        const modifier = MODIFIER.toString((this.getModifiers as () => JavaModifiers)());
         const typeVariables = (this.getTypeVariablesMapped as () => { id(): number; toString(): string }[])
             .call(this)
             .map((v) => getClass(v.id())!)
@@ -150,7 +150,7 @@ function getMethod(
         return true;
     };
 
-    return output;
+    return output as MethodDoc;
 }
 
 function decodeMethod(objectString: unknown): EntityData {

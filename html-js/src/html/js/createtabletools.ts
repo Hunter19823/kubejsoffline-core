@@ -1,12 +1,16 @@
 type TableEntity = DocWrapper & Record<string, (...args: never[]) => unknown>;
 
+function readModifiers(entity: TableEntity): JavaModifiers {
+    return (entity.modifiers as () => JavaModifiers)();
+}
+
 function addFieldToTableFunction() {
     return (table: HTMLTableElement, field: TableEntity) => {
         try {
             const row = addRow(
                 table,
                 createFieldSignature(field),
-                span(MODIFIER.toString(field.modifiers())),
+                span(MODIFIER.toString(readModifiers(field))),
                 createFullSignature(field.getTypeWrapped() as number, field.getTypeVariableMap() as Record<string, number>),
                 span(field.getName() as string),
                 createFullSignature(field.getDeclaringClass() as number, field.getTypeVariableMap() as Record<string, number>)
@@ -24,7 +28,7 @@ function addConstructorToTableFunction() {
             const row = addRow(
                 table,
                 createConstructorSignature(constructor),
-                span(MODIFIER.toString(constructor.modifiers())),
+                span(MODIFIER.toString(readModifiers(constructor))),
                 createParametersSignature(constructor),
                 createTypeVariableSignature(constructor),
                 createFullSignature(constructor.getDeclaringClass() as number, constructor.getTypeVariableMap() as Record<string, number>)
@@ -42,7 +46,7 @@ function addMethodToTableFunction() {
             const row = addRow(
                 table,
                 createMethodSignature(method),
-                span(MODIFIER.toString(method.getModifiers())),
+                span(MODIFIER.toString(readModifiers(method))),
                 createFullSignature(method.getTypeWrapped() as number, method.getTypeVariableMap() as Record<string, number>),
                 span(method.name() as string),
                 createParametersSignature(method),
@@ -140,10 +144,10 @@ function createMethodTable(target: JavaType) {
         return;
     }
     methods = methods.filter((method) => {
-        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(method.modifiers())) {
+        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(readModifiers(method))) {
             return false;
         }
-        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(method.modifiers())) {
+        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(readModifiers(method))) {
             return false;
         }
         return true;
@@ -166,10 +170,10 @@ function createFieldTable(target: JavaType) {
         return;
     }
     fields = fields.filter((field) => {
-        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(field.modifiers())) {
+        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(readModifiers(field))) {
             return false;
         }
-        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(field.modifiers())) {
+        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(readModifiers(field))) {
             return false;
         }
         return true;
@@ -192,10 +196,10 @@ function createConstructorTable(target: JavaType) {
         return;
     }
     constructors = [...constructors].filter((constructor) => {
-        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(constructor.modifiers())) {
+        if (GLOBAL_SETTINGS?.showPrivate === false && MODIFIER.isPrivate(readModifiers(constructor))) {
             return false;
         }
-        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(constructor.modifiers())) {
+        if (GLOBAL_SETTINGS?.showProtected === false && MODIFIER.isProtected(readModifiers(constructor))) {
             return false;
         }
         return true;

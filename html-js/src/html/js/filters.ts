@@ -1,4 +1,5 @@
-type FilterPredicate = (data: unknown) => boolean;
+/** Values passed through {@link Filter} and search attribute readers. */
+type FilterPredicate = (data: FilterableSubject) => boolean;
 
 class Filter {
     predicate: FilterPredicate;
@@ -7,7 +8,7 @@ class Filter {
         this.predicate = predicate;
     }
 
-    filter(data: unknown[] | unknown): unknown[] {
+    filter(data: FilterableSubject[] | FilterableSubject): FilterableSubject[] {
         if (Array.isArray(data)) {
             return data.filter(this.predicate);
         }
@@ -61,8 +62,9 @@ class FilterBuilder {
     }
 }
 
-function readFilterAttribute(data: Record<string, unknown>, attribute: string): unknown {
-    const value = data[attribute];
+function readFilterAttribute(data: FilterableSubject, attribute: string): unknown {
+    const record = data as EntityData;
+    const value = record[attribute];
     if (value === undefined || value === null) {
         return value;
     }
@@ -74,14 +76,13 @@ function readFilterAttribute(data: Record<string, unknown>, attribute: string): 
 
 function createAttributeFilter(
     attribute: string,
-    value: unknown,
+    value: string | number | boolean,
     inclusive = true,
     case_sensitive = false
 ): Filter {
     if (case_sensitive && inclusive) {
         return new Filter((data) => {
-            const record = data as Record<string, unknown>;
-            const attr = readFilterAttribute(record, attribute);
+            const attr = readFilterAttribute(data, attribute);
             if (attr === undefined || attr === null) {
                 return false;
             }
@@ -90,8 +91,7 @@ function createAttributeFilter(
     }
     if (case_sensitive && !inclusive) {
         return new Filter((data) => {
-            const record = data as Record<string, unknown>;
-            const attr = readFilterAttribute(record, attribute);
+            const attr = readFilterAttribute(data, attribute);
             if (attr === undefined || attr === null) {
                 return true;
             }
@@ -101,8 +101,7 @@ function createAttributeFilter(
     const lowerValue = `${value}`.toLowerCase();
     if (inclusive) {
         return new Filter((data) => {
-            const record = data as Record<string, unknown>;
-            const attr = readFilterAttribute(record, attribute);
+            const attr = readFilterAttribute(data, attribute);
             if (attr === undefined || attr === null) {
                 return false;
             }
@@ -110,8 +109,7 @@ function createAttributeFilter(
         });
     }
     return new Filter((data) => {
-        const record = data as Record<string, unknown>;
-        const attr = readFilterAttribute(record, attribute);
+        const attr = readFilterAttribute(data, attribute);
         if (attr === undefined || attr === null) {
             return true;
         }

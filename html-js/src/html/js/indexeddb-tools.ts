@@ -6,8 +6,11 @@
  */
 
 const DB_NAME_PREFIX = 'kubejs_offline_docs';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const MAX_DATABASES = 3; // Maximum number of databases to keep
+/** Stored in metadata; bump when relationship graph IndexedDB layout changes. */
+const RELATIONSHIP_GRAPH_STORAGE_VERSION = 2;
+const METADATA_RELATIONSHIP_GRAPH_SCHEMA = 'relationshipGraphSchemaVersion';
 const DB_TRACKING_KEY = 'kubejs_offline_db_tracking'; // localStorage key for tracking database access
 
 // Store names
@@ -115,10 +118,11 @@ function initIndexedDB(dataVersion = null) {
             if (!db.objectStoreNames.contains(STORE_LOOKUP_CACHE)) {
                 db.createObjectStore(STORE_LOOKUP_CACHE);
             }
+            if (event.oldVersion < 2 && db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
+                db.deleteObjectStore(STORE_RELATIONSHIP_GRAPH);
+            }
             if (!db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
-                const relationshipStore = db.createObjectStore(STORE_RELATIONSHIP_GRAPH);
-                relationshipStore.createIndex('relationshipType', 'relationshipType', { unique: false });
-                relationshipStore.createIndex('from', 'from', { unique: false });
+                db.createObjectStore(STORE_RELATIONSHIP_GRAPH);
             }
             if (!db.objectStoreNames.contains(STORE_METADATA)) {
                 db.createObjectStore(STORE_METADATA);
@@ -370,97 +374,79 @@ async function readLookupCacheEntry(key) {
 }
 
 /**
- * Write relationship graph entries in a single transaction.
- * All writes are queued at once for maximum performance.
+ * Convert a persisted relationship-type record into an in-memory adjacency map.
+ * @param {*} stored
+ * @returns {Map<number, Set<number>>|null}
+ */
+function relationshipTypeRecordToMap(stored) {
+    if (!stored) {
+        return null;
+    }
+    if (stored.rows) {
+        const map = new Map();
+        for (let i = 0; i < stored.rows.length; i++) {
+            const row = stored.rows[i];
+            map.set(row[0], new Set(row[1]));
+        }
+        return map;
+    }
+    if (stored.from !== undefined && stored.toSet) {
+        const map = new Map();
+        map.set(stored.from, new Set(stored.toSet));
+        return map;
+    }
+    return null;
+}
+
+/**
+ * Write the relationship graph: one IndexedDB record per relationship type (not per source node).
  * @param {Map} relationshipGraph - The relationship graph Map
  * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage, progress)
  * @returns {Promise<void>}
  */
 async function writeRelationshipGraphBatch(relationshipGraph, progressCallback = null) {
     const db = await getDB();
-    
-    // Collect all entries first
-    const entries = [];
+
+    const typesToWrite = [];
     for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
-        for (const [from, toSet] of relationshipMap.entries()) {
-            const key = `${relationshipType}:${from}`;
-            const value = Array.from(toSet);
-            entries.push({
-                key: key,
-                relationshipType: relationshipType,
-                from: from,
-                toSet: value,
-                cacheKey: key
-            });
+        if (relationshipMap.size === 0) {
+            continue;
         }
+        const rows = new Array(relationshipMap.size);
+        let rowIndex = 0;
+        for (const [from, toSet] of relationshipMap.entries()) {
+            rows[rowIndex++] = [from, Array.from(toSet)];
+        }
+        typesToWrite.push({ relationshipType, rows });
     }
-    
-    const total = entries.length;
+
+    const total = typesToWrite.length;
     if (total === 0) {
         return;
     }
-    
-    // Use a single transaction for all writes
+
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readwrite');
+        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH, STORE_METADATA], 'readwrite');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        let completed = 0;
-        let hasError = false;
-        
-        // Queue all operations in a single transaction
-        for (const entry of entries) {
-            const request = store.put(
-                { 
-                    relationshipType: entry.relationshipType, 
-                    from: entry.from, 
-                    toSet: entry.toSet 
-                }, 
-                entry.key
+        const metaStore = transaction.objectStore(STORE_METADATA);
+
+        for (const entry of typesToWrite) {
+            store.put(
+                { relationshipType: entry.relationshipType, rows: entry.rows },
+                entry.relationshipType
             );
-            
-            request.onsuccess = () => {
-                // Update memory cache (non-blocking, can happen asynchronously)
-                if (!hasError) {
-                    if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
-                        const firstKey = memoryCache.relationshipGraph.keys().next().value;
-                        memoryCache.relationshipGraph.delete(firstKey);
-                    }
-                    memoryCache.relationshipGraph.set(entry.cacheKey, new Set(entry.toSet));
-                    
-                    completed++;
-                    
-                    // Report progress (throttle to every 1000 items or on completion)
-                    if (progressCallback && (completed % 1000 === 0 || completed === total)) {
-                        const progress = (completed / total) * 100;
-                        progressCallback(completed, total, 'relationshipGraph', progress);
-                    }
-                }
-            };
-            
-            request.onerror = () => {
-                if (!hasError) {
-                    hasError = true;
-                    reject(new Error(`Failed to write relationship graph entry ${entry.key}: ${request.error}`));
-                }
-            };
         }
-        
-        // Handle transaction completion - this fires after all operations complete
+        metaStore.put(RELATIONSHIP_GRAPH_STORAGE_VERSION, METADATA_RELATIONSHIP_GRAPH_SCHEMA);
+
         transaction.oncomplete = () => {
-            if (!hasError) {
-                // Final progress update
-                if (progressCallback) {
-                    progressCallback(completed, total, 'relationshipGraph', 100);
-                }
-                resolve();
+            if (progressCallback) {
+                progressCallback(total, total, 'relationshipGraph', 100);
             }
+            resolve();
         };
-        
+
         transaction.onerror = () => {
-            if (!hasError) {
-                hasError = true;
-                reject(new Error(`Transaction failed: ${transaction.error}`));
-            }
+            reject(new Error(`Failed to write relationship graph: ${transaction.error}`));
         };
     });
 }
@@ -482,13 +468,11 @@ async function readRelationshipGraphEntry(relationshipType, from) {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        const key = `${relationshipType}:${from}`;
-        const request = store.get(key);
+        const request = store.get(relationshipType);
 
         request.onsuccess = () => {
-            const result = request.result;
-            const value = result ? new Set(result.toSet) : undefined;
-            // Update memory cache
+            const typeMap = relationshipTypeRecordToMap(request.result);
+            const value = typeMap && typeMap.has(from) ? typeMap.get(from) : undefined;
             if (value !== undefined) {
                 if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
                     const firstKey = memoryCache.relationshipGraph.keys().next().value;
@@ -515,15 +499,11 @@ async function readRelationshipGraphByType(relationshipType) {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        const index = store.index('relationshipType');
-        const request = index.getAll(relationshipType);
+        const request = store.get(relationshipType);
 
         request.onsuccess = () => {
-            const result = new Map();
-            for (const entry of request.result) {
-                result.set(entry.from, new Set(entry.toSet));
-            }
-            resolve(result);
+            const result = relationshipTypeRecordToMap(request.result);
+            resolve(result ?? new Map());
         };
 
         request.onerror = () => {
@@ -581,6 +561,11 @@ async function checkOptimizationStatus(data = null) {
     try {
         const status = await readMetadata('optimizationComplete');
         if (status !== true) {
+            return false;
+        }
+
+        const graphSchema = await readMetadata(METADATA_RELATIONSHIP_GRAPH_SCHEMA);
+        if (graphSchema !== RELATIONSHIP_GRAPH_STORAGE_VERSION) {
             return false;
         }
         

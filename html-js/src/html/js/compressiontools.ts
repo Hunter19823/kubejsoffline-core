@@ -1,47 +1,3 @@
-interface NameParametersInstance {
-    setTypeVariableMap(typeVariableMap: TypeVariableMap): NameParametersInstance;
-    setDefiningTypeVariable(isDefiningTypeVariable: boolean, typeVariable?: number | number[]): NameParametersInstance;
-    setAppendPackageName(appendPackageName: boolean): NameParametersInstance;
-    setIncludeGenerics(includeGenerics: boolean): NameParametersInstance;
-    disableEnclosingName(isDefiningParameterizedType: boolean): NameParametersInstance;
-    setOverrideID(overrideID: number | null): NameParametersInstance;
-    getTypeVariableMap(): TypeVariableMap;
-    getDefiningTypeVariable(typeVariable?: number | number[]): boolean;
-    getAppendPackageName(): boolean;
-    getIncludeGenerics(): boolean;
-    getDefiningParameterizedType(): boolean;
-    getOverrideID(): number | null;
-    remapType(type: number | JavaType): JavaType;
-}
-
-interface SignatureParametersInstance {
-    setTypeVariableMap(typeVariableMap: TypeVariableMap): SignatureParametersInstance;
-    setDefiningTypeVariable(isDefiningTypeVariable: boolean, typeVariable?: number | number[]): SignatureParametersInstance;
-    setAppendPackageName(appendPackageName: boolean): SignatureParametersInstance;
-    setOverrideID(overrideID: number | null): SignatureParametersInstance;
-    setDefiningParameterizedType(isDefiningParameterizedType: boolean): SignatureParametersInstance;
-    disableDeclaringClass(): SignatureParametersInstance;
-    disableEnclosingClass(): SignatureParametersInstance;
-    getTypeVariableMap(): TypeVariableMap;
-    getDefiningTypeVariable(typeVariable?: number | number[]): boolean;
-    getAppendPackageName(): boolean;
-    getOverrideID(): number | null;
-    getLinkableID(fallbackId?: number): number;
-    getDefiningParameterizedType(): boolean;
-    getIncludeEnclosingClass(): boolean;
-    remapType(type: number | JavaType): JavaType;
-}
-
-declare var name_parameters: {
-    new (): NameParametersInstance;
-};
-
-declare var signature_parameters: {
-    new (): SignatureParametersInstance;
-};
-
-type TypeVariableMap = Record<string, number>;
-
 function cachedFunction<F extends (...args: never[]) => unknown>(func: F): F {
     const cache: Record<string, unknown> = {};
 
@@ -54,7 +10,7 @@ function cachedFunction<F extends (...args: never[]) => unknown>(func: F): F {
     } as F;
 }
 
-function classOf(id: number | JavaType): JavaType {
+function classOf(id: DataArrayIndex | JavaType): JavaType {
     const type = getClass(id);
     if (!type) {
         throw new Error('Missing type for id: ' + String(id));
@@ -306,7 +262,11 @@ function computeExhaustiveMapping(id: number): TypeVariableMap {
     return mapping;
 }
 
-function getGenericDefinition(type: number, typeVariableMap: TypeVariableMap, includeGenerics = true): string {
+function getGenericDefinition(
+    type: DataArrayIndex | JavaType,
+    typeVariableMap: TypeVariableMap,
+    includeGenerics = true
+): string {
     return cachedGenericDefinition(type,
         new name_parameters()
             .setTypeVariableMap(typeVariableMap)
@@ -350,18 +310,23 @@ function getGenerics(actualTypes: number[], config: NameParametersInstance): str
 
 }
 
-function getParameterizedName(type: JavaType, config: NameParametersInstance): string {
+function getParameterizedName(type: JavaType, config: NameParametersInstance | SignatureParametersInstance): string {
     // Append the package name as long as the owner type does not exist and appendPackageName is true
-    const rawTypeName = cachedGenericDefinition(type.getRawType()!, config.setAppendPackageName(config.getAppendPackageName() && !exists(type.getOwnerType())).disableEnclosingName(true));
+    const rawTypeName = cachedGenericDefinition(
+        type.getRawType()!,
+        (config as NameParametersInstance)
+            .setAppendPackageName(config.getAppendPackageName() && !exists(type.getOwnerType()))
+            .disableEnclosingName(true)
+    );
     const ownerType = type.getOwnerType();
-    const ownerPrefix = (exists(ownerType) && (!config.getDefiningParameterizedType()) ? cachedGenericDefinition(ownerType!, config.disableEnclosingName(true)) + "$" : "");
+    const ownerPrefix = (exists(ownerType) && (!config.getDefiningParameterizedType()) ? cachedGenericDefinition(ownerType!, (config as NameParametersInstance).disableEnclosingName(true)) + "$" : "");
     const actualTypes = type.getTypeVariables();
-    const genericArguments = getGenerics(actualTypes, config.disableEnclosingName(true));
+    const genericArguments = getGenerics(actualTypes, (config as NameParametersInstance).disableEnclosingName(true));
 
     return ownerPrefix + rawTypeName + genericArguments;
 }
 
-function getWildcardName(type: JavaType, config: NameParametersInstance): string {
+function getWildcardName(type: JavaType, config: NameParametersInstance | SignatureParametersInstance): string {
     const name = "?";
     const lowerBounds = type.getLowerBound();
     if (lowerBounds.length !== 0) {
@@ -384,7 +349,7 @@ function getWildcardName(type: JavaType, config: NameParametersInstance): string
     return name;
 }
 
-function getTypeVariableName(type: JavaType, config: NameParametersInstance): string {
+function getTypeVariableName(type: JavaType, config: NameParametersInstance | SignatureParametersInstance): string {
     const typeVariableName = getNameData(type.data[PROPERTY.TYPE_VARIABLE_NAME] as number);
     if (config.getDefiningTypeVariable(type.id())) {
         return typeVariableName;
@@ -404,7 +369,7 @@ function getTypeVariableName(type: JavaType, config: NameParametersInstance): st
     return typeVariableName + joiner(bounds, " & ", (bound) => cachedGenericDefinition(bound, config.setDefiningTypeVariable(true, type.id())), " extends ");
 }
 
-function getRawClassName(type: JavaType, config: NameParametersInstance): string {
+function getRawClassName(type: JavaType, config: NameParametersInstance | SignatureParametersInstance): string {
     const name = getNameData(type.data[PROPERTY.CLASS_NAME] as number);
     if (config.getAppendPackageName()) {
         if (type.package() === '') {
@@ -416,7 +381,10 @@ function getRawClassName(type: JavaType, config: NameParametersInstance): string
     }
 }
 
-function getGenericDefinitionLogic(type: number | JavaType, config: NameParametersInstance): string {
+function getGenericDefinitionLogic(
+    type: DataArrayIndex | JavaType,
+    config: NameParametersInstance | SignatureParametersInstance
+): string {
     type = classOf(type);
     if (type.isRawClass()) {
         if (exists(type.getDeclaringClass())) {
@@ -748,7 +716,7 @@ function getParameterizedTypeSignature(type: JavaType, outputSpan: HTMLElement, 
  * @param config {signature_parameters} the config to use
  * @returns {HTMLElement} the span element containing the signature
  */
-function createLinkableSignature(type: number | JavaType, config: SignatureParametersInstance): HTMLElement {
+function createLinkableSignature(type: DataArrayIndex | JavaType, config: SignatureParametersInstance): HTMLElement {
     type = classOf(type);
     const outputSpan = document.createElement('span');
     if (type.isRawClass()) {

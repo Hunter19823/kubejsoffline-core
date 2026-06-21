@@ -22,6 +22,9 @@ classes/
 *.log
 
 html-js/node_modules/
+documentation-e2e/node_modules/
+documentation-e2e/playwright-report/
+documentation-e2e/test-results/
 
 # Emitted from html-js TypeScript (see html-js/README.md)
 src/main/resources/html/js/console.js

@@ -21,5 +21,5 @@ function getPackageName(id: number): string {
     if (parts.length === 1) {
         return String(parts[0]);
     }
-    return getPackageName(parts[1] as number) + '.' + parts[0];
+    return getPackageName(Number(parts[1])) + '.' + parts[0];
 }

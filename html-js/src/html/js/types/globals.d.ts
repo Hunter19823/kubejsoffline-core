@@ -14,19 +14,28 @@ interface Window {
 
 
 
-type EntityData = Record<string, unknown>;
+/** Fully qualified Java type name (e.g. `java.util.List<java.lang.String>`). */
+type FullTypeName = string;
+/** Java type name without package (e.g. `List<String>`). */
+type TypeName = string;
+/** Simple name without generics or bounds (e.g. `List`). */
+type SimplifiedTypeName = string;
+type JavaTypeName = FullTypeName | TypeName | SimplifiedTypeName;
+type PackageName = string;
 
-type DocWrapper = Record<string, unknown> & { data?: EntityData };
+type DataArrayIndex = number | [number, number];
+type TypeIdentifier = DataArrayIndex;
+type ParameterIdentifier = DataArrayIndex;
+type PackageIdentifier = DataArrayIndex;
+type NameIdentifier = DataArrayIndex;
+type AnnotationIdentifier = DataArrayIndex;
 
-interface LRUCacheInstance {
-  maxSize: number;
-  cache: Map<unknown, unknown>;
-  get(key: unknown): unknown;
-  set(key: unknown, value: unknown): void;
-  has(key: unknown): boolean;
-  clear(): void;
-  size(): number;
-}
+type ConstructorDefinition = string;
+type MethodDefinition = string;
+type FieldDefinition = string;
+/** Historical spelling preserved for compressed-data ids. */
+type ParameterDefintion = string;
+type ClassDefinition = string;
 
 declare function exists<T>(thing: T | null | undefined): thing is T;
 
@@ -43,17 +52,17 @@ declare const PROPERTY: Record<string, string>;
 
 declare const MODIFIER: {
 
-  toString(modifiers: unknown): string;
+  toString(modifiers: JavaModifiers): string;
 
-  isPublic(modifiers: unknown): boolean;
+  isPublic(modifiers: JavaModifiers): boolean;
 
-  isPrivate(modifiers: unknown): boolean;
+  isPrivate(modifiers: JavaModifiers): boolean;
 
-  isProtected(modifiers: unknown): boolean;
+  isProtected(modifiers: JavaModifiers): boolean;
 
-  isStatic(modifiers: unknown): boolean;
+  isStatic(modifiers: JavaModifiers): boolean;
 
-  isFinal(modifiers: unknown): boolean;
+  isFinal(modifiers: JavaModifiers): boolean;
 
 };
 
@@ -83,9 +92,7 @@ declare const GLOBAL_SETTINGS: {
 
 
 
-declare const NEW_QUERY_TERMS: Record<string, string>;
-
-
+declare const NEW_QUERY_TERMS: Record<string, DataFilterQueryMethodName>;
 
 declare const LINK_MAP: Record<string, () => void>;
 
@@ -168,15 +175,15 @@ declare const LOOK_UP_CACHE: Map<string, number>;
 
 declare const RELATIONSHIP_GRAPH: Map<unknown, Map<unknown, unknown>>;
 
-declare const CLASS_CACHES: {
-  fieldsShallow: LRUCacheInstance;
-  fieldsDeep: LRUCacheInstance;
-  methodsShallow: LRUCacheInstance;
-  methodsDeep: LRUCacheInstance;
-  constructors: LRUCacheInstance;
-  packageNames: LRUCacheInstance;
-  inheritedClasses: LRUCacheInstance;
-};
+interface ClassCachesGlobal {
+  fieldsShallow: LRUCacheInstance<string, FieldDoc[]>;
+  fieldsDeep: LRUCacheInstance<string, FieldDoc[]>;
+  methodsShallow: LRUCacheInstance<string, MethodDoc[]>;
+  methodsDeep: LRUCacheInstance<string, MethodDoc[]>;
+  constructors: LRUCacheInstance<string, ConstructorDoc[]>;
+  packageNames: LRUCacheInstance<string, string>;
+  inheritedClasses: LRUCacheInstance<string, Set<number>>;
+}
 
 declare const RELATIONS: string[];
 
@@ -194,11 +201,11 @@ declare const BINDINGS: Record<string, [string, number, unknown][]>;
 
 declare function createSearchBar(): HTMLElement;
 
-declare function dataFilter(): unknown;
+declare function dataFilter(): DataFilter;
 
 declare let _last_search_parameters: URLSearchParams | undefined;
 
-declare let _last_filter: unknown;
+declare let _last_filter: DataFilter;
 
 declare const TASKS: { OPTIMIZE: string };
 
@@ -261,15 +268,15 @@ declare function optimizeDataSearch(
   progressCallback?: RelationshipProgressCallback | null
 ): Promise<void>;
 
-declare function decodeField(data: unknown): Record<string, unknown>;
+declare function decodeField(data: string | EntityData): EntityData;
 
-declare function decodeMethod(data: unknown): Record<string, unknown>;
+declare function decodeMethod(data: string | MethodDefinition | EntityData): EntityData;
 
-declare function decodeConstructor(data: unknown): Record<string, unknown>;
+declare function decodeConstructor(data: string | ConstructorDefinition | EntityData): EntityData;
 
-declare function decodeParameter(data: unknown): Record<string, unknown>;
+declare function decodeParameter(data: string | ParameterDefintion | EntityData): EntityData;
 
-declare function getRelationship(id: unknown): unknown;
+declare function getRelationship(id: number): DocWrapper | null;
 
 declare function wipePage(): void;
 
@@ -289,7 +296,12 @@ declare function addLinkToElement(element: HTMLElement, id: string): void;
 
 declare function changeURLFromElement(element: HTMLElement): void;
 
-declare function createShortLink(id: unknown): HTMLElement;
+declare function createShortLink(id: DataArrayIndex, typeVariableMap?: TypeVariableMap): HTMLElement;
+
+declare function createFullSignature(
+  type: DataArrayIndex,
+  typeVariableMap?: TypeVariableMap
+): HTMLElement;
 
 declare function option(
   value: string,
@@ -305,44 +317,39 @@ declare function searchFromParameters(parameters: URLSearchParams): void;
 
 declare function loadSearchResults(): void;
 
-declare function createClassTable(title: string, table_id: string, data: unknown[]): unknown;
+declare function createClassTable(title: string, table_id: string, data: JavaType[]): PageableSortableTable<JavaType> | undefined;
 
-declare function createFieldTableFromList(title: string, fields: unknown[]): void;
+declare function createFieldTableFromList(title: string, fields: FieldDoc[]): void;
 
-declare function createMethodTableFromList(title: string, methods: unknown[]): void;
+declare function createMethodTableFromList(title: string, methods: MethodDoc[]): void;
 
 declare function addMethodToTable(
   table: HTMLTableElement,
-  declaringClass: unknown,
-  method: unknown
+  declaringClass: JavaType,
+  method: MethodDoc
 ): void;
 
-declare function createRelationshipTable(type: unknown): void;
+declare function createRelationshipTable(type: JavaType): void;
 
-declare function createFullSignature(
-  type: number,
-  typeVariableMap?: Record<string, number>
-): HTMLElement;
+declare function createTypeVariableMappingTable(type: JavaType): void;
 
-declare function createTypeVariableMappingTable(type: unknown): void;
+declare function createRelatedClassTable(type: JavaType): void;
 
-declare function createRelatedClassTable(type: unknown): void;
+declare function createConstructorTable(type: JavaType): void;
 
-declare function createConstructorTable(type: unknown): void;
+declare function createFieldTable(type: JavaType): void;
 
-declare function createFieldTable(type: unknown): void;
+declare function createMethodTable(type: JavaType): void;
 
-declare function createMethodTable(type: unknown): void;
+declare function loadWildcard(wildcard: JavaType): void;
 
-declare function loadWildcard(wildcard: unknown): void;
+declare function loadTypeVariable(typeVariable: JavaType): void;
 
-declare function loadTypeVariable(typeVariable: unknown): void;
+declare function loadParameterizedType(parameterizedType: JavaType): void;
 
-declare function loadParameterizedType(parameterizedType: unknown): void;
+declare function loadRawClass(data: EntityData): void;
 
-declare function loadRawClass(data: unknown): void;
-
-declare function loadClass(id: unknown): void;
+declare function loadClass(id: ClassLookupInput): void;
 
 declare function DecodeURL(): UrlData;
 
@@ -428,32 +435,24 @@ declare function setExceptions<T>(target: T): T;
 
 
 declare function getGenericDefinition(
-
   id: number,
-
-  typeVariableMap: unknown,
-
+  typeVariableMap: TypeVariableMap,
   includeGenerics: boolean
-
 ): string;
 
-declare function getGenericName(id: number, typeVariableMap: unknown, includeGenerics: boolean): string;
+declare function getGenericName(id: number, typeVariableMap: TypeVariableMap, includeGenerics: boolean): string;
 
 declare function getGenericDefinitionWithoutPackage(
-
   id: number,
-
-  typeVariableMap: unknown,
-
+  typeVariableMap: TypeVariableMap,
   includeGenerics: boolean
-
 ): string;
 
 declare function createTypeVariableMap(id: number, existingMap?: Record<string, number>): Record<string, number>;
 
 declare function clearAllCaches(): void;
 
-declare function deobfuscateData(data: unknown): unknown;
+declare function deobfuscateData(data: DocumentationData | EntityData): DocumentationData | EntityData;
 
 declare function joiner<T>(
   values: T[],
@@ -473,13 +472,22 @@ declare function tagJoiner<T>(
 
 declare function span(text: string): HTMLSpanElement;
 
-declare function createLink(element: HTMLElement, id: number, rawId?: number | null, focus?: unknown): HTMLElement;
+declare function createLink(element: HTMLElement, id: number, rawId?: number | null, focus?: string | null): HTMLElement;
 
-declare function createLinkableSignature(type: number | JavaType, config: unknown): HTMLElement;
+declare function createLinkableSignature(
+  type: DataArrayIndex | JavaType,
+  config: NameParametersInstance | SignatureParametersInstance
+): HTMLElement;
 
-declare let cachedGenericDefinition: (type: number | JavaType, config: unknown) => string;
+declare let cachedGenericDefinition: (
+  type: DataArrayIndex | JavaType,
+  config: NameParametersInstance | SignatureParametersInstance
+) => string;
 
-declare function getGenericDefinitionLogic(type: number | JavaType, config: unknown): string;
+declare function getGenericDefinitionLogic(
+  type: DataArrayIndex | JavaType,
+  config: NameParametersInstance | SignatureParametersInstance
+): string;
 
 declare function getPackageName(packageId: number): string;
 
@@ -491,25 +499,25 @@ declare function getRelation(relationship: number, id: number): Iterable<unknown
 
 interface JavaType {
 
-  data: Record<string, unknown>;
+  data: EntityData;
 
   id(): number;
 
-  referenceName(typeVariableMap?: unknown): string;
+  referenceName(typeVariableMap?: TypeVariableMap): string;
 
-  fullyQualifiedName(typeVariableMap?: unknown, includeGenerics?: boolean): string;
+  fullyQualifiedName(typeVariableMap?: TypeVariableMap, includeGenerics?: boolean): string;
 
-  getTypeVariableMap(): unknown;
+  getTypeVariableMap(): TypeVariableMap;
 
-  name(typeVariableMap?: unknown, includeGenerics?: boolean): string;
+  name(typeVariableMap?: TypeVariableMap, includeGenerics?: boolean): string;
 
-  simplename(typeVariableMap?: unknown): string;
+  simplename(typeVariableMap?: TypeVariableMap): string;
 
-  simpleName(typeVariableMap?: unknown): string;
+  simpleName(typeVariableMap?: TypeVariableMap): string;
 
-  getSimpleName(typeVariableMap?: unknown): string;
+  getSimpleName(typeVariableMap?: TypeVariableMap): string;
 
-  getReferenceName(typeVariableMap?: unknown): string;
+  getReferenceName(typeVariableMap?: TypeVariableMap): string;
 
   isTypeCompatibleWith(otherClass: JavaType): boolean;
 
@@ -539,11 +547,11 @@ interface JavaType {
 
   getSuperClass(): number | null | undefined;
 
-  getInterfaces(): unknown[];
+  getInterfaces(): TypeIdentifier[];
 
   getEnclosingClass(): number | null | undefined;
 
-  getInnerClasses(): unknown[];
+  getInnerClasses(): TypeIdentifier[];
 
   getRawType(): number | null | undefined;
 
@@ -555,7 +563,7 @@ interface JavaType {
 
   getPackageName(): string;
 
-  getParameterizedArgs(): unknown[];
+  getParameterizedArgs(): TypeIdentifier[];
 
   getRelatedClasses(
 
@@ -565,33 +573,33 @@ interface JavaType {
 
   ): [JavaType, string][];
 
-  fields(shallow?: boolean): unknown[];
+  fields(shallow?: boolean): FieldDoc[];
 
-  methods(shallow?: boolean): unknown[];
+  methods(shallow?: boolean): MethodDoc[];
 
-  getMethods(): unknown[];
+  getMethods(): MethodDoc[];
 
-  constructors(): unknown[];
+  constructors(): ConstructorDoc[];
 
-  getConstructors(): unknown[];
+  getConstructors(): ConstructorDoc[];
 
-  getFields(): unknown[];
+  getFields(): FieldDoc[];
 
   getPackage(): string;
 
-  modifiers(): number;
+  modifiers(): JavaModifiers;
 
   _follow_inheritance(action: (data: JavaType, index: number) => void): void;
 
-  withTypeVariableMap(map: unknown): void;
+  withTypeVariableMap(map: TypeVariableMap): void;
 
   hrefLink(): string;
 
   toString(): string;
 
-  hasDependency(id: unknown): boolean;
+  hasDependency(id: TypeIdentifier | number): boolean;
 
-  relation(index: number): unknown[] | undefined;
+  relation(index: number): Iterable<number> | undefined;
 
   toKubeJSLoad_1_18(): string;
 
@@ -603,17 +611,17 @@ interface JavaType {
 
   _array_depth?: number;
 
-  _relations?: unknown;
+  _relations?: Record<string, unknown>;
 
 }
 
 
 
-declare function getClass(id: unknown): JavaType | null;
+declare function getClass(id: ClassLookupInput): JavaType | null;
 
 
 
-declare function getTypeData(id: number): Record<string, unknown>;
+declare function getTypeData(id: number): EntityData;
 
 
 
@@ -621,23 +629,23 @@ declare function findClassByName(name: string): JavaType | null;
 
 
 
-declare function getAnnotationData(id: number): unknown;
+declare function getAnnotationData(id: number): CompressedEntityRow;
 
 
 
-declare function getFieldData(id: number): unknown;
+declare function getFieldData(id: number): CompressedEntityRow;
 
 
 
-declare function getConstructorData(id: number): unknown;
+declare function getConstructorData(id: number): CompressedEntityRow;
 
 
 
-declare function getParameterData(id: number): unknown;
+declare function getParameterData(id: number): CompressedEntityRow;
 
 
 
-declare function getMethodData(id: number): unknown;
+declare function getMethodData(id: number): CompressedEntityRow;
 
 
 
@@ -649,27 +657,27 @@ declare function getField(
 
   fieldID: number,
 
-  typeVariableMap: unknown,
+  typeVariableMap: TypeVariableMap,
 
   sourceClassId: number,
 
   sourceFieldId: number
 
-): unknown;
+): FieldDoc;
 
 
 
 declare function getMethod(
 
-  methodData: unknown,
+  methodData: MethodDefinition | EntityData,
 
-  typeVariableMap: unknown,
+  typeVariableMap: TypeVariableMap,
 
   sourceClassId: number,
 
   sourceMethodId: number
 
-): unknown;
+): MethodDoc;
 
 
 
@@ -677,13 +685,13 @@ declare function getConstructor(
 
   constructorID: number,
 
-  typeVariableMap: unknown,
+  typeVariableMap: TypeVariableMap,
 
   sourceClassId: number,
 
   sourceConstructorId: number
 
-): unknown;
+): ConstructorDoc;
 
 
 
@@ -691,7 +699,7 @@ declare function getParameter(
 
   parameterID: number,
 
-  typeVariableMap: unknown,
+  typeVariableMap: TypeVariableMap,
 
   sourceClassId: number,
 
@@ -701,7 +709,7 @@ declare function getParameter(
 
   sourceParameterId: number | null
 
-): unknown;
+): ParameterDoc;
 
 
 
@@ -717,19 +725,19 @@ interface CompressedTypeEntry {
 
 interface DocumentationData {
 
-  annotations: unknown[];
+  annotations: CompressedEntityRow[];
 
-  packages: unknown[];
+  packages: CompressedEntityRow[];
 
-  parameters: unknown[];
+  parameters: CompressedEntityRow[];
 
-  methods: unknown[];
+  methods: CompressedEntityRow[];
 
-  fields: unknown[];
+  fields: CompressedEntityRow[];
 
-  constructors: unknown[];
+  constructors: CompressedEntityRow[];
 
-  names: unknown[];
+  names: CompressedEntityRow[];
 
   types: CompressedTypeEntry[];
 

@@ -1,9 +1,9 @@
 function getConstructor(
     constructorID: number,
-    typeVariableMap: Record<string, unknown> = {},
+    typeVariableMap: TypeVariableMap = {},
     sourceClassId: number,
     sourceConstructorId: number
-): DocWrapper {
+): ConstructorDoc {
     if (!exists(constructorID)) {
         throw new Error('Invalid constructor id: ' + constructorID);
     }
@@ -27,7 +27,7 @@ function getConstructor(
 
     output.toKubeJSStaticCall = function (this: DocWrapper) {
         const parent = getClass((this.getDeclaringClass as () => number)())!;
-        let out = `// KJSODocs: ${(this.hrefLink as () => string)()}\nlet ${parent.simplename((this.getTypeVariableMap as () => unknown)())} = new $${parent.simplename((this.getTypeVariableMap as () => unknown)()).toUpperCase()}(`;
+        let out = `// KJSODocs: ${(this.hrefLink as () => string)()}\nlet ${parent.simplename((this.getTypeVariableMap as () => TypeVariableMap)())} = new $${parent.simplename((this.getTypeVariableMap as () => TypeVariableMap)()).toUpperCase()}(`;
         out += (this.parameters as () => { name(): string }[])
             .call(this)
             .map((param) => param.name())
@@ -41,7 +41,7 @@ function getConstructor(
     output.id = function (this: DocWrapper) {
         return (
             getClass((output.getDeclaringClass as () => number)())!.fullyQualifiedName(
-                (output.getTypeVariableMap as () => unknown)()
+                (output.getTypeVariableMap as () => TypeVariableMap)()
             ) +
             '.__init__(' +
             (output.parameters as () => { id(): string }[])
@@ -64,7 +64,7 @@ function getConstructor(
 
     output.toString = function (this: DocWrapper) {
         const parentName = getClass((this.getDeclaringClass as () => number)())!.toString();
-        const modifier = MODIFIER.toString((this.getModifiers as () => unknown)());
+        const modifier = MODIFIER.toString((this.getModifiers as () => JavaModifiers)());
         const typeVars = (this.getTypeVariablesMapped as () => { toString(): string }[])
             .call(this)
             .map((typeVar) => typeVar.toString())
@@ -84,7 +84,7 @@ function getConstructor(
             .join(' ');
     };
 
-    return output;
+    return output as ConstructorDoc;
 }
 
 function decodeConstructor(objectString: unknown): EntityData {

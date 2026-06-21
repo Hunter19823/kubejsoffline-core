@@ -1,10 +1,10 @@
-// @ts-nocheck
 /**
  * Class Attributes
  *
  * @file searching_and_sorting.js
  * @type {{OWNER_TYPE: string, TYPE_VARIABLE_BOUNDS: string, LOWER_BOUND: string, ARRAY_DEPTH: string, MODIFIERS: string, PACKAGE: string, PARAMETERIZED_ARGUMENTS: string, TYPED_NAME: string, UPPER_BOUND: string, SIMPLE_NAME: string, REFERENCE_NAME: string, ID: string, FULL_NAME_NON_GENERIC: string, RAW_TYPE: string, SUPER_CLASS: string}}
  */
+// @ts-nocheck
 const CLASS_ATTRIBUTES = {
     ID: 'id',
     REFERENCE_NAME: 'referenceName',
@@ -84,7 +84,7 @@ const ANNOTATION_ATTRIBUTES = {
  * @file searching_and_sorting.js
  * @type {{"parameter-raw-type": string, "raw-class-only": string, "method-id": string, simplename: string, "method-type-package": string, "method-name": string, "class-package": string, "class-any": string, "ignore-parameters": string, "field-any": string, "method-type-name": string, "type-name": string, "field-id": string, "parameter-id": string, "non-raw-class-only": string, "class-id": string, "class-raw-type": string, "parameter-type-name": string, "method-any": string, "class-type-simplename": string, "parameter-any": string, "field-raw-type": string, "field-type-name": string, "ignore-methods": string, "class-type-name": string, "field-name": string, "field-type-package": string, "parameter-type-simple-name": string, package: string, "parameter-name": string, "non-wildcard-only": string, any: string, "wildcard-only": string, "method-type-simplename": string, "class-name": string, "method-raw-type": string, "parameter-count": string, "type-variable-only": string, "ignore-classes": string, "field-type-simplename": string, "non-type-variable-only": string, "parameter-type-package": string, "ignore-fields": string, name: string, "raw-type": string}}
  */
-const NEW_QUERY_TERMS: Record<string, string> = {
+const NEW_QUERY_TERMS = {
     'any': 'withAny',
     'class-any': 'withClassAny',
     'field-any': 'withFieldAny',
@@ -154,7 +154,7 @@ const NEW_QUERY_TERMS: Record<string, string> = {
     'non-wildcard-only': 'withNonWildcardOnly',
 
 
-}
+} as Record<string, DataFilterQueryMethodName>;
 
 /**
  * Sort Functions

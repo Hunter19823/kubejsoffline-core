@@ -37,6 +37,69 @@ tasks.register('buildHtmlJs', NpmTask) {
 
 processResources.dependsOn buildHtmlJs
 
+def documentationE2eDir = file("${rootProject.projectDir}/documentation-e2e")
+
+tasks.register('npmInstallDocumentationE2e', NpmInstallTask) {
+    workingDir = documentationE2eDir
+    inputs.file("${documentationE2eDir}/package.json")
+    inputs.file("${documentationE2eDir}/package-lock.json")
+    outputs.dir("${documentationE2eDir}/node_modules")
+}
+
+tasks.register('installDocumentationE2eBrowsers', NpmTask) {
+    group = 'verification'
+    description = 'Downloads Chromium for documentation browser tests'
+    dependsOn npmInstallDocumentationE2e
+    workingDir = documentationE2eDir
+    args = ['run', 'install-browsers']
+}
+
+def documentationBrowserTestEnvironment = {
+    [
+            'DOCUMENTATION_HTML': "${layout.buildDirectory.get().asFile}/output.html",
+            'CI'                : '',
+    ]
+}
+
+tasks.register('documentationBrowserTest', NpmTask) {
+    group = 'verification'
+    description = 'After test (build/output.html), loads documentation in Chromium and verifies UI interactions'
+    dependsOn buildHtmlJs, test, installDocumentationE2eBrowsers
+    workingDir = documentationE2eDir
+    environment = documentationBrowserTestEnvironment()
+    args = ['run', 'test']
+    inputs.file("${layout.buildDirectory.get().asFile}/output.html")
+    inputs.dir("${documentationE2eDir}/tests")
+    inputs.dir("${documentationE2eDir}/lib")
+    inputs.file("${documentationE2eDir}/playwright.config.ts")
+}
+
+tasks.register('documentationBrowserTestHeaded', NpmTask) {
+    group = 'verification'
+    description = 'Same as documentationBrowserTest but opens a visible Chromium window (PLAYWRIGHT_HEADED=true)'
+    dependsOn buildHtmlJs, test, installDocumentationE2eBrowsers
+    workingDir = documentationE2eDir
+    environment = documentationBrowserTestEnvironment() + ['PLAYWRIGHT_HEADED': 'true']
+    args = ['run', 'test:headed']
+    inputs.file("${layout.buildDirectory.get().asFile}/output.html")
+    inputs.dir("${documentationE2eDir}/tests")
+    inputs.dir("${documentationE2eDir}/lib")
+    inputs.file("${documentationE2eDir}/playwright.config.ts")
+}
+
+tasks.register('documentationBrowserTestUi', NpmTask) {
+    group = 'verification'
+    description = 'Playwright UI mode: watch tests step through and inspect the page'
+    dependsOn buildHtmlJs, test, installDocumentationE2eBrowsers
+    workingDir = documentationE2eDir
+    environment = documentationBrowserTestEnvironment()
+    args = ['run', 'test:ui']
+    inputs.file("${layout.buildDirectory.get().asFile}/output.html")
+    inputs.dir("${documentationE2eDir}/tests")
+    inputs.dir("${documentationE2eDir}/lib")
+    inputs.file("${documentationE2eDir}/playwright.config.ts")
+}
+
 group = project.group
 version = "${project.version}.${System.getenv("BUILD_VERSION") ?: 9999}"
 
@@ -67,15 +130,17 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    dependsOn buildHtmlJs
 }
 
 compileJava {
     options.compilerArgs << '-parameters'
-    sourceCompatibility = '21'
-    targetCompatibility = '21'
 }
 
 java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
     withSourcesJar()
     withJavadocJar()
 }

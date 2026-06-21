@@ -81,13 +81,25 @@ function createFullSignature(id: number, typeVariableMap: Record<string, number>
     );
 }
 
+function readEntityModifiers(entity: EntityDoc): JavaModifiers {
+    return (entity.getModifiers as () => JavaModifiers)();
+}
+
+function readEntityTypeId(entity: EntityDoc): DataArrayIndex {
+    return (entity.getType as () => TypeIdentifier)();
+}
+
+function readEntityTypeVariableMap(entity: EntityDoc): TypeVariableMap {
+    return (entity.getTypeVariableMap as () => TypeVariableMap)();
+}
+
 function createMethodSignature(method: EntityDoc) {
     const out = document.createElement('span');
     const parameters = method.parameters() as EntityDoc[];
     const name = span(method.name() as string);
     appendAnnotationToolTip(name, method.annotations() as unknown[]);
-    out.append(span(MODIFIER.toString(method.modifiers()) + ' '));
-    out.append(createShortLink(method.getTypeWrapped() as number, method.getTypeVariableMap() as Record<string, number>));
+    out.append(span(MODIFIER.toString(readEntityModifiers(method)) + ' '));
+    out.append(createShortLink(readEntityTypeId(method), readEntityTypeVariableMap(method)));
     out.append(' ');
     out.append(name);
     out.append('(');
@@ -105,8 +117,8 @@ function createParameterSignature(parameter: EntityDoc) {
     const output = span('');
     output.append(
         createShortLink(
-            parameter.getTypeWrapped() as number,
-            parameter.getTypeVariableMap() as Record<string, number>
+            readEntityTypeId(parameter),
+            readEntityTypeVariableMap(parameter)
         )
     );
     output.append(' ');
@@ -118,9 +130,8 @@ function createFieldSignature(field: EntityDoc) {
     const out = document.createElement('span');
     const name = span(field.getName() as string);
     appendAnnotationToolTip(name, field.getAnnotations() as unknown[]);
-    out.append(span(MODIFIER.toString(field.getModifiers()) + ' '));
-    const type = field.getTypeWrapped() as number;
-    out.append(createShortLink(type, field.getTypeVariableMap() as Record<string, number>));
+    out.append(span(MODIFIER.toString(readEntityModifiers(field)) + ' '));
+    out.append(createShortLink(readEntityTypeId(field), readEntityTypeVariableMap(field)));
     out.append(' ');
     out.append(name);
     return out;
@@ -138,7 +149,7 @@ function createConstructorSignature(constructor: EntityDoc) {
     const type = constructor.getDeclaringClassWrapped() as EntityDoc;
     const out = document.createElement('span');
     const parameters = constructor.getParameters() as EntityDoc[];
-    out.append(span(MODIFIER.toString(constructor.getModifiers()) + ' '));
+    out.append(span(MODIFIER.toString(readEntityModifiers(constructor)) + ' '));
     out.append(
         createShortLink(
             (type as unknown as JavaType).id(),
@@ -148,7 +159,7 @@ function createConstructorSignature(constructor: EntityDoc) {
     out.append('(');
     for (let i = 0; i < parameters.length; i++) {
         const param = parameters[i];
-        out.appendChild(createShortLink(param.getTypeWrapped() as number, param.getTypeVariableMap() as Record<string, number>));
+        out.appendChild(createShortLink(readEntityTypeId(param), readEntityTypeVariableMap(param)));
         const name = span(param.name() as string);
         appendAnnotationToolTip(name, param.annotations() as unknown[]);
         out.append(' ');
@@ -164,7 +175,7 @@ function createConstructorSignature(constructor: EntityDoc) {
 function createAnnotationSignature(annotation: EntityDoc | unknown) {
     const ann = annotation as EntityDoc;
     const out = document.createElement('span');
-    const type = getClass(ann.getTypeWrapped() as number)!;
+    const type = getClass(readEntityTypeId(ann))!;
     const annotation_string = `@${type.fullyQualifiedName()}(${ann.string()})`;
     out.append(annotation_string);
     return out;
@@ -317,10 +328,10 @@ function addFieldToTable(table: HTMLTableElement, field: EntityDoc) {
         table,
         href(
             span(String(field.getDeclaringClass() as number)),
-            `#${getClass(field.getDeclaringClass() as number)!.fullyQualifiedName(field.getTypeVariableMap())}`
+            `#${getClass(field.getDeclaringClass() as number)!.fullyQualifiedName(readEntityTypeVariableMap(field))}`
         ),
         createFieldSignature(field),
-        createFullSignature(field.getDeclaringClass() as number, field.getTypeVariableMap() as Record<string, number>)
+        createFullSignature(field.getDeclaringClass() as number, readEntityTypeVariableMap(field))
     );
     appendAttributesToFieldTableRow(row, table.id, field);
 }

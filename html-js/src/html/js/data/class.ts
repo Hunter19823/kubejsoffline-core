@@ -1,20 +1,18 @@
 // @ts-nocheck
 /**
- * LRU (Least Recently Used) Cache implementation.
- * Maintains a fixed-size cache, evicting the least recently used items when the limit is reached.
+ * LRU (Least Recently Used) Cache implementation. * Maintains a fixed-size cache, evicting the least recently used items when the limit is reached.
  * @param {number} maxSize - Maximum number of entries in the cache
  */
-class LRUCache implements LRUCacheInstance {
+class LRUCache<K, V> implements LRUCacheInstance<K, V> {
     maxSize: number;
-    cache: Map<unknown, unknown>;
+    cache: Map<K, V>;
 
     constructor(maxSize?: number) {
         this.maxSize = maxSize || (GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize) || 500;
         this.cache = new Map();
     }
 
-    get(key: unknown) {
-        if (this.cache.has(key)) {
+    get(key: K): V | undefined {        if (this.cache.has(key)) {
             const value = this.cache.get(key);
             this.cache.delete(key);
             this.cache.set(key, value);
@@ -23,18 +21,17 @@ class LRUCache implements LRUCacheInstance {
         return undefined;
     }
 
-    set(key: unknown, value: unknown) {
+    set(key: K, value: V) {
         if (this.cache.has(key)) {
             this.cache.delete(key);
         } else if (this.cache.size >= this.maxSize) {
-            const firstKey = this.cache.keys().next().value;
+            const firstKey = this.cache.keys().next().value as K;
             this.cache.delete(firstKey);
         }
         this.cache.set(key, value);
     }
 
-    has(key: unknown) {
-        return this.cache.has(key);
+    has(key: K) {        return this.cache.has(key);
     }
 
     clear() {
@@ -49,15 +46,14 @@ class LRUCache implements LRUCacheInstance {
 // Global LRU caches for class data
 // These are shared across all class instances to reduce memory usage
 const CLASS_CACHES = {
-    fieldsShallow: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    fieldsDeep: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    methodsShallow: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    methodsDeep: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    constructors: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    packageNames: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
-    inheritedClasses: new LRUCache(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500)
+    fieldsShallow: new LRUCache<string, FieldDoc[]>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    fieldsDeep: new LRUCache<string, FieldDoc[]>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    methodsShallow: new LRUCache<string, MethodDoc[]>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    methodsDeep: new LRUCache<string, MethodDoc[]>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    constructors: new LRUCache<string, ConstructorDoc[]>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    packageNames: new LRUCache<string, string>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500),
+    inheritedClasses: new LRUCache<string, Set<number>>(GLOBAL_SETTINGS && GLOBAL_SETTINGS.cacheMaxSize || 500)
 };
-
 /**
  * Helper function to generate a cache key for class data.
  * @param {TypeIdentifier} classId - The class identifier
@@ -77,9 +73,8 @@ function getCacheKey(classId: number, shallow?: boolean) {
  * @param id {TypeIdentifier | FullTypeName | TypeName | SimplifiedTypeName | IndexedClassData}
  * @returns {JavaType | null}
  */
-function getClass(id: unknown): JavaType | null {
-    let output: any = {};
-    if (!exists(id)) {
+function getClass(id: ClassLookupInput): JavaType | null {
+    let output: JavaTypeBuilder = { data: {} as EntityData };    if (!exists(id)) {
         throw new Error("Invalid class id: " + id);
     }
     switch (typeof (id)) {

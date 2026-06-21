@@ -51,8 +51,10 @@ async function writeOptimizedDataToIndexedDB(dataVersion) {
         const optimizedPropsCount = Object.keys(optimizedProperties).length;
         const lookupCacheCount = LOOK_UP_CACHE instanceof Map ? LOOK_UP_CACHE.size : Object.keys(LOOK_UP_CACHE).length;
         let relationshipGraphCount = 0;
-        for (const [relationshipType, relationshipMap] of RELATIONSHIP_GRAPH.entries()) {
-            relationshipGraphCount += relationshipMap.size;
+        for (const [, relationshipMap] of RELATIONSHIP_GRAPH.entries()) {
+            if (relationshipMap.size > 0) {
+                relationshipGraphCount++;
+            }
         }
         const totalItems = optimizedPropsCount + lookupCacheCount + relationshipGraphCount;
         let baseCompleted = 0; // Track items completed in previous stages

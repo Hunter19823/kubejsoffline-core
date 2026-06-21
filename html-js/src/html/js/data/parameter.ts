@@ -1,11 +1,11 @@
 function getParameter(
     parameterID: number,
-    typeVariableMap: Record<string, unknown> = {},
+    typeVariableMap: TypeVariableMap = {},
     sourceClassId: number,
     sourceMethodId: number | null = null,
     sourceConstructorId: number | null = null,
     sourceParameterId: number | null = null
-): DocWrapper {
+): ParameterDoc {
     if (typeof parameterID !== 'number') {
         console.error('Invalid parameter type for parameter:', parameterID);
         throw new Error(`Invalid parameter type for parameter: ${parameterID}`);
@@ -45,14 +45,14 @@ function getParameter(
     (output.withTypeVariableMap as (map: unknown) => void)(typeVariableMap);
 
     output.id = function (this: DocWrapper) {
-        return (this.getTypeWrapped as () => JavaType)().getReferenceName((this.getTypeVariableMap as () => unknown)());
+        return (this.getTypeWrapped as () => JavaType)().getReferenceName((this.getTypeVariableMap as () => TypeVariableMap)());
     };
 
     output.getId = output.id;
 
     output.toString = function (this: DocWrapper) {
         const typeName = (this.getTypeWrapped as () => JavaType)().toString();
-        const modifier = MODIFIER.toString((this.getModifiers as () => unknown)());
+        const modifier = MODIFIER.toString((this.getModifiers as () => JavaModifiers)());
         const args = [modifier, typeName, (this.name as () => string)()];
 
         return args
@@ -61,7 +61,7 @@ function getParameter(
             .join(' ');
     };
 
-    return output;
+    return output as ParameterDoc;
 }
 
 function decodeParameter(objectString: unknown): EntityData {
@@ -89,5 +89,5 @@ function decodeParameter(objectString: unknown): EntityData {
         }
     }
 
-    return output;
+    return output as ParameterDoc;
 }

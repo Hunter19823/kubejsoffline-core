@@ -51,6 +51,201 @@ function markRelationship(from, targets, relationshipTypes, inverseRelationshipT
     });
 }
 
+/** Avoid O(n²) clique marking for very large shared groups (e.g. package roommates). */
+const MAX_SYMMETRIC_RELATIONSHIP_GROUP_SIZE = 512;
+
+function markClassReferencesToType(classId, typeId, forwardRelationships) {
+    if (typeof classId !== 'number' || typeof typeId !== 'number') {
+        return;
+    }
+    for (let i = 0; i < forwardRelationships.length; i++) {
+        addToRelationshipGraph(forwardRelationships[i], classId, typeId);
+    }
+    addToRelationshipGraph(RELATIONSHIP.REFERENCES, classId, typeId);
+    addToRelationshipGraph(RELATIONSHIP.REFERENCED_BY, typeId, classId);
+}
+
+function markSymmetricRelationshipClique(group, relationshipType) {
+    const n = group.length;
+    if (n < 2 || n > MAX_SYMMETRIC_RELATIONSHIP_GROUP_SIZE) {
+        return;
+    }
+    for (let i = 0; i < n; i++) {
+        const from = group[i];
+        for (let j = i + 1; j < n; j++) {
+            const to = group[j];
+            addToRelationshipGraph(relationshipType, from, to);
+            addToRelationshipGraph(relationshipType, to, from);
+        }
+    }
+}
+
+function readFieldTypeFromCompressedData(fieldData) {
+    if (!exists(fieldData)) {
+        return null;
+    }
+    if (typeof fieldData === 'object') {
+        const typeId = fieldData[PROPERTY.FIELD_TYPE];
+        return typeof typeId === 'number' ? typeId : null;
+    }
+    if (typeof fieldData === 'string') {
+        const comma = fieldData.indexOf(',');
+        if (comma === -1) {
+            return null;
+        }
+        const secondComma = fieldData.indexOf(',', comma + 1);
+        const typePart = secondComma === -1
+            ? fieldData.slice(comma + 1)
+            : fieldData.slice(comma + 1, secondComma);
+        const decoded = decodePart(typePart.trim(), null);
+        return typeof decoded === 'number' ? decoded : null;
+    }
+    return null;
+}
+
+function readMethodReturnTypeAndParameterIds(methodData) {
+    if (!exists(methodData)) {
+        return { returnType: null, parameterIds: [] };
+    }
+    if (typeof methodData === 'object') {
+        return {
+            returnType: methodData[PROPERTY.METHOD_RETURN_TYPE],
+            parameterIds: getAsArray(methodData[PROPERTY.PARAMETERS]),
+        };
+    }
+    if (typeof methodData === 'string') {
+        const values = methodData.split(',');
+        if (values.length < 5) {
+            return { returnType: null, parameterIds: [] };
+        }
+        const returnType = decodePart(values[2].trim(), null);
+        const parameterIds = decodePart(values[4].trim(), null);
+        return {
+            returnType: typeof returnType === 'number' ? returnType : null,
+            parameterIds: getAsArray(parameterIds),
+        };
+    }
+    return { returnType: null, parameterIds: [] };
+}
+
+function readParameterTypeFromCompressedData(paramData) {
+    if (!exists(paramData)) {
+        return null;
+    }
+    if (typeof paramData === 'object') {
+        const typeId = paramData[PROPERTY.PARAMETER_TYPE];
+        return typeof typeId === 'number' ? typeId : null;
+    }
+    if (typeof paramData === 'string') {
+        const comma = paramData.indexOf(',');
+        if (comma === -1) {
+            return null;
+        }
+        const secondComma = paramData.indexOf(',', comma + 1);
+        const typePart = secondComma === -1
+            ? paramData.slice(comma + 1)
+            : paramData.slice(comma + 1, secondComma);
+        const decoded = decodePart(typePart.trim(), null);
+        return typeof decoded === 'number' ? decoded : null;
+    }
+    return null;
+}
+
+function readConstructorParameterIdsFromCompressedData(constructorData) {
+    if (!exists(constructorData)) {
+        return [];
+    }
+    if (typeof constructorData === 'object') {
+        return getAsArray(constructorData[PROPERTY.PARAMETERS]);
+    }
+    if (typeof constructorData === 'string') {
+        const values = constructorData.split(',');
+        if (values.length < 5) {
+            return [];
+        }
+        return getAsArray(decodePart(values[4].trim(), null));
+    }
+    return [];
+}
+
+function getPackageIdFromTypeData(typeData) {
+    const packageId = typeData[PROPERTY.PACKAGE_NAME];
+    if (exists(packageId)) {
+        return packageId;
+    }
+    if (exists(typeData[PROPERTY.RAW_PARAMETERIZED_TYPE])) {
+        const rawType = typeData[PROPERTY.RAW_PARAMETERIZED_TYPE];
+        if (typeof rawType === 'number') {
+            const rawData = getTypeData(rawType);
+            if (exists(rawData)) {
+                return rawData[PROPERTY.PACKAGE_NAME] ?? null;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * One pass over types to map member ids (fields, methods, constructors) to owning class ids.
+ */
+function buildMemberIdToOwningClassIds() {
+    const fieldIdToClasses = new Map();
+    const methodIdToClasses = new Map();
+    const constructorIdToClasses = new Map();
+    const totalTypes = DATA.types.length;
+
+    for (let classId = 0; classId < totalTypes; classId++) {
+        const typeData = getTypeData(classId);
+        if (!exists(typeData)) {
+            continue;
+        }
+
+        if (exists(typeData[PROPERTY.FIELDS])) {
+            for (const fieldId of getAsArray(typeData[PROPERTY.FIELDS])) {
+                if (typeof fieldId !== 'number') {
+                    continue;
+                }
+                let owners = fieldIdToClasses.get(fieldId);
+                if (!owners) {
+                    owners = new Set();
+                    fieldIdToClasses.set(fieldId, owners);
+                }
+                owners.add(classId);
+            }
+        }
+
+        if (exists(typeData[PROPERTY.METHODS])) {
+            for (const methodId of getAsArray(typeData[PROPERTY.METHODS])) {
+                if (typeof methodId !== 'number') {
+                    continue;
+                }
+                let owners = methodIdToClasses.get(methodId);
+                if (!owners) {
+                    owners = new Set();
+                    methodIdToClasses.set(methodId, owners);
+                }
+                owners.add(classId);
+            }
+        }
+
+        if (exists(typeData[PROPERTY.CONSTRUCTORS])) {
+            for (const constructorId of getAsArray(typeData[PROPERTY.CONSTRUCTORS])) {
+                if (typeof constructorId !== 'number') {
+                    continue;
+                }
+                let owners = constructorIdToClasses.get(constructorId);
+                if (!owners) {
+                    owners = new Set();
+                    constructorIdToClasses.set(constructorId, owners);
+                }
+                owners.add(classId);
+            }
+        }
+    }
+
+    return { fieldIdToClasses, methodIdToClasses, constructorIdToClasses };
+}
+
 
 /**
  * This function marks all known relationships between itself and other classes
@@ -139,59 +334,22 @@ async function indexClass(target) {
  * Groups fields by their type and marks relationships for all classes that have fields of each type.
  * @param {function|null} progressCallback - Optional callback function to report progress
  */
-async function markFieldTypeRelationships(progressCallback = null) {
+async function markFieldTypeRelationships(progressCallback = null, fieldIdToClasses = null) {
     // Map: fieldType -> Set of classIds that have fields of this type
     const fieldTypeToClasses = new Map();
-    // Map: fieldId -> Set of classIds that have this field
-    const fieldIdToClasses = new Map();
+    const memberMap = fieldIdToClasses ?? buildMemberIdToOwningClassIds().fieldIdToClasses;
     
-    const totalTypes = DATA.types.length;
-    let processedCount = 0;
-    
-    // First pass: build reverse map from field IDs to classes
-    for (let i = 0; i < totalTypes; i++) {
-        const typeData = getTypeData(i);
-        if (!exists(typeData)) continue;
-        
-        if (exists(typeData[PROPERTY.FIELDS])) {
-            const fieldIds = getAsArray(typeData[PROPERTY.FIELDS]);
-            for (const fieldId of fieldIds) {
-                if (typeof fieldId === 'number') {
-                    if (!fieldIdToClasses.has(fieldId)) {
-                        fieldIdToClasses.set(fieldId, new Set());
-                    }
-                    fieldIdToClasses.get(fieldId).add(i);
-                }
-            }
-        }
-        
-        processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Collecting field data: ${processedCount} / ${totalTypes}`,
-                progress: (processedCount / totalTypes) * 50,
-                current: processedCount,
-                total: totalTypes
-            });
-        }
-    }
-    
-    // Second pass: group fields by type
     const totalFields = DATA.fields.length;
-    processedCount = 0;
+    let processedCount = 0;
     
     for (let fieldId = 0; fieldId < totalFields; fieldId++) {
         const fieldData = getFieldData(fieldId);
         if (!exists(fieldData)) continue;
         
-        const decodedField = decodeField(fieldData);
-        const fieldType = decodedField[PROPERTY.FIELD_TYPE];
+        const fieldType = readFieldTypeFromCompressedData(fieldData);
         
-        if (exists(fieldType) && typeof fieldType === 'number') {
-            // Get all classes that have this field
-            const classesWithField = fieldIdToClasses.get(fieldId);
+        if (fieldType !== null) {
+            const classesWithField = memberMap.get(fieldId);
             if (classesWithField && classesWithField.size > 0) {
                 if (!fieldTypeToClasses.has(fieldType)) {
                     fieldTypeToClasses.set(fieldType, new Set());
@@ -203,30 +361,28 @@ async function markFieldTypeRelationships(progressCallback = null) {
         }
         
         processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalFields)) {
+        if (progressCallback && (processedCount % 500 === 0 || processedCount === totalFields)) {
             progressCallback({
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Grouping fields by type: ${processedCount} / ${totalFields}`,
-                progress: 50 + (processedCount / totalFields) * 25,
+                progress: (processedCount / totalFields) * 50,
                 current: processedCount,
                 total: totalFields
             });
         }
     }
     
-    // Third pass: mark relationships in bulk
+    // Mark relationships in bulk
     let relationshipsMarked = 0;
     const totalRelationships = fieldTypeToClasses.size;
     
     for (const [fieldType, classIds] of fieldTypeToClasses.entries()) {
-        const classArray = Array.from(classIds);
-        for (const classId of classArray) {
-            markRelationship(
+        for (const classId of classIds) {
+            markClassReferencesToType(
                 classId,
-                [fieldType],
-                [RELATIONSHIP.FIELD_TYPE, RELATIONSHIP.REFERENCES],
-                [RELATIONSHIP.REFERENCED_BY]
+                fieldType,
+                [RELATIONSHIP.FIELD_TYPE]
             );
         }
         
@@ -236,7 +392,7 @@ async function markFieldTypeRelationships(progressCallback = null) {
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Marking field relationships: ${relationshipsMarked} / ${totalRelationships}`,
-                progress: 75 + (relationshipsMarked / totalRelationships) * 25,
+                progress: 50 + (relationshipsMarked / totalRelationships) * 50,
                 current: relationshipsMarked,
                 total: totalRelationships
             });
@@ -249,65 +405,26 @@ async function markFieldTypeRelationships(progressCallback = null) {
  * Groups methods by their return type and parameter types, then marks relationships for all classes.
  * @param {function|null} progressCallback - Optional callback function to report progress
  */
-async function markMethodTypeRelationships(progressCallback = null) {
+async function markMethodTypeRelationships(progressCallback = null, methodIdToClasses = null) {
     // Map: methodReturnType -> Set of classIds
     const methodReturnTypeToClasses = new Map();
     // Map: methodParameterType -> Set of classIds
     const methodParameterTypeToClasses = new Map();
-    // Map: methodId -> Set of classIds that have this method
-    const methodIdToClasses = new Map();
+    const memberMap = methodIdToClasses ?? buildMemberIdToOwningClassIds().methodIdToClasses;
     
-    const totalTypes = DATA.types.length;
-    let processedCount = 0;
-    
-    // First pass: build reverse map from method IDs to classes
-    for (let i = 0; i < totalTypes; i++) {
-        const typeData = getTypeData(i);
-        if (!exists(typeData)) continue;
-        
-        if (exists(typeData[PROPERTY.METHODS])) {
-            const methodIds = getAsArray(typeData[PROPERTY.METHODS]);
-            for (const methodId of methodIds) {
-                if (typeof methodId === 'number') {
-                    if (!methodIdToClasses.has(methodId)) {
-                        methodIdToClasses.set(methodId, new Set());
-                    }
-                    methodIdToClasses.get(methodId).add(i);
-                }
-            }
-        }
-        
-        processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Collecting method data: ${processedCount} / ${totalTypes}`,
-                progress: (processedCount / totalTypes) * 33,
-                current: processedCount,
-                total: totalTypes
-            });
-        }
-    }
-    
-    // Second pass: group methods by return type and parameter types
     const totalMethods = DATA.methods.length;
-    processedCount = 0;
+    let processedCount = 0;
     
     for (let methodId = 0; methodId < totalMethods; methodId++) {
         const methodData = getMethodData(methodId);
         if (!exists(methodData)) continue;
         
-        const decodedMethod = decodeMethod(methodData);
-        const returnType = decodedMethod[PROPERTY.METHOD_RETURN_TYPE];
-        const parameterIds = getAsArray(decodedMethod[PROPERTY.PARAMETERS]);
+        const { returnType, parameterIds } = readMethodReturnTypeAndParameterIds(methodData);
         
-        // Get all classes that have this method
-        const classesWithMethod = methodIdToClasses.get(methodId);
+        const classesWithMethod = memberMap.get(methodId);
         if (!classesWithMethod || classesWithMethod.size === 0) continue;
         
-        // Group by return type
-        if (exists(returnType) && typeof returnType === 'number') {
+        if (returnType !== null) {
             if (!methodReturnTypeToClasses.has(returnType)) {
                 methodReturnTypeToClasses.set(returnType, new Set());
             }
@@ -316,16 +433,12 @@ async function markMethodTypeRelationships(progressCallback = null) {
             });
         }
         
-        // Group by parameter types
         for (const paramId of parameterIds) {
             if (typeof paramId !== 'number') continue;
             const paramData = getParameterData(paramId);
-            if (!exists(paramData)) continue;
+            const paramType = readParameterTypeFromCompressedData(paramData);
             
-            const decodedParam = decodeParameter(paramData);
-            const paramType = decodedParam[PROPERTY.PARAMETER_TYPE];
-            
-            if (exists(paramType) && typeof paramType === 'number') {
+            if (paramType !== null) {
                 if (!methodParameterTypeToClasses.has(paramType)) {
                     methodParameterTypeToClasses.set(paramType, new Set());
                 }
@@ -336,30 +449,27 @@ async function markMethodTypeRelationships(progressCallback = null) {
         }
         
         processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalMethods)) {
+        if (progressCallback && (processedCount % 500 === 0 || processedCount === totalMethods)) {
             progressCallback({
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Grouping methods by type: ${processedCount} / ${totalMethods}`,
-                progress: 33 + (processedCount / totalMethods) * 33,
+                progress: (processedCount / totalMethods) * 50,
                 current: processedCount,
                 total: totalMethods
             });
         }
     }
     
-    // Third pass: mark return type relationships in bulk
     let relationshipsMarked = 0;
     const totalReturnRelationships = methodReturnTypeToClasses.size;
     
     for (const [returnType, classIds] of methodReturnTypeToClasses.entries()) {
-        const classArray = Array.from(classIds);
-        for (const classId of classArray) {
-            markRelationship(
+        for (const classId of classIds) {
+            markClassReferencesToType(
                 classId,
-                [returnType],
-                [RELATIONSHIP.METHOD_RETURN_TYPE, RELATIONSHIP.REFERENCES],
-                [RELATIONSHIP.REFERENCED_BY]
+                returnType,
+                [RELATIONSHIP.METHOD_RETURN_TYPE]
             );
         }
         
@@ -369,25 +479,22 @@ async function markMethodTypeRelationships(progressCallback = null) {
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Marking method return type relationships: ${relationshipsMarked} / ${totalReturnRelationships}`,
-                progress: 66 + (relationshipsMarked / totalReturnRelationships) * 17,
+                progress: 50 + (relationshipsMarked / totalReturnRelationships) * 25,
                 current: relationshipsMarked,
                 total: totalReturnRelationships
             });
         }
     }
     
-    // Fourth pass: mark parameter type relationships in bulk
     relationshipsMarked = 0;
     const totalParamRelationships = methodParameterTypeToClasses.size;
     
     for (const [paramType, classIds] of methodParameterTypeToClasses.entries()) {
-        const classArray = Array.from(classIds);
-        for (const classId of classArray) {
-            markRelationship(
+        for (const classId of classIds) {
+            markClassReferencesToType(
                 classId,
-                [paramType],
-                [RELATIONSHIP.METHOD_PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
-                [RELATIONSHIP.REFERENCED_BY]
+                paramType,
+                [RELATIONSHIP.METHOD_PARAMETER_TYPE]
             );
         }
         
@@ -397,7 +504,7 @@ async function markMethodTypeRelationships(progressCallback = null) {
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Marking method parameter relationships: ${relationshipsMarked} / ${totalParamRelationships}`,
-                progress: 83 + (relationshipsMarked / totalParamRelationships) * 17,
+                progress: 75 + (relationshipsMarked / totalParamRelationships) * 25,
                 current: relationshipsMarked,
                 total: totalParamRelationships
             });
@@ -410,70 +517,27 @@ async function markMethodTypeRelationships(progressCallback = null) {
  * Groups constructors by their parameter types and marks relationships for all classes.
  * @param {function|null} progressCallback - Optional callback function to report progress
  */
-async function markConstructorParameterTypeRelationships(progressCallback = null) {
-    // Map: constructorParameterType -> Set of classIds
+async function markConstructorParameterTypeRelationships(progressCallback = null, constructorIdToClasses = null) {
     const constructorParameterTypeToClasses = new Map();
-    // Map: constructorId -> Set of classIds that have this constructor
-    const constructorIdToClasses = new Map();
+    const memberMap = constructorIdToClasses ?? buildMemberIdToOwningClassIds().constructorIdToClasses;
     
-    const totalTypes = DATA.types.length;
-    let processedCount = 0;
-    
-    // First pass: build reverse map from constructor IDs to classes
-    for (let i = 0; i < totalTypes; i++) {
-        const typeData = getTypeData(i);
-        if (!exists(typeData)) continue;
-        
-        if (exists(typeData[PROPERTY.CONSTRUCTORS])) {
-            const constructorIds = getAsArray(typeData[PROPERTY.CONSTRUCTORS]);
-            for (const constructorId of constructorIds) {
-                if (typeof constructorId === 'number') {
-                    if (!constructorIdToClasses.has(constructorId)) {
-                        constructorIdToClasses.set(constructorId, new Set());
-                    }
-                    constructorIdToClasses.get(constructorId).add(i);
-                }
-            }
-        }
-        
-        processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalTypes)) {
-            progressCallback({
-                type: 'progress',
-                stage: 'marking_relationships',
-                message: `Collecting constructor data: ${processedCount} / ${totalTypes}`,
-                progress: (processedCount / totalTypes) * 50,
-                current: processedCount,
-                total: totalTypes
-            });
-        }
-    }
-    
-    // Second pass: group constructors by parameter types
     const totalConstructors = DATA.constructors.length;
-    processedCount = 0;
+    let processedCount = 0;
     
     for (let constructorId = 0; constructorId < totalConstructors; constructorId++) {
         const constructorData = getConstructorData(constructorId);
         if (!exists(constructorData)) continue;
         
-        const decodedConstructor = decodeConstructor(constructorData);
-        const parameterIds = getAsArray(decodedConstructor[PROPERTY.PARAMETERS]);
-        
-        // Get all classes that have this constructor
-        const classesWithConstructor = constructorIdToClasses.get(constructorId);
+        const parameterIds = readConstructorParameterIdsFromCompressedData(constructorData);
+        const classesWithConstructor = memberMap.get(constructorId);
         if (!classesWithConstructor || classesWithConstructor.size === 0) continue;
         
-        // Group by parameter types
         for (const paramId of parameterIds) {
             if (typeof paramId !== 'number') continue;
             const paramData = getParameterData(paramId);
-            if (!exists(paramData)) continue;
+            const paramType = readParameterTypeFromCompressedData(paramData);
             
-            const decodedParam = decodeParameter(paramData);
-            const paramType = decodedParam[PROPERTY.PARAMETER_TYPE];
-            
-            if (exists(paramType) && typeof paramType === 'number') {
+            if (paramType !== null) {
                 if (!constructorParameterTypeToClasses.has(paramType)) {
                     constructorParameterTypeToClasses.set(paramType, new Set());
                 }
@@ -484,30 +548,27 @@ async function markConstructorParameterTypeRelationships(progressCallback = null
         }
         
         processedCount++;
-        if (progressCallback && (processedCount % 100 === 0 || processedCount === totalConstructors)) {
+        if (progressCallback && (processedCount % 500 === 0 || processedCount === totalConstructors)) {
             progressCallback({
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Grouping constructors by parameter type: ${processedCount} / ${totalConstructors}`,
-                progress: 50 + (processedCount / totalConstructors) * 25,
+                progress: (processedCount / totalConstructors) * 50,
                 current: processedCount,
                 total: totalConstructors
             });
         }
     }
     
-    // Third pass: mark relationships in bulk
     let relationshipsMarked = 0;
     const totalRelationships = constructorParameterTypeToClasses.size;
     
     for (const [paramType, classIds] of constructorParameterTypeToClasses.entries()) {
-        const classArray = Array.from(classIds);
-        for (const classId of classArray) {
-            markRelationship(
+        for (const classId of classIds) {
+            markClassReferencesToType(
                 classId,
-                [paramType],
-                [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE, RELATIONSHIP.REFERENCES],
-                [RELATIONSHIP.REFERENCED_BY]
+                paramType,
+                [RELATIONSHIP.CONSTRUCTOR_PARAMETER_TYPE, RELATIONSHIP.PARAMETER_TYPE]
             );
         }
         
@@ -517,7 +578,7 @@ async function markConstructorParameterTypeRelationships(progressCallback = null
                 type: 'progress',
                 stage: 'marking_relationships',
                 message: `Marking constructor parameter relationships: ${relationshipsMarked} / ${totalRelationships}`,
-                progress: 75 + (relationshipsMarked / totalRelationships) * 25,
+                progress: 50 + (relationshipsMarked / totalRelationships) * 50,
                 current: relationshipsMarked,
                 total: totalRelationships
             });
@@ -561,11 +622,7 @@ async function markGroupedRelationships(items, getKey, relationship, groupingMes
     let groupsProcessed = 0;
     
     for (const group of validGroups) {
-        for (let i = 0; i < group.length; i++) {
-            for (let j = i + 1; j < group.length; j++) {
-                markRelationship(group[i], [group[j]], [relationship], [relationship]);
-            }
-        }
+        markSymmetricRelationshipClique(group, relationship);
         
         groupsProcessed++;
         if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === validGroups.length)) {
@@ -587,8 +644,101 @@ async function markGroupedRelationships(items, getKey, relationship, groupingMes
  * @param {function|null} progressCallback - Optional callback function to report progress
  * @returns {Promise<void>} Promise that resolves when all relationship marking is complete
  */
+async function markInnerClassAndPackageRelationships(progressCallback = null) {
+    if (DATA.types.length > 20000) {
+        return;
+    }
+
+    const enclosingGroups = new Map();
+    const packageGroups = new Map();
+    const totalTypes = DATA.types.length;
+
+    for (let classId = 0; classId < totalTypes; classId++) {
+        const typeData = getTypeData(classId);
+        if (!exists(typeData)) {
+            continue;
+        }
+
+        const enclosingClass = typeData[PROPERTY.ENCLOSING_CLASS];
+        if (exists(enclosingClass)) {
+            let group = enclosingGroups.get(enclosingClass);
+            if (!group) {
+                group = [];
+                enclosingGroups.set(enclosingClass, group);
+            }
+            group.push(classId);
+        }
+
+        const packageId = getPackageIdFromTypeData(typeData);
+        if (exists(packageId)) {
+            let group = packageGroups.get(packageId);
+            if (!group) {
+                group = [];
+                packageGroups.set(packageId, group);
+            }
+            group.push(classId);
+        }
+
+        if (progressCallback && (classId % 500 === 0 || classId === totalTypes - 1)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Grouping inner classes and packages: ${classId + 1} / ${totalTypes}`,
+                progress: ((classId + 1) / totalTypes) * 50,
+                current: classId + 1,
+                total: totalTypes
+            });
+        }
+    }
+
+    const siblingGroups = [];
+    for (const group of enclosingGroups.values()) {
+        if (group.length >= 2) {
+            siblingGroups.push(group);
+        }
+    }
+
+    let groupsProcessed = 0;
+    for (const group of siblingGroups) {
+        markSymmetricRelationshipClique(group, RELATIONSHIP.SIBLING);
+        groupsProcessed++;
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === siblingGroups.length)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking siblings: ${groupsProcessed} / ${siblingGroups.length}`,
+                progress: 50 + (groupsProcessed / siblingGroups.length) * 25,
+                current: groupsProcessed,
+                total: siblingGroups.length
+            });
+        }
+    }
+
+    const roommateGroups = [];
+    for (const group of packageGroups.values()) {
+        if (group.length >= 2) {
+            roommateGroups.push(group);
+        }
+    }
+
+    groupsProcessed = 0;
+    for (const group of roommateGroups) {
+        markSymmetricRelationshipClique(group, RELATIONSHIP.ROOMMATE);
+        groupsProcessed++;
+        if (progressCallback && (groupsProcessed % 10 === 0 || groupsProcessed === roommateGroups.length)) {
+            progressCallback({
+                type: 'progress',
+                stage: 'marking_relationships',
+                message: `Marking roommates: ${groupsProcessed} / ${roommateGroups.length}`,
+                progress: 75 + (groupsProcessed / roommateGroups.length) * 25,
+                current: groupsProcessed,
+                total: roommateGroups.length
+            });
+        }
+    }
+}
+
 async function markAllRelationships(progressCallback = null) {
-    // 1. Mark parameterized type neighbors
     await markGroupedRelationships(
         DATA._parameterized_types,
         (id) => {
@@ -600,34 +750,9 @@ async function markAllRelationships(progressCallback = null) {
         'Marking neighbors',
         progressCallback
     );
-    
-    // 2. Mark inner class siblings
-    // If there are more than 20k classes, skip sibling marking to save time and memory
-    if (DATA.types.length <= 20000) {
-        await markGroupedRelationships(
-            Array.from({length: DATA.types.length}, (_, i) => i),
-            (id) => {
-                const classType = getClass(id);
-                return classType ? classType.getEnclosingClass() : null;
-            },
-            RELATIONSHIP.SIBLING,
-            'Grouping inner classes',
-            'Marking siblings',
-            progressCallback
-        );
 
-        // 3. Mark package roommates
-        await markGroupedRelationships(
-            Array.from({length: DATA.types.length}, (_, i) => i),
-            (id) => {
-                const classType = getClass(id);
-                return classType ? classType.getPackageId() : null;
-            },
-            RELATIONSHIP.ROOMMATE,
-            'Grouping classes by package',
-            'Marking roommates',
-            progressCallback
-        );
+    if (DATA.types.length <= 20000) {
+        await markInnerClassAndPackageRelationships(progressCallback);
     }
 }
 
@@ -637,7 +762,6 @@ async function optimizeDataSearch(progressCallback = null) {
     DATA._parameterized_types = [];
     DATA._raw_types = [];
     DATA._type_variables = [];
-    const indexPromises = [];
     const totalTypes = DATA.types.length;
     let processedCount = 0;
 
@@ -664,21 +788,19 @@ async function optimizeDataSearch(progressCallback = null) {
             continue;
         }
         const subject = getClass(i);
-        indexPromises.push(indexClass(i).then(() => {
-            processedCount++;
-            // Send progress update every 10 items or on last item
-            if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
-                const progress = (processedCount / totalTypes) * 100;
-                progressCallback({
-                    type: 'progress',
-                    stage: 'optimizing',
-                    message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
-                    progress: progress,
-                    current: processedCount,
-                    total: totalTypes
-                });
-            }
-        }));
+        await indexClass(i);
+        processedCount++;
+        if (progressCallback && (processedCount % 10 === 0 || processedCount === totalTypes)) {
+            const progress = (processedCount / totalTypes) * 100;
+            progressCallback({
+                type: 'progress',
+                stage: 'optimizing',
+                message: `Classes Scanned: ${processedCount} / ${totalTypes}`,
+                progress: progress,
+                current: processedCount,
+                total: totalTypes
+            });
+        }
         if (subject.isWildcard()) {
             DATA._wildcard_types.push(i);
         } else if (subject.isParameterizedType()) {
@@ -700,16 +822,13 @@ async function optimizeDataSearch(progressCallback = null) {
             });
         }
     }
-    
-    // Wait for class indexing to complete first (for class-specific relationships)
-    await Promise.all(indexPromises);
-    
-    // Now process field, method, and constructor relationships in bulk
-    // These can run in parallel since they don't depend on each other
+
+    const memberMaps = buildMemberIdToOwningClassIds();
+
     await Promise.all([
-        markFieldTypeRelationships(progressCallback),
-        markMethodTypeRelationships(progressCallback),
-        markConstructorParameterTypeRelationships(progressCallback),
+        markFieldTypeRelationships(progressCallback, memberMaps.fieldIdToClasses),
+        markMethodTypeRelationships(progressCallback, memberMaps.methodIdToClasses),
+        markConstructorParameterTypeRelationships(progressCallback, memberMaps.constructorIdToClasses),
         markAllRelationships(progressCallback)
     ]);
     findEventClasses();

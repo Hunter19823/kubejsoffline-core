@@ -4,13 +4,13 @@ function getField(
 
     fieldID: number,
 
-    typeVariableMap: Record<string, unknown> = {},
+    typeVariableMap: TypeVariableMap = {},
 
     sourceClassId: number,
 
     sourceFieldId: number
 
-): DocWrapper {
+): FieldDoc {
 
     if (!exists(fieldID)) {
 
@@ -62,9 +62,9 @@ function getField(
 
     output.toKubeJSStaticReference = function (this: DocWrapper) {
 
-        const parent = getClass(this.getDeclaringClass as () => number)!;
+        const parent = getClass((this.getDeclaringClass as () => number)())!;
 
-        return `// KJSODocs: ${(this.getTypeWrapped as () => JavaType)().hrefLink()}\n$${parent.simplename((this.getTypeVariableMap as () => unknown)()).toUpperCase()}.${(this.name as () => string)()};`;
+        return `// KJSODocs: ${(this.getTypeWrapped as () => JavaType)().hrefLink()}\n$${parent.simplename((this.getTypeVariableMap as () => TypeVariableMap)()).toUpperCase()}.${(this.name as () => string)()};`;
 
     };
 
@@ -80,7 +80,7 @@ function getField(
 
             getClass((this.getTypeWrapped as () => JavaType)())!.getReferenceName(
 
-                (this.getTypeVariableMap as () => unknown)()
+                (this.getTypeVariableMap as () => TypeVariableMap)()
 
             ) +
 
@@ -118,7 +118,7 @@ function getField(
 
         const returnType = (this.getTypeWrapped as () => JavaType)().toString();
 
-        const modifier = MODIFIER.toString((this.getModifiers as () => unknown)());
+        const modifier = MODIFIER.toString((this.getModifiers as () => JavaModifiers)());
 
         const args = [modifier, returnType, (this.name as () => string)()];
 
@@ -136,7 +136,7 @@ function getField(
 
 
 
-    return output;
+    return output as FieldDoc;
 
 }
 

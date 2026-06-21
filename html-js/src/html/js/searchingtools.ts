@@ -1,7 +1,7 @@
 // @ts-nocheck
-function dataFilter(): any {
-    let output: any = {};
-    output.results = {'classes': [], 'fields': [], 'methods': [], 'parameters': []};
+function dataFilter(): DataFilter {
+    const output = {} as DataFilter;
+    output.results = { classes: [], fields: [], methods: [], parameters: [] };
 
     output._classFilters = [];
     output._fieldFilters = [];
@@ -540,7 +540,7 @@ function dataFilter(): any {
     return output;
 }
 
-function searchFromParameters(parameters) {
+function searchFromParameters(parameters: URLSearchParams) {
     wipePage();
 
     setToast("Please wait while we process your query...");
@@ -582,14 +582,16 @@ function searchFromParameters(parameters) {
         const EXACT = parameters.has('exact') ? parameters.get('exact') === 'true' : false;
 
         for (const key in NEW_QUERY_TERMS) {
-            let value = NEW_QUERY_TERMS[key];
+            const value = NEW_QUERY_TERMS[key];
             if (_last_search_parameters.has(key)) {
-                _last_filter[value](_last_search_parameters.get(key), EXACT, INCLUSIVE);
+                const method = _last_filter[value];
+                method.call(_last_filter, _last_search_parameters.get(key)!, EXACT, INCLUSIVE);
                 continue;
             }
-            let key_normalized = key.replaceAll(/[^a-z0-9-_]+/g, '');
+            const key_normalized = key.replaceAll(/[^a-z0-9-_]+/g, '');
             if (_last_search_parameters.has(key_normalized)) {
-                _last_filter[value](_last_search_parameters.get(key_normalized), EXACT, INCLUSIVE);
+                const method = _last_filter[value];
+                method.call(_last_filter, _last_search_parameters.get(key_normalized)!, EXACT, INCLUSIVE);
             }
         }
 
