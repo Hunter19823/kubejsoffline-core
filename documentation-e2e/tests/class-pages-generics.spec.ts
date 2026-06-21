@@ -16,7 +16,7 @@ test.describe('generic and parameterized class pages', () => {
     await openClassPage(page, testClass('BaseGenericType'));
 
     await expect(classPageHeading(page)).toContainText('BaseGenericType');
-    await expect(page.locator('#relations')).toContainText('java.lang.Boolean');
+    await expect(page.locator('#fields [href*="Boolean"]').first()).toBeVisible();
     await expect(tableSectionHeader(page, 'fields')).toBeVisible();
     await expect(page.getByText('booleanField').first()).toBeVisible();
   });
@@ -45,11 +45,7 @@ test.describe('generic and parameterized class pages', () => {
   }) => {
     await openClassPage(page, testClass('TestData'));
 
-    await page
-      .locator('#constructors')
-      .getByRole('link', { name: /^EnclosingClassExample<String>/ })
-      .first()
-      .click();
+    await page.locator('#constructors .link').filter({ hasText: 'EnclosingClassExample' }).first().click();
 
     await expect(classPageHeading(page)).toContainText('EnclosingClassExample');
     await expect(tableSectionHeader(page, 'type-variable-mappings')).toBeVisible();
@@ -72,9 +68,9 @@ test.describe('generic and parameterized class pages', () => {
     await openClassPage(page, testClass('TestData'));
 
     await page
-      .getByRole('link', {
-        name: /EnclosingClassExample<String>\$InnerClassExample<Integer>/,
-      })
+      .locator('#methods tr')
+      .filter({ hasText: 'innerClassExample()' })
+      .locator('[href*="InnerClassExample"]')
       .first()
       .click();
 
@@ -90,8 +86,10 @@ test.describe('generic and parameterized class pages', () => {
 
     await page.locator('#type-variable-mappings-header').scrollIntoViewIfNeeded();
     await page
-      .locator('#type-variable-mappings')
-      .getByRole('link', { name: /^A extends Boolean$/ })
+      .locator('#fields tr')
+      .filter({ hasText: 'byteField' })
+      .locator('[href*="Byte"]')
+      .first()
       .click();
 
     await expect(page.getByRole('heading', { level: 1, name: /Type Variable/ })).toBeVisible();

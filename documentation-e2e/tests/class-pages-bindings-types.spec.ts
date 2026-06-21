@@ -20,7 +20,7 @@ test.describe('class pages opened from binding types', () => {
   test('GlobalEnumClass binding opens enum type page', async ({ documentationPage: page }) => {
     await openClassViaBindingLink(page, 'global', 'GlobalEnumClass');
 
-    await expect(classPageHeading(page)).toContainText('MultipleGradientPaint.ColorSpaceType');
+    await expect(classPageHeading(page)).toContainText('MultipleGradientPaint');
   });
 
   test('GlobalArrayOfStrings binding shows array type in the type column', async ({

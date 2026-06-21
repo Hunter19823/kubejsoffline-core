@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "None",
+    "module": "preserve",
     "rootDir": "src",
     "outDir": "../src/main/resources",
     "strict": true,

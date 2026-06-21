@@ -133,6 +133,10 @@ test {
     dependsOn buildHtmlJs
 }
 
+tasks.named('check') {
+    dependsOn tasks.named('documentationBrowserTest')
+}
+
 compileJava {
     options.compilerArgs << '-parameters'
 }
