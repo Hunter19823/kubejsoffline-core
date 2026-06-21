@@ -6,11 +6,13 @@
  */
 
 const DB_NAME_PREFIX = 'kubejs_offline_docs';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const MAX_DATABASES = 3; // Maximum number of databases to keep
 /** Stored in metadata; bump when relationship graph IndexedDB layout changes. */
-const RELATIONSHIP_GRAPH_STORAGE_VERSION = 2;
+const RELATIONSHIP_GRAPH_STORAGE_VERSION = 3;
 const METADATA_RELATIONSHIP_GRAPH_SCHEMA = 'relationshipGraphSchemaVersion';
+/** Max adjacency rows per IndexedDB record (avoids oversized single puts at scale). */
+const RELATIONSHIP_GRAPH_ROWS_PER_CHUNK = 4000;
 const DB_TRACKING_KEY = 'kubejs_offline_db_tracking'; // localStorage key for tracking database access
 
 // Store names
@@ -118,7 +120,7 @@ function initIndexedDB(dataVersion = null) {
             if (!db.objectStoreNames.contains(STORE_LOOKUP_CACHE)) {
                 db.createObjectStore(STORE_LOOKUP_CACHE);
             }
-            if (event.oldVersion < 2 && db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
+            if (event.oldVersion < 3 && db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
                 db.deleteObjectStore(STORE_RELATIONSHIP_GRAPH);
             }
             if (!db.objectStoreNames.contains(STORE_RELATIONSHIP_GRAPH)) {
@@ -398,8 +400,30 @@ function relationshipTypeRecordToMap(stored) {
     return null;
 }
 
+function relationshipGraphChunkKey(relationshipType, chunkIndex) {
+    return `${relationshipType}#${chunkIndex}`;
+}
+
+function mergeRelationshipRowsIntoMap(map, rows) {
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || typeof row[0] !== 'number') {
+            continue;
+        }
+        let toSet = map.get(row[0]);
+        if (!toSet) {
+            toSet = new Set();
+            map.set(row[0], toSet);
+        }
+        const targets = row[1];
+        for (let j = 0; j < targets.length; j++) {
+            toSet.add(targets[j]);
+        }
+    }
+}
+
 /**
- * Write the relationship graph: one IndexedDB record per relationship type (not per source node).
+ * Write the relationship graph in chunked records (per relationship type, bounded row count).
  * @param {Map} relationshipGraph - The relationship graph Map
  * @param {Function} progressCallback - Optional callback for progress updates (current, total, stage, progress)
  * @returns {Promise<void>}
@@ -407,9 +431,9 @@ function relationshipTypeRecordToMap(stored) {
 async function writeRelationshipGraphBatch(relationshipGraph, progressCallback = null) {
     const db = await getDB();
 
-    const typesToWrite = [];
+    const puts = [];
     for (const [relationshipType, relationshipMap] of relationshipGraph.entries()) {
-        if (relationshipMap.size === 0) {
+        if (typeof relationshipType !== 'string' || !relationshipType || relationshipMap.size === 0) {
             continue;
         }
         const rows = new Array(relationshipMap.size);
@@ -417,10 +441,16 @@ async function writeRelationshipGraphBatch(relationshipGraph, progressCallback =
         for (const [from, toSet] of relationshipMap.entries()) {
             rows[rowIndex++] = [from, Array.from(toSet)];
         }
-        typesToWrite.push({ relationshipType, rows });
+        for (let offset = 0, chunkIndex = 0; offset < rows.length; offset += RELATIONSHIP_GRAPH_ROWS_PER_CHUNK, chunkIndex++) {
+            const chunkRows = rows.slice(offset, offset + RELATIONSHIP_GRAPH_ROWS_PER_CHUNK);
+            puts.push({
+                key: relationshipGraphChunkKey(relationshipType, chunkIndex),
+                value: { relationshipType, rows: chunkRows, chunkIndex },
+            });
+        }
     }
 
-    const total = typesToWrite.length;
+    const total = puts.length;
     if (total === 0) {
         return;
     }
@@ -429,24 +459,43 @@ async function writeRelationshipGraphBatch(relationshipGraph, progressCallback =
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH, STORE_METADATA], 'readwrite');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
         const metaStore = transaction.objectStore(STORE_METADATA);
+        let completed = 0;
+        let hasError = false;
 
-        for (const entry of typesToWrite) {
-            store.put(
-                { relationshipType: entry.relationshipType, rows: entry.rows },
-                entry.relationshipType
-            );
+        for (const entry of puts) {
+            const request = store.put(entry.value, entry.key);
+            request.onsuccess = () => {
+                if (hasError) {
+                    return;
+                }
+                completed++;
+                if (progressCallback && (completed % 50 === 0 || completed === total)) {
+                    progressCallback(completed, total, 'relationshipGraph', (completed / total) * 100);
+                }
+            };
+            request.onerror = () => {
+                if (!hasError) {
+                    hasError = true;
+                    reject(new Error(`Failed to write relationship graph chunk ${entry.key}: ${request.error}`));
+                }
+            };
         }
         metaStore.put(RELATIONSHIP_GRAPH_STORAGE_VERSION, METADATA_RELATIONSHIP_GRAPH_SCHEMA);
 
         transaction.oncomplete = () => {
-            if (progressCallback) {
-                progressCallback(total, total, 'relationshipGraph', 100);
+            if (!hasError) {
+                if (progressCallback) {
+                    progressCallback(total, total, 'relationshipGraph', 100);
+                }
+                resolve();
             }
-            resolve();
         };
 
         transaction.onerror = () => {
-            reject(new Error(`Failed to write relationship graph: ${transaction.error}`));
+            if (!hasError) {
+                hasError = true;
+                reject(new Error(`Failed to write relationship graph: ${transaction.error}`));
+            }
         };
     });
 }
@@ -464,29 +513,16 @@ async function readRelationshipGraphEntry(relationshipType, from) {
         return memoryCache.relationshipGraph.get(cacheKey);
     }
 
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
-        const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        const request = store.get(relationshipType);
-
-        request.onsuccess = () => {
-            const typeMap = relationshipTypeRecordToMap(request.result);
-            const value = typeMap && typeMap.has(from) ? typeMap.get(from) : undefined;
-            if (value !== undefined) {
-                if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
-                    const firstKey = memoryCache.relationshipGraph.keys().next().value;
-                    memoryCache.relationshipGraph.delete(firstKey);
-                }
-                memoryCache.relationshipGraph.set(cacheKey, value);
-            }
-            resolve(value);
-        };
-
-        request.onerror = () => {
-            reject(new Error('Failed to read relationship graph entry: ' + request.error));
-        };
-    });
+    const typeMap = await readRelationshipGraphByType(relationshipType);
+    const value = typeMap.has(from) ? typeMap.get(from) : undefined;
+    if (value !== undefined) {
+        if (memoryCache.relationshipGraph.size >= memoryCache.maxSize) {
+            const firstKey = memoryCache.relationshipGraph.keys().next().value;
+            memoryCache.relationshipGraph.delete(firstKey);
+        }
+        memoryCache.relationshipGraph.set(cacheKey, value);
+    }
+    return value;
 }
 
 /**
@@ -499,16 +535,40 @@ async function readRelationshipGraphByType(relationshipType) {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_RELATIONSHIP_GRAPH], 'readonly');
         const store = transaction.objectStore(STORE_RELATIONSHIP_GRAPH);
-        const request = store.get(relationshipType);
+        const merged = new Map();
+        let chunkIndex = 0;
+        let foundChunk = false;
 
-        request.onsuccess = () => {
-            const result = relationshipTypeRecordToMap(request.result);
-            resolve(result ?? new Map());
+        const readChunk = () => {
+            const request = store.get(relationshipGraphChunkKey(relationshipType, chunkIndex));
+            request.onsuccess = () => {
+                const record = request.result;
+                if (record && record.rows) {
+                    foundChunk = true;
+                    mergeRelationshipRowsIntoMap(merged, record.rows);
+                    chunkIndex++;
+                    readChunk();
+                    return;
+                }
+                if (!foundChunk && chunkIndex === 0) {
+                    const legacyRequest = store.get(relationshipType);
+                    legacyRequest.onsuccess = () => {
+                        const legacyMap = relationshipTypeRecordToMap(legacyRequest.result);
+                        resolve(legacyMap ?? new Map());
+                    };
+                    legacyRequest.onerror = () => {
+                        reject(new Error('Failed to read relationship graph by type: ' + legacyRequest.error));
+                    };
+                    return;
+                }
+                resolve(merged);
+            };
+            request.onerror = () => {
+                reject(new Error('Failed to read relationship graph by type: ' + request.error));
+            };
         };
 
-        request.onerror = () => {
-            reject(new Error('Failed to read relationship graph by type: ' + request.error));
-        };
+        readChunk();
     });
 }
 
